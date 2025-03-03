@@ -45,6 +45,7 @@ func main() {
 
 func init() {
 	downloadCmd.Flags().StringP("problem", "p", "", "LeetCode problem name")
+	downloadCmd.Flags().StringP("language", "l", "python", "Programming language to use")
 
 	rootCmd.AddCommand(downloadCmd)
 	rootCmd.AddCommand(quizCmd)

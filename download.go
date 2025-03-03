@@ -10,12 +10,36 @@ import (
 	"path/filepath"
 	"strings"
 
+	htmltomarkdown "github.com/JohannesKaufmann/html-to-markdown/v2"
 	"github.com/spf13/cobra"
 )
 
 const PY_EXT = ".py"
 const API_URL = "https://leetcode.com/graphql"
-const TEST_BASE = `import unittest
+const GO_BASE = `package main
+%s
+`
+const GO_TEST_BASE = `package main
+
+func Test%s(t *testing.T) {
+        testCases := []struct {
+                name   string
+                nums   []int
+                target int
+                expect []int
+        }{{}}
+
+        for _, tc := range testCases {
+                t.Run(tc.name, func(t *testing.T) {
+                        result := %s(tc.nums, tc.target)
+                        if !reflect.DeepEqual(result, tc.expect) {
+                                t.Errorf("%s(%v, %d) = %v, expected %v", tc.nums, tc.target, result, tc.expect)
+                        }
+                })
+        }
+}
+`
+const PY_TEST_BASE = `import unittest
 from %s import Solution
 
 
@@ -24,9 +48,28 @@ class TestSolution(unittest.TestCase):
     self.assertTrue(Solution())
 `
 
+var commonLangName = map[string]string{
+	"go":     "golang",
+	"python": "python3",
+}
+
 type Request struct {
 	Query     string                 `json:"query"`
 	Variables map[string]interface{} `json:"variables"`
+}
+
+type Response struct {
+	Data Data `json:"data"`
+}
+
+type Data struct {
+	Question Question `json:"question"`
+}
+
+type Question struct {
+	Content      string        `json:"content"`
+	QuestionID   string        `json:"questionId"`
+	CodeSnippets []CodeSnippet `json:"codeSnippets"`
 }
 
 type CodeSnippet struct {
@@ -34,34 +77,16 @@ type CodeSnippet struct {
 	LangSlug string `json:"langSlug"`
 }
 
-type Response struct {
-	Data struct {
-		Question struct {
-			QuestionID   string
-			CodeSnippets []CodeSnippet
-		}
-	}
+type LeetCodeClient struct {
+	BaseUrl    string
+	HttpClient *http.Client
 }
 
-func DownloadFunc(cmd *cobra.Command, args []string) error {
-	ensureConfig()
-	name, err := cmd.Flags().GetString("problem")
-	if err != nil {
-		return err
-	}
-
-	// fetch code snippet
-	snippet, err := fetchProblem(name)
-	if err != nil {
-		return err
-	}
-
-	fname, err := stubProblem(name, snippet)
-	fmt.Println("Problem stubbed at", fname)
-	return nil
+func NewLeetCodeClient(baseURL string, client *http.Client) *LeetCodeClient {
+	return &LeetCodeClient{BaseUrl: baseURL, HttpClient: client}
 }
 
-func fetchProblem(name string) (string, error) {
+func (c LeetCodeClient) FetchProblemInfo(problem, lang string) (*Response, error) {
 	query := `query questionEditorData($titleSlug: String!) {
   question(titleSlug: $titleSlug) {
     questionId
@@ -71,54 +96,163 @@ func fetchProblem(name string) (string, error) {
     }
   }
 }`
-	body, err := json.Marshal(Request{Query: query, Variables: map[string]any{
-		"titleSlug": name,
-	}})
+
+	variables := map[string]any{"titleSlug": problem}
+	body, err := json.Marshal(Request{Query: query, Variables: variables})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	req, err := http.NewRequest("POST", API_URL, bytes.NewBuffer(body))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
+
 	req.Header.Set("Content-Type", "application/json")
-	client := &http.Client{}
-	res, err := client.Do(req)
+	res, err := c.HttpClient.Do(req)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer res.Body.Close()
 
 	body, err = io.ReadAll(res.Body)
-	var lcRes Response
-	err = json.Unmarshal(body, &lcRes)
+	var response Response
+	err = json.Unmarshal(body, &response)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	var snippet string
-	for _, v := range lcRes.Data.Question.CodeSnippets {
-		if v.LangSlug == "python3" {
-			snippet = v.Code
-			break
-		}
-	}
-	return snippet, nil
+	return &response, nil
+	//
+	// var content string
+	// var snippet string
+	//
+	// if lcRes.Data.Content != "" {
+	// 	content = lcRes.Data.Content
+	// }
+	// for _, v := range lcRes.Data.Question.CodeSnippets {
+	// 	if v.LangSlug == commonLangName[language] {
+	// 		snippet = v.Code
+	// 		break
+	// 	}
+	// }
+	// return snippet, content, nil
 }
 
-func stubProblem(name, snippet string) (string, error) {
+func DownloadFunc(cmd *cobra.Command, args []string) error {
+	ensureConfig()
+	name, err := cmd.Flags().GetString("problem")
+	if err != nil {
+		return err
+	}
+
+	language, err := cmd.Flags().GetString("language")
+	if err != nil {
+		return err
+	}
+
+	// fetch code snippet
+	snippet, content, err := fetchProblem(name, language)
+	if err != nil {
+		return err
+	}
+
+	fname, err := stubProblem(name, language, snippet, content)
+	if err != nil {
+		return err
+	}
+	fmt.Println("Problem stubbed at", fname)
+	return nil
+}
+
+func fetchProblem(name, language string) (string, string, error) {
+	return "", "", nil
+}
+
+// 	query := `query questionEditorData($titleSlug: String!) {
+//   question(titleSlug: $titleSlug) {
+//     questionId
+//     codeSnippets {
+//       langSlug
+//       code
+//     }
+//   }
+// }`
+// 	body, err := json.Marshal(Request{Query: query, Variables: map[string]any{
+// 		"titleSlug": name,
+// 	}})
+// 	if err != nil {
+// 		return "", "", err
+// 	}
+//
+// 	req, err := http.NewRequest("POST", API_URL, bytes.NewBuffer(body))
+// 	if err != nil {
+// 		return "", "", err
+// 	}
+// 	req.Header.Set("Content-Type", "application/json")
+// 	client := &http.Client{}
+// 	res, err := client.Do(req)
+// 	if err != nil {
+// 		return "", "", err
+// 	}
+// 	defer res.Body.Close()
+//
+// 	body, err = io.ReadAll(res.Body)
+// 	var lcRes Response
+// 	err = json.Unmarshal(body, &lcRes)
+// 	if err != nil {
+// 		return "", "", err
+// 	}
+//
+// 	var content string
+// 	var snippet string
+//
+// 	if lcRes.Data.Content != "" {
+// 		content = lcRes.Data.Content
+// 	}
+// 	for _, v := range lcRes.Data.Question.CodeSnippets {
+// 		if v.LangSlug == commonLangName[language] {
+// 			snippet = v.Code
+// 			break
+// 		}
+// 	}
+// 	return snippet, content, nil
+// }
+
+func languageExtension(lang string) string {
+	extMap := map[string]string{
+		"python":  ".py",
+		"python3": ".py",
+		"go":      ".go",
+	}
+	return extMap[lang]
+}
+
+func stubProblem(name, language, snippet, content string) (string, error) {
 	name = formatProblemName(name)
-	fileName := filepath.Join(cfg.Workspace, "python", fmt.Sprintf("%s%s", name, ".py"))
-	testFileName := filepath.Join(cfg.Workspace, "python", fmt.Sprintf("%s%s", name, "_test.py"))
+	ext := languageExtension(language)
+	fileName := filepath.Join(cfg.Workspace, language, fmt.Sprintf("%s%s", name, ext))
+	readMe := filepath.Join(cfg.Workspace, language, "README.md")
+	testFileName := filepath.Join(cfg.Workspace, language, fmt.Sprintf("%s_test%s", name, ext))
+
+	fDir := filepath.Dir(fileName)
+	if dirErr := os.MkdirAll(fDir, os.ModePerm); dirErr != nil {
+		return "", fmt.Errorf("Could not create config directory %v", dirErr)
+	}
 
 	err := os.WriteFile(fileName, []byte(snippet), os.ModePerm)
 	if err != nil {
 		return "", err
 	}
 
+	markdown, err := htmltomarkdown.ConvertString(content)
+	err = os.WriteFile(readMe, []byte(markdown), os.ModePerm)
+	if err != nil {
+		return "", err
+	}
+
 	if _, err = os.Stat(testFileName); err != nil {
-		testSnippet := fmt.Sprintf(TEST_BASE, name)
+		testSnippet := fmt.Sprintf(PY_TEST_BASE, name)
 		err := os.WriteFile(testFileName, []byte(testSnippet), os.ModePerm)
 		if err != nil {
 			return "", err
