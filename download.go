@@ -2,94 +2,48 @@ package main
 
 import (
 	"bytes"
+	"embed"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
+	"text/template"
 
 	htmltomarkdown "github.com/JohannesKaufmann/html-to-markdown/v2"
+	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
 )
 
-const PY_EXT = ".py"
 const API_URL = "https://leetcode.com/graphql"
-const GO_BASE = `package main
-%s
-`
-const GO_TEST_BASE = `package main
-
-func Test%s(t *testing.T) {
-        testCases := []struct {
-                name   string
-                nums   []int
-                target int
-                expect []int
-        }{{}}
-
-        for _, tc := range testCases {
-                t.Run(tc.name, func(t *testing.T) {
-                        result := %s(tc.nums, tc.target)
-                        if !reflect.DeepEqual(result, tc.expect) {
-                                t.Errorf("%s(%v, %d) = %v, expected %v", tc.nums, tc.target, result, tc.expect)
-                        }
-                })
-        }
-}
-`
-const PY_TEST_BASE = `import unittest
-from %s import Solution
-
-
-class TestSolution(unittest.TestCase):
-  def test_empty_strings(self):
-    self.assertTrue(Solution())
-`
 
 var commonLangName = map[string]string{
 	"go":     "golang",
 	"python": "python3",
 }
 
-type Request struct {
-	Query     string                 `json:"query"`
-	Variables map[string]interface{} `json:"variables"`
+func NewLeetCodeClient(baseURL string, client *http.Client, fileSystem afero.Fs) *LeetCodeClient {
+	if baseURL == "" {
+		baseURL = API_URL
+	}
+
+	if _, err := fileSystem.Stat(cfg.Workspace); os.IsNotExist(err) {
+		fileSystem.MkdirAll(cfg.Workspace, os.ModePerm)
+	}
+
+	if client == nil {
+		client = http.DefaultClient
+	}
+	return &LeetCodeClient{BaseUrl: baseURL, HttpClient: client, fileSystem: fileSystem}
 }
 
-type Response struct {
-	Data Data `json:"data"`
-}
-
-type Data struct {
-	Question Question `json:"question"`
-}
-
-type Question struct {
-	Content      string        `json:"content"`
-	QuestionID   string        `json:"questionId"`
-	CodeSnippets []CodeSnippet `json:"codeSnippets"`
-}
-
-type CodeSnippet struct {
-	Code     string `json:"code"`
-	LangSlug string `json:"langSlug"`
-}
-
-type LeetCodeClient struct {
-	BaseUrl    string
-	HttpClient *http.Client
-}
-
-func NewLeetCodeClient(baseURL string, client *http.Client) *LeetCodeClient {
-	return &LeetCodeClient{BaseUrl: baseURL, HttpClient: client}
-}
-
-func (c LeetCodeClient) FetchProblemInfo(problem, lang string) (*Response, error) {
+func (c LeetCodeClient) FetchProblemInfo(problem, lang string) (*Problem, error) {
 	query := `query questionEditorData($titleSlug: String!) {
   question(titleSlug: $titleSlug) {
     questionId
+    content
+    titleSlug
     codeSnippets {
       langSlug
       code
@@ -122,25 +76,16 @@ func (c LeetCodeClient) FetchProblemInfo(problem, lang string) (*Response, error
 		return nil, err
 	}
 
-	return &response, nil
-	//
-	// var content string
-	// var snippet string
-	//
-	// if lcRes.Data.Content != "" {
-	// 	content = lcRes.Data.Content
-	// }
-	// for _, v := range lcRes.Data.Question.CodeSnippets {
-	// 	if v.LangSlug == commonLangName[language] {
-	// 		snippet = v.Code
-	// 		break
-	// 	}
-	// }
-	// return snippet, content, nil
+	return response.ToProblem(commonLangName[lang]), nil
 }
 
 func DownloadFunc(cmd *cobra.Command, args []string) error {
 	ensureConfig()
+
+	fileSystem := afero.NewOsFs()
+
+	leet := NewLeetCodeClient(API_URL, nil, fileSystem)
+
 	name, err := cmd.Flags().GetString("problem")
 	if err != nil {
 		return err
@@ -152,72 +97,19 @@ func DownloadFunc(cmd *cobra.Command, args []string) error {
 	}
 
 	// fetch code snippet
-	snippet, content, err := fetchProblem(name, language)
+	problem, err := leet.FetchProblemInfo(name, language)
 	if err != nil {
 		return err
 	}
 
-	fname, err := stubProblem(name, language, snippet, content)
+	err = leet.StubProblem(*problem)
 	if err != nil {
 		return err
 	}
-	fmt.Println("Problem stubbed at", fname)
+
+	fmt.Println("Problem stubbed at", problem.SolutionFilePath())
 	return nil
 }
-
-func fetchProblem(name, language string) (string, string, error) {
-	return "", "", nil
-}
-
-// 	query := `query questionEditorData($titleSlug: String!) {
-//   question(titleSlug: $titleSlug) {
-//     questionId
-//     codeSnippets {
-//       langSlug
-//       code
-//     }
-//   }
-// }`
-// 	body, err := json.Marshal(Request{Query: query, Variables: map[string]any{
-// 		"titleSlug": name,
-// 	}})
-// 	if err != nil {
-// 		return "", "", err
-// 	}
-//
-// 	req, err := http.NewRequest("POST", API_URL, bytes.NewBuffer(body))
-// 	if err != nil {
-// 		return "", "", err
-// 	}
-// 	req.Header.Set("Content-Type", "application/json")
-// 	client := &http.Client{}
-// 	res, err := client.Do(req)
-// 	if err != nil {
-// 		return "", "", err
-// 	}
-// 	defer res.Body.Close()
-//
-// 	body, err = io.ReadAll(res.Body)
-// 	var lcRes Response
-// 	err = json.Unmarshal(body, &lcRes)
-// 	if err != nil {
-// 		return "", "", err
-// 	}
-//
-// 	var content string
-// 	var snippet string
-//
-// 	if lcRes.Data.Content != "" {
-// 		content = lcRes.Data.Content
-// 	}
-// 	for _, v := range lcRes.Data.Question.CodeSnippets {
-// 		if v.LangSlug == commonLangName[language] {
-// 			snippet = v.Code
-// 			break
-// 		}
-// 	}
-// 	return snippet, content, nil
-// }
 
 func languageExtension(lang string) string {
 	extMap := map[string]string{
@@ -226,6 +118,48 @@ func languageExtension(lang string) string {
 		"go":      ".go",
 	}
 	return extMap[lang]
+}
+
+type Filer struct {
+	path  string
+	file  afero.File
+	ttype string
+}
+
+func (c *LeetCodeClient) StubProblem(problem Problem) error {
+	// fileMap := map[string]Filer{
+	// 	"solution": Filer{solutionPath,file,},
+	// }
+	if err := c.fileSystem.MkdirAll(problem.DirFilePath(), os.ModePerm); err != nil {
+		fmt.Println("Error making dirs")
+		return err
+	}
+
+	file, err := c.fileSystem.Create(problem.SolutionFilePath())
+	if err != nil {
+		fmt.Println("Error making file at", problem.SolutionFilePath())
+		return err
+	}
+	test, err := c.fileSystem.Create(problem.TestFilePath())
+	if err != nil {
+		fmt.Println("Error making test dirs")
+		return err
+	}
+	readme, err := c.fileSystem.Create(problem.ReadmeFilePath())
+	if err != nil {
+		fmt.Println("Error making readme dirs")
+		return err
+	}
+
+	r := Renderer{}
+	r.Render(file, problem, "solution")
+	r.Render(test, problem, "test")
+	r.Render(readme, problem, "readme")
+	if r.error != nil {
+		return r.error
+	}
+
+	return nil
 }
 
 func stubProblem(name, language, snippet, content string) (string, error) {
@@ -252,7 +186,7 @@ func stubProblem(name, language, snippet, content string) (string, error) {
 	}
 
 	if _, err = os.Stat(testFileName); err != nil {
-		testSnippet := fmt.Sprintf(PY_TEST_BASE, name)
+		testSnippet := fmt.Sprint(name)
 		err := os.WriteFile(testFileName, []byte(testSnippet), os.ModePerm)
 		if err != nil {
 			return "", err
@@ -261,31 +195,71 @@ func stubProblem(name, language, snippet, content string) (string, error) {
 	return fileName, nil
 }
 
-var numberToString = map[string]string{"1": "one", "2": "two", "3": "three", "4": "four"}
+var (
+	//go:embed "templates/*"
+	postTemplates embed.FS
+)
 
-func convertNumberToWritten(name string) string {
-	letters := strings.Split(name, "")
-	for i, letter := range letters {
-		if hasNumber(letter) {
-			written := numberToString[letter]
-			letters[i] = written
-		}
-	}
-	return strings.Join(letters, "")
+type Renderer struct {
+	error error
 }
 
-func formatProblemName(name string) string {
-	if hasNumber(name) {
-		return convertNumberToWritten(name)
+func langTemplates(lang string) (string, string) {
+	var solBlock string
+	var testBlock string
+	switch lang {
+	case "go", "golang":
+		solBlock = "golang"
+		testBlock = "gotest"
+	case "python", "python3":
+		solBlock = "python"
+		testBlock = "pytest"
+	default:
+		solBlock = lang
+		testBlock = lang
 	}
-	return strings.ReplaceAll(name, "-", "_")
+	return solBlock, testBlock
 }
 
-func hasNumber(name string) bool {
-	for _, char := range name {
-		if '0' <= char && char <= '9' {
-			return true
+func (r *Renderer) Render(w io.Writer, problem Problem, templateType string) error {
+	if r.error != nil {
+		return r.error
+	}
+	templ, err := template.New(templateType).ParseFS(postTemplates, "templates/*.gohtml")
+	if err != nil {
+		return err
+	}
+
+	var langBlock string
+	if templateType == "solution" || templateType == "test" {
+		sol, test := langTemplates(problem.LangSlug)
+		if templateType == "solution" {
+			langBlock = sol
+		} else {
+			langBlock = test
 		}
 	}
-	return false
+
+	if langBlock != "" {
+		var buf bytes.Buffer
+		err = templ.ExecuteTemplate(&buf, langBlock, problem)
+		if err != nil {
+			return err
+		}
+		problem.Code = buf.String()
+	}
+
+	if templateType == "readme" {
+		markdown, err := htmltomarkdown.ConvertString(problem.Content)
+		if err != nil {
+			return err
+		}
+
+		problem.Content = markdown
+	}
+
+	if err = templ.ExecuteTemplate(w, templateType, problem); err != nil {
+		return err
+	}
+	return nil
 }
