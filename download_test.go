@@ -7,13 +7,14 @@ import (
 	"net/http"
 	"testing"
 
+	approvals "github.com/approvals/go-approval-tests"
 	"github.com/spf13/afero"
 )
 
-var (
-	testFS  afero.Fs
-	baseDir string = "templates"
-)
+var testFS afero.Fs
+var r Renderer
+var problem = Problem{TitleSlug: "two-sum", Content: "test", Code: "func sum(a, b int) int {}", QuestionID: "1", LangSlug: "go"}
+var pythonProblem = Problem{TitleSlug: "two-sum", Content: "test", Code: "class Solution(object):\n\tdef sum(self, a, b):\n", QuestionID: "1", LangSlug: "python"}
 
 func init() {
 	testFS = afero.NewMemMapFs()
@@ -51,7 +52,6 @@ func TestGetCodeResponse(t *testing.T) {
 	problem, err := client.FetchProblemInfo("test", "go")
 
 	assertNilError(t, err)
-	t.Log(problem.Code)
 	assertEqual(t, problem.QuestionID, id)
 	assertEqual(t, problem.Content, content)
 	assertEqual(t, problem.LangSlug, langslug)
@@ -60,7 +60,6 @@ func TestGetCodeResponse(t *testing.T) {
 // Stubs a problem with readme, solution, test
 func TestStubProblem(t *testing.T) {
 	lc := NewLeetCodeClient("", nil, testFS)
-	problem := Problem{Content: "test", Code: "func sum(a, b int) int {}", QuestionID: "1", LangSlug: "go"}
 	err := lc.StubProblem(problem)
 
 	assertNilError(t, err)
@@ -72,34 +71,24 @@ func TestStubProblem(t *testing.T) {
 // Renders file
 func TestRender(t *testing.T) {
 	t.Run("Render go solution stub", func(t *testing.T) {
-		problem := Problem{Content: "test", Code: "func sum(a, b int) int {}", QuestionID: "1", LangSlug: "go"}
-		want := `package kata
-func sum(a, b int) int {}
-`
 		buf := bytes.Buffer{}
-		r := Renderer{}
 		err := r.Render(&buf, problem, "solution")
 
 		assertNilError(t, err)
-		assertEqual(t, buf.String(), want)
+		approvals.VerifyString(t, buf.String())
 	})
 
 	t.Run("Render python solution stub", func(t *testing.T) {
-		problem := Problem{Content: "test", Code: "class Solution(object):\\ndef sum(self, a, b):", QuestionID: "1", LangSlug: "python"}
-		want := `class Solution(object):\ndef sum(self, a, b):`
 		buf := bytes.Buffer{}
-		r := Renderer{}
-		err := r.Render(&buf, problem, "solution")
+		err := r.Render(&buf, pythonProblem, "solution")
 
 		assertNilError(t, err)
-		assertEqual(t, buf.String(), want)
+		approvals.VerifyString(t, buf.String())
 	})
 
 	t.Run("Render go readme stub", func(t *testing.T) {
-		problem := Problem{Content: "test", Code: "func sum(a, b int) int {}", QuestionID: "1", LangSlug: "go"}
 		want := `test`
 		buf := bytes.Buffer{}
-		r := Renderer{}
 		err := r.Render(&buf, problem, "readme")
 
 		assertNilError(t, err)
@@ -107,35 +96,11 @@ func sum(a, b int) int {}
 	})
 
 	t.Run("Render go test stub", func(t *testing.T) {
-		problem := Problem{Content: "test", Code: "func sum(a, b int) int {}", QuestionID: "1", LangSlug: "go"}
-		want := `package kata
-
-import (
-    "testing"
-)
-
-func TestSol(t *testing.T) {
-    testCases := []struct {
-        nums   []int
-        want   []int
-    }{
-        {[]int{3}, []int{3}},
-    }
-
-    for _, tc := range testCases {
-        got := Sol(tc.nums, tc.target)
-        if !reflect.DeepEqual(got, tc.want) {
-            t.Errorf("got %v want %v", got, tc.want)
-        }
-    }
-}
-`
 		buf := bytes.Buffer{}
-		r := Renderer{}
 		err := r.Render(&buf, problem, "test")
 
 		assertNilError(t, err)
-		assertEqual(t, buf.String(), want)
+		approvals.VerifyString(t, buf.String())
 	})
 }
 
@@ -153,9 +118,7 @@ func TestConvertProblemToPackage(t *testing.T) {
 		t.Run(fmt.Sprintf("convert %s -> %s", tc.problemName, tc.packageName), func(t *testing.T) {
 			got := convertNumberToWritten(tc.problemName)
 			want := tc.packageName
-			if got != want {
-				t.Errorf("got %s want %s", got, want)
-			}
+			assertEqual(t, got, want)
 		})
 	}
 }
@@ -192,16 +155,7 @@ func assertExists(t *testing.T, stubFilePath string) {
 }
 
 func TestProblem(t *testing.T) {
-	problem := Problem{TitleSlug: "two-sum", Content: "test", Code: "class Solution(object):\\ndef sum(self, a, b):", QuestionID: "1", LangSlug: "python"}
-	got := problem.SolutionFilePath()
-	want := "python/two_sum/two_sum.py"
-	if got != want {
-		t.Errorf("got %q want %q", got, want)
-	}
+	got := pythonProblem.SolutionFilePath()
+	want := "two_sum/two_sum.py"
+	assertEqual(t, got, want)
 }
-
-// func TestSaveToFile(t *testing.T) {
-// 	filename := "two_sum.go"
-// 	content := "func test(){}"
-//
-// }

@@ -1,6 +1,4 @@
-{{define "test"}}{{.Code}}{{end}}
-
-{{define "gotest"}}package kata
+package kata
 
 import (
 	"fmt"
@@ -27,4 +25,3 @@ func TestSol(t *testing.T) {
 		})
 	}
 }
-{{end}}

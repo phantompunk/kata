@@ -1,0 +1,2 @@
+package kata
+func sum(a, b int) int {}
