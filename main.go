@@ -30,8 +30,8 @@ var listCmd = &cobra.Command{
 	RunE:  ListFunc,
 }
 
-var configureCmd = &cobra.Command{
-	Use:   "configure",
+var settingsCmd = &cobra.Command{
+	Use:   "settings",
 	Short: "Configure the client",
 	RunE:  ConfigFunc,
 }
@@ -46,9 +46,10 @@ func main() {
 func init() {
 	downloadCmd.Flags().StringP("problem", "p", "", "LeetCode problem name")
 	downloadCmd.Flags().StringP("language", "l", "python", "Programming language to use")
+	downloadCmd.Flags().BoolP("open", "o", false, "Open problem with editor")
 
 	rootCmd.AddCommand(downloadCmd)
 	rootCmd.AddCommand(quizCmd)
 	rootCmd.AddCommand(listCmd)
-	rootCmd.AddCommand(configureCmd)
+	rootCmd.AddCommand(settingsCmd)
 }
