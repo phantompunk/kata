@@ -93,13 +93,13 @@ func DownloadFunc(cmd *cobra.Command, args []string) error {
 	}
 
 	language, err := cmd.Flags().GetString("language")
-	if err != nil {
-		return err
+	if err != nil || language == "" {
+		language = cfg.Language
 	}
 
 	open, err := cmd.Flags().GetBool("open")
-	if err != nil {
-		return err
+	if err != nil || cfg.OpenInEditor {
+		open = cfg.OpenInEditor
 	}
 
 	// fetch code snippet

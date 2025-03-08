@@ -20,8 +20,10 @@ var configTemplate string
 var cfg Config
 
 type Config struct {
-	Workspace  string `yaml:"workspace"`
-	configPath string
+	Workspace    string `yaml:"workspace"`
+	Language     string `yaml:"language"`
+	OpenInEditor bool   `yaml:"openInEditor"`
+	configPath   string
 }
 
 func ConfigFunc(cmd *cobra.Command, args []string) error {
@@ -35,66 +37,54 @@ func ConfigFunc(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func ensureConfig() (Config, error) {
-	cfgPath, err := xdg.ConfigFile(filepath.Join("kata", "kata.yml"))
-	if err != nil {
-		fmt.Errorf("Config error")
-		return cfg, err
-	}
-	cfg.configPath = cfgPath
+func getConfigPath() (string, error) {
+	return xdg.ConfigFile(filepath.Join("kata", "kata.yml"))
+}
 
-	cfgDir := filepath.Dir(cfgPath)
-	if dirErr := os.MkdirAll(cfgDir, os.ModePerm); dirErr != nil {
-		fmt.Errorf("Could not create config directory")
-		return cfg, err
+func ensureConfig() (Config, error) {
+	cfgPath, err := getConfigPath()
+	if err != nil {
+		return cfg, fmt.Errorf("Config error")
+	}
+
+	if dirErr := os.MkdirAll(filepath.Dir(cfgPath), os.ModePerm); dirErr != nil {
+		return cfg, fmt.Errorf("Could not create config directory")
 	}
 
 	if _, err := os.Stat(cfgPath); errors.Is(err, os.ErrNotExist) {
-		err = writeConfigFile(cfgPath)
+		err = createConfigFile(cfgPath, defaultConfig())
 		if err != nil {
+			return cfg, fmt.Errorf("Error creating a default config")
 		}
 	}
 
-	cf, err := os.ReadFile(cfgPath)
+	data, err := os.ReadFile(cfgPath)
 	if err != nil {
-		fmt.Errorf("Error reading config file: %w", err)
+		return cfg, fmt.Errorf("Error reading config file: %w", err)
 	}
-	err = yaml.Unmarshal(cf, &cfg)
+
+	err = yaml.Unmarshal(data, &cfg)
 	if err != nil {
-		fmt.Errorf("Could not parse config file: %w", err)
+		return cfg, fmt.Errorf("Could not parse config file: %w", err)
 	}
 	return cfg, nil
 }
-func writeConfigFile(path string) error {
-	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
-		return createConfigFile(path)
-	} else if err != nil {
-		return err
-	}
-	return nil
-}
 
-func createConfigFile(path string) error {
+func createConfigFile(path string, cfg Config) error {
 	tmpl := template.Must(template.New("config").Parse(configTemplate))
 	file, err := os.Create(path)
 	if err != nil {
 		return err
 	}
-
 	defer file.Close()
-	m := struct {
-		Config Config
-	}{Config: defaultConfig()}
-
-	if err = tmpl.Execute(file, m); err != nil {
-		return err
-	}
-	return nil
+	return tmpl.Execute(file, cfg)
 }
 
 func defaultConfig() Config {
 	return Config{
-		Workspace: "/Users/rigo/Workspace/katas",
+		Workspace:    "/Users/rigo/Workspace/katas",
+		Language:     "python",
+		OpenInEditor: false,
 	}
 }
 
@@ -112,6 +102,7 @@ func findEditor() string {
 		return "nano"
 	}
 }
+
 func isCmdAvailable(name string) bool {
 	cmd := exec.Command("command", "-v", name)
 	if err := cmd.Run(); err != nil {

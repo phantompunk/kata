@@ -1,1 +1,6 @@
-workspace: '{{ .Config.Workspace }}'
+# Download and stub problems to kata workspace: ~/kata/
+workspace: '{{ .Workspace }}'
+# Download problems for default language: python
+language: '{{ .Language }}'
+# Automattically open downloaded problems using $EDITOR
+openInEditor: {{ .OpenInEditor }}
