@@ -73,8 +73,8 @@ func (c LeetCodeClient) FetchProblemInfo(problem, lang string) (*Problem, error)
 	body, err = io.ReadAll(res.Body)
 	var response Response
 	err = json.Unmarshal(body, &response)
-	if err != nil {
-		return nil, err
+	if err != nil || response.Data == nil || response.Data.Question == nil {
+		return nil, fmt.Errorf("problem not found")
 	}
 
 	return response.ToProblem(commonLangName[lang]), nil
@@ -104,8 +104,8 @@ func DownloadFunc(cmd *cobra.Command, args []string) error {
 
 	// fetch code snippet
 	problem, err := leet.FetchProblemInfo(name, language)
-	if err != nil {
-		return err
+	if err != nil && problem == nil {
+		return fmt.Errorf("Problem %q not found", name)
 	}
 
 	err = leet.StubProblem(*problem)

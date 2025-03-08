@@ -83,7 +83,7 @@ func (p *Response) GetLangCodeSnippet(lang string) string {
 
 func (p *Response) ToProblem(language string) *Problem {
 	var problem Problem
-	if p != nil && p.Data != nil {
+	if p != nil && p.Data != nil && p.Data.Question != nil {
 		problem.Content = p.Data.Question.Content
 		problem.TitleSlug = formatProblemName(p.Data.Question.TitleSlug)
 		if p.Data.Question != nil {

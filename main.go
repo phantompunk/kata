@@ -13,9 +13,11 @@ var rootCmd = &cobra.Command{
 }
 
 var downloadCmd = &cobra.Command{
-	Use:   "download",
-	Short: "Download and stub a Leetcode problem",
-	RunE:  DownloadFunc,
+	Use:           "download",
+	Short:         "Download and stub a Leetcode problem",
+	RunE:          DownloadFunc,
+	SilenceErrors: true,
+	SilenceUsage:  true,
 }
 
 var quizCmd = &cobra.Command{
