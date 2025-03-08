@@ -46,11 +46,10 @@ func main() {
 }
 
 func init() {
-	// ensureConfig()
 	// Define flags
 	downloadCmd.Flags().StringP("problem", "p", "", "LeetCode problem name")
 	downloadCmd.Flags().StringP("language", "l", "", "Programming language to use")
-	downloadCmd.Flags().BoolP("open", "o", false, "Open problem with editor")
+	downloadCmd.Flags().BoolP("open", "o", false, "Open problem with $EDITOR")
 
 	rootCmd.AddCommand(downloadCmd)
 	rootCmd.AddCommand(quizCmd)

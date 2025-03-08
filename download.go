@@ -88,8 +88,10 @@ func DownloadFunc(cmd *cobra.Command, args []string) error {
 	leet := NewLeetCodeClient(API_URL, nil, fileSystem)
 
 	name, err := cmd.Flags().GetString("problem")
-	if err != nil {
-		return err
+	if err != nil || name == "" {
+		cmd.Usage()
+		fmt.Println()
+		return fmt.Errorf("Use \"kata download --problem two-sum\" to download and stub a problem")
 	}
 
 	language, err := cmd.Flags().GetString("language")

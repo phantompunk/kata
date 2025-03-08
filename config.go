@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-//go:embed config_template.yml
+//go:embed templates/config_template.yml
 var configTemplate string
 
 var cfg Config
