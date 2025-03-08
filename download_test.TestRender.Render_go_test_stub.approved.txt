@@ -7,18 +7,16 @@ import (
 
 func TestSol(t *testing.T) {
 	testCases := []struct {
-		strA string
-		strB string
+		given string
 		want bool
 	}{
-		{"a", "b", false},
-		{"a", "a", true},
-		{"a", "aa", false},
+		{"a", false},
+		{"a", true},
 	}
 
 	for _, tc := range testCases {
-		t.Run(fmt.Sprintf("%s -> %s", tc.strA, tc.strB), func(t *testing.T) {
-			got := Sol(tc.strA, tc.strB)
+		t.Run(fmt.Sprintf("%s", tc.given), func(t *testing.T) {
+			got := Sol(tc.given)
 			if got != tc.want {
 				t.Errorf("got %v want %v", got, tc.want)
 			}
