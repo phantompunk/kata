@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/phantompunk/kata/internal/app"
+	"github.com/phantompunk/kata/internal/config"
 	"github.com/spf13/cobra"
 )
 
@@ -13,11 +15,11 @@ var rootCmd = &cobra.Command{
 }
 
 var downloadCmd = &cobra.Command{
-	Use:           "download",
-	Short:         "Download and stub a Leetcode problem",
-	RunE:          DownloadFunc,
-	SilenceErrors: true,
-	SilenceUsage:  true,
+	Use:   "download",
+	Short: "Download and stub a Leetcode problem",
+	RunE:  DownloadFunc,
+	// SilenceErrors: true,
+	// SilenceUsage:  true,
 }
 
 var quizCmd = &cobra.Command{
@@ -35,7 +37,7 @@ var listCmd = &cobra.Command{
 var settingsCmd = &cobra.Command{
 	Use:   "settings",
 	Short: "Configure the client",
-	RunE:  ConfigFunc,
+	RunE:  config.ConfigFunc,
 }
 
 func main() {
@@ -44,6 +46,8 @@ func main() {
 		os.Exit(1)
 	}
 }
+
+var kata app.App
 
 func init() {
 	// Define flags

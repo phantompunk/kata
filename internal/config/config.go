@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	_ "embed"
@@ -14,7 +14,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-//go:embed templates/config_template.yml
 var configTemplate string
 
 var cfg Config
@@ -27,7 +26,7 @@ type Config struct {
 }
 
 func ConfigFunc(cmd *cobra.Command, args []string) error {
-	ensureConfig()
+	EnsureConfig()
 	configPath, err := OpenConfig()
 	if err != nil {
 		return err
@@ -41,7 +40,7 @@ func getConfigPath() (string, error) {
 	return xdg.ConfigFile(filepath.Join("kata", "kata.yml"))
 }
 
-func ensureConfig() (Config, error) {
+func EnsureConfig() (Config, error) {
 	cfgPath, err := getConfigPath()
 	if err != nil {
 		return cfg, fmt.Errorf("Config error")
