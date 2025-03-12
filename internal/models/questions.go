@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/phantompunk/kata/internal/datastore"
@@ -109,7 +110,8 @@ func (m *QuestionModel) Insert(q *Question) (int, error) {
 func (m *QuestionModel) FindSnippets(q *Question) ([]CodeSnippet, error) {
 	var snippetJSON []byte
 	var snippets []CodeSnippet
-	err := m.DB.DB.QueryRow("SELECT codeSnippets FROM questions WHERE questionId = ?", q.ID).Scan(&snippetJSON)
+	id, _ := strconv.Atoi(q.ID)
+	err := m.DB.DB.QueryRow("SELECT codeSnippets FROM questions WHERE questionId = ?", id).Scan(&snippetJSON)
 	if err == sql.ErrNoRows {
 		return []CodeSnippet{}, nil // Question not found
 	} else if err != nil {

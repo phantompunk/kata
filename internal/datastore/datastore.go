@@ -47,7 +47,7 @@ func EnsureDB(dbPath string) (*Datastore, error) {
 	if !rows.Next() {
 		_, err = db.Exec(`
 			CREATE TABLE questions (
-			questionId TEXT PRIMARY KEY,
+			questionId INTEGER PRIMARY KEY,
 			title TEXT,
 			titleSlug TEXT,
 			difficulty TEXT,

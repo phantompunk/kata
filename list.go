@@ -39,7 +39,7 @@ func convertQuestions(questions []models.Question) [][]string {
 		}
 
 		results = append(results, []string{
-			task.ID,
+			fmt.Sprint(task.ID),
 			task.Title,
 			colorizeDifficulty(task.Difficulty),
 			hasGo,
