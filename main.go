@@ -9,6 +9,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var kata app.App
+
 var rootCmd = &cobra.Command{
 	Use:   "kata",
 	Short: "CLI for practicing Leetcode",
@@ -46,8 +48,6 @@ func main() {
 		os.Exit(1)
 	}
 }
-
-var kata app.App
 
 func init() {
 	// Define flags

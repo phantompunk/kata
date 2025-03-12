@@ -37,7 +37,7 @@ func EnsureDB(dbPath string) (*Datastore, error) {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
-	rows, err := db.Query("SELECT name FROM sqlite_master WHERE type='table' AND name='tasks';")
+	rows, err := db.Query("SELECT name FROM sqlite_master WHERE type='table' AND name='questions';")
 	if err != nil {
 		db.Close()
 		return nil, err
@@ -46,10 +46,13 @@ func EnsureDB(dbPath string) (*Datastore, error) {
 
 	if !rows.Next() {
 		_, err = db.Exec(`
-			CREATE TABLE tasks (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			description TEXT,
-			completed INTEGER
+			CREATE TABLE questions (
+			questionId TEXT PRIMARY KEY,
+			title TEXT,
+			titleSlug TEXT,
+			difficulty TEXT,
+			content TEXT,
+			codeSnippets TEXT
 			);
 			`)
 		if err != nil {
@@ -81,8 +84,11 @@ func createDatabaseFile(dbPath string) (*sql.DB, error) {
 }
 
 const stmt string = ` 
-		CREATE TABLE tasks (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		description TEXT,
-		completed INTEGER
-		);`
+	CREATE TABLE questions (
+	questionId TEXT PRIMARY KEY,
+	title TEXT,
+	titleSlug TEXT,
+	difficulty TEXT,
+	content TEXT,
+	codeSnippets TEXT
+	);`

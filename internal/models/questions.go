@@ -79,16 +79,57 @@ func (m *QuestionModel) FetchQuestion(name, lang string) (*Question, error) {
 	var response Response
 	err = json.Unmarshal(body, &response)
 	if err != nil {
-		// if err != nil || response.Data == nil || response.Data.Question == nil {
-		// return nil, fmt.Errorf("problem not found")
 		return nil, err
 	}
-	// return response.GetQuestion(lang)
-	return response.Data.Question, nil
+
+	return response.GetQuestion(lang)
+	// return response.Data.Question, nil
+}
+
+func (m *QuestionModel) Insert(q *Question) (int, error) {
+	snippetJSON, err := json.Marshal(q.CodeSnippets)
+	if err != nil {
+		return 0, err
+	}
+	stmt := `INSERT OR IGNORE INTO questions (questionId, title, titleSlug, difficulty, content, codeSnippets) VALUES (?, ?, ?, ?, ?, ?);`
+
+	result, err := m.DB.DB.Exec(stmt, q.ID, q.Title, q.TitleSlug, q.Difficulty, q.Content, snippetJSON)
+	if err != nil {
+		return 0, err
+	}
+
+	id, err := result.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+	return int(id), nil
 }
 
 func (m *QuestionModel) GetAll() ([]Question, error) {
-	return nil, nil
+	stmt := `SELECT questionId, title, titleSlug, difficulty, codeSnippets from questions;`
+	rows, err := m.DB.DB.Query(stmt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var questions []Question
+	for rows.Next() {
+		var q Question
+		var snippetsJSON []byte
+		err := rows.Scan(&q.ID, &q.Title, &q.TitleSlug, &q.Difficulty, &snippetsJSON)
+		if err != nil {
+			return nil, err
+		}
+		err = json.Unmarshal(snippetsJSON, &q.CodeSnippets)
+		if err != nil {
+			return nil, err
+		}
+
+		questions = append(questions, q)
+	}
+
+	return questions, nil
 }
 
 var packageLangName = map[string]string{

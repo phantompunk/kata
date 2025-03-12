@@ -10,69 +10,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const API_URL = "https://leetcode.com/graphql"
-
-var commonLangName = map[string]string{
-	"go":     "golang",
-	"python": "python3",
-}
-
-// func NewLeetCodeClient(baseURL string, client *http.Client, fileSystem afero.Fs) *LeetCodeClient {
-// 	if baseURL == "" {
-// 		baseURL = API_URL
-// 	}
-//
-// 	if _, err := fileSystem.Stat(cfg.Workspace); os.IsNotExist(err) {
-// 		fileSystem.MkdirAll(cfg.Workspace, os.ModePerm)
-// 	}
-//
-// 	if client == nil {
-// 		client = http.DefaultClient
-// 	}
-// 	return &LeetCodeClient{BaseUrl: baseURL, HttpClient: client, fileSystem: fileSystem}
-// }
-
-// func (c LeetCodeClient) FetchProblemInfo(problem, lang string) (*Problem, error) {
-// 	query := `query questionEditorData($titleSlug: String!) {
-//   question(titleSlug: $titleSlug) {
-//     questionId
-//     content
-//     titleSlug
-//     codeSnippets {
-//       langSlug
-//       code
-//     }
-//   }
-// }`
-//
-// 	variables := map[string]any{"titleSlug": problem}
-// 	body, err := json.Marshal(Request{Query: query, Variables: variables})
-// 	if err != nil {
-// 		return nil, err
-// 	}
-//
-// 	req, err := http.NewRequest("POST", API_URL, bytes.NewBuffer(body))
-// 	if err != nil {
-// 		return nil, err
-// 	}
-//
-// 	req.Header.Set("Content-Type", "application/json")
-// 	res, err := c.HttpClient.Do(req)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	defer res.Body.Close()
-//
-// 	body, err = io.ReadAll(res.Body)
-// 	var response Response
-// 	err = json.Unmarshal(body, &response)
-// 	if err != nil || response.Data == nil || response.Data.Question == nil {
-// 		return nil, fmt.Errorf("problem not found")
-// 	}
-//
-// 	return response.ToProblem(commonLangName[lang]), nil
-// }
-
 func DownloadFunc(cmd *cobra.Command, args []string) error {
 	kata, err := app.New()
 	if err != nil {
@@ -100,6 +37,11 @@ func DownloadFunc(cmd *cobra.Command, args []string) error {
 	question, err := kata.Questions.FetchQuestion(name, language)
 	if err != nil && question == nil {
 		return fmt.Errorf("Problem %q not found", name)
+	}
+
+	_, err = kata.Questions.Insert(question)
+	if err != nil {
+		return err
 	}
 
 	problem := question.ToProblem(language)
