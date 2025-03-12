@@ -2,6 +2,7 @@ package models
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -91,7 +92,7 @@ func (m *QuestionModel) Insert(q *Question) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	stmt := `INSERT OR IGNORE INTO questions (questionId, title, titleSlug, difficulty, content, codeSnippets) VALUES (?, ?, ?, ?, ?, ?);`
+	stmt := `INSERT OR REPLACE INTO questions (questionId, title, titleSlug, difficulty, content, codeSnippets) VALUES (?, ?, ?, ?, ?, ?);`
 
 	result, err := m.DB.DB.Exec(stmt, q.ID, q.Title, q.TitleSlug, q.Difficulty, q.Content, snippetJSON)
 	if err != nil {
@@ -103,6 +104,36 @@ func (m *QuestionModel) Insert(q *Question) (int, error) {
 		return 0, err
 	}
 	return int(id), nil
+}
+
+func (m *QuestionModel) FindSnippets(q *Question) ([]CodeSnippet, error) {
+	var snippetJSON []byte
+	var snippets []CodeSnippet
+	err := m.DB.DB.QueryRow("SELECT codeSnippets FROM questions WHERE questionId = ?", q.ID).Scan(&snippetJSON)
+	if err == sql.ErrNoRows {
+		return []CodeSnippet{}, nil // Question not found
+	} else if err != nil {
+		return []CodeSnippet{}, err // Other error occurred
+	}
+	err = json.Unmarshal(snippetJSON, &snippets)
+	if err != nil {
+		return []CodeSnippet{}, err
+	}
+	return snippets, nil // Question found
+}
+
+func (m *QuestionModel) Upsert(q *Question) error {
+	// check if q exists
+	snippets, err := m.FindSnippets(q)
+
+	for _, snippet := range snippets {
+		if snippet.LangSlug != q.CodeSnippets[0].LangSlug {
+			q.CodeSnippets = append(q.CodeSnippets, snippet)
+		}
+	}
+
+	_, err = m.Insert(q)
+	return err
 }
 
 func (m *QuestionModel) GetAll() ([]Question, error) {

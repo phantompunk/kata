@@ -39,7 +39,7 @@ func DownloadFunc(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Problem %q not found", name)
 	}
 
-	_, err = kata.Questions.Insert(question)
+	err = kata.Questions.Upsert(question)
 	if err != nil {
 		return err
 	}
