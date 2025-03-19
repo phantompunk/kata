@@ -124,6 +124,20 @@ func (m *QuestionModel) FindSnippets(q *Question) ([]CodeSnippet, error) {
 	return snippets, nil // Question found
 }
 
+func (m *QuestionModel) GetRandom() (Question, error) {
+	var q Question
+	var codeSnippetsJSON []byte
+	err := m.DB.DB.QueryRow("SELECT questionId, title, titleSlug, difficulty, content, codeSnippets FROM questions ORDER BY RANDOM() LIMIT 1;").Scan(&q.ID, &q.Title, &q.TitleSlug, &q.Difficulty, &q.Content, &codeSnippetsJSON)
+	if err != nil {
+		return q, err
+	}
+	err = json.Unmarshal(codeSnippetsJSON, &q.CodeSnippets)
+	if err != nil {
+		return q, err
+	}
+	return q, nil
+}
+
 func (m *QuestionModel) Upsert(q *Question) error {
 	// check if q exists
 	snippets, err := m.FindSnippets(q)
