@@ -33,26 +33,21 @@ func DownloadFunc(cmd *cobra.Command, args []string) error {
 		open = kata.Config.OpenInEditor
 	}
 
-	// fetch code snippet
-	question, err := kata.Questions.FetchQuestion(name, language)
+	// fetch code snippet, save question, update functionName, return
+	question, err := kata.FetchQuestion(name, language)
 	if err != nil && question == nil {
-		return fmt.Errorf("Problem %q not found", name)
+		return fmt.Errorf("Problem %q not found %w", name, err)
 	}
 
-	err = kata.Questions.Upsert(question)
-	if err != nil {
-		return err
-	}
-
-	problem := question.ToProblem(language)
+	problem := question.ToProblem(kata.Config.Workspace, language)
 	err = kata.StubProblem(problem)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println("Problem stubbed at", filepath.Join(kata.Config.Workspace, problem.SolutionFilePath()))
+	fmt.Println("Problem stubbed at", problem.SolutionPath)
 	if open {
-		openWithEditor(filepath.Join(kata.Config.Workspace, problem.SolutionFilePath()))
+		openWithEditor(filepath.Join(kata.Config.Workspace, problem.SolutionPath))
 	}
 	return nil
 }

@@ -4,20 +4,24 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
+	_ "github.com/mattn/go-sqlite3"
 	"io"
 	"net/http"
 	"path/filepath"
 	"strconv"
 	"strings"
-
-	"github.com/phantompunk/kata/internal/datastore"
 )
 
 const API_URL = "https://leetcode.com/graphql"
 
+type QuestionModelInterface interface {
+	GetBySlug(name, language string) (*Question, error)
+}
+
 type QuestionModel struct {
-	DB      *datastore.Datastore
+	DB      *sql.DB
 	Client  *http.Client
 	BaseUrl string
 }
@@ -28,6 +32,7 @@ type Question struct {
 	TitleSlug    string        `json:"titleSlug"`
 	Difficulty   string        `json:"difficulty"`
 	Content      string        `json:"content"`
+	FunctionName string        `json:"funcName"`
 	CodeSnippets []CodeSnippet `json:"codeSnippets"`
 }
 
@@ -37,30 +42,21 @@ type CodeSnippet struct {
 }
 
 type Problem struct {
-	QuestionID string
-	Content    string
-	Code       string
-	LangSlug   string
-	TitleSlug  string
+	QuestionID   string
+	Content      string
+	Code         string
+	LangSlug     string
+	TitleSlug    string
+	FunctionName string
+	SolutionPath string
+	TestPath     string
+	DirPath      string
+	ReadmePath   string
 }
 
-func (m *QuestionModel) FetchQuestion(name, lang string) (*Question, error) {
-	query := `query questionEditorData($titleSlug: String!) {
-  question(titleSlug: $titleSlug) {
-    questionId
-    content
-    titleSlug
-		title
-		difficulty
-    codeSnippets {
-      langSlug
-      code
-    }
-  }
-}`
-
+func (m *QuestionModel) Fetch(name string) (*Question, error) {
 	variables := map[string]any{"titleSlug": name}
-	body, err := json.Marshal(Request{Query: query, Variables: variables})
+	body, err := json.Marshal(Request{Query: gQLQueryQuestion, Variables: variables})
 	if err != nil {
 		return nil, err
 	}
@@ -77,15 +73,72 @@ func (m *QuestionModel) FetchQuestion(name, lang string) (*Question, error) {
 	}
 	defer res.Body.Close()
 
+	// convert response to a question
 	body, err = io.ReadAll(res.Body)
 	var response Response
 	err = json.Unmarshal(body, &response)
 	if err != nil {
 		return nil, err
 	}
+	return response.Data.Question, nil
+}
 
-	return response.GetQuestion(lang)
-	// return response.Data.Question, nil
+func (m *QuestionModel) FetchQuestion(name string) (*Question, error) {
+	// check if question has been saved before
+	exists, err := m.Exists(name)
+	if err != nil {
+		return nil, err
+	}
+
+	if exists {
+		fmt.Println("Found")
+		return m.Get(name)
+	}
+
+	// fetch the question from leetcode
+	question, err := m.Fetch(name)
+	if err != nil {
+		return nil, err
+	}
+
+	// save question to database
+	_, err = m.Insert(question)
+	if err != nil {
+		return nil, err
+	}
+
+	return question, nil
+}
+
+func (m *QuestionModel) Exists(titleSlug string) (bool, error) {
+	var exists bool
+
+	err := m.DB.QueryRow(queryExists, titleSlug).Scan(&exists)
+	return exists, err
+}
+
+// Get retrieves a Question from the local database based on its titleSlug.
+func (m *QuestionModel) Get(titleSlug string) (*Question, error) {
+	var question Question
+	var codeJSON []byte
+
+	row := m.DB.QueryRow(queryGetBySlug, titleSlug)
+	err := row.Scan(&question.ID, &question.Title, &question.TitleSlug, &question.Content, &question.Difficulty, &codeJSON)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNoRecord
+		} else {
+			fmt.Println("Unexpected error")
+			return nil, err
+		}
+	}
+
+	err = json.Unmarshal(codeJSON, &question.CodeSnippets)
+	if err != nil {
+		return nil, err
+	}
+
+	return &question, nil
 }
 
 func (m *QuestionModel) Insert(q *Question) (int, error) {
@@ -95,7 +148,7 @@ func (m *QuestionModel) Insert(q *Question) (int, error) {
 	}
 	stmt := `INSERT OR REPLACE INTO questions (questionId, title, titleSlug, difficulty, content, codeSnippets) VALUES (?, ?, ?, ?, ?, ?);`
 
-	result, err := m.DB.DB.Exec(stmt, q.ID, q.Title, q.TitleSlug, q.Difficulty, q.Content, snippetJSON)
+	result, err := m.DB.Exec(stmt, q.ID, q.Title, q.TitleSlug, q.Difficulty, q.Content, snippetJSON)
 	if err != nil {
 		return 0, err
 	}
@@ -111,7 +164,7 @@ func (m *QuestionModel) FindSnippets(q *Question) ([]CodeSnippet, error) {
 	var snippetJSON []byte
 	var snippets []CodeSnippet
 	id, _ := strconv.Atoi(q.ID)
-	err := m.DB.DB.QueryRow("SELECT codeSnippets FROM questions WHERE questionId = ?", id).Scan(&snippetJSON)
+	err := m.DB.QueryRow("SELECT codeSnippets FROM questions WHERE questionId = ?", id).Scan(&snippetJSON)
 	if err == sql.ErrNoRows {
 		return []CodeSnippet{}, nil // Question not found
 	} else if err != nil {
@@ -127,7 +180,7 @@ func (m *QuestionModel) FindSnippets(q *Question) ([]CodeSnippet, error) {
 func (m *QuestionModel) GetRandom() (Question, error) {
 	var q Question
 	var codeSnippetsJSON []byte
-	err := m.DB.DB.QueryRow("SELECT questionId, title, titleSlug, difficulty, content, codeSnippets FROM questions ORDER BY RANDOM() LIMIT 1;").Scan(&q.ID, &q.Title, &q.TitleSlug, &q.Difficulty, &q.Content, &codeSnippetsJSON)
+	err := m.DB.QueryRow("SELECT questionId, title, titleSlug, difficulty, content, codeSnippets FROM questions ORDER BY RANDOM() LIMIT 1;").Scan(&q.ID, &q.Title, &q.TitleSlug, &q.Difficulty, &q.Content, &codeSnippetsJSON)
 	if err != nil {
 		return q, err
 	}
@@ -154,7 +207,7 @@ func (m *QuestionModel) Upsert(q *Question) error {
 
 func (m *QuestionModel) GetAll() ([]Question, error) {
 	stmt := `SELECT questionId, title, titleSlug, difficulty, codeSnippets from questions;`
-	rows, err := m.DB.DB.Query(stmt)
+	rows, err := m.DB.Query(stmt)
 	if err != nil {
 		return nil, err
 	}
@@ -184,10 +237,11 @@ var packageLangName = map[string]string{
 	"python3": "python",
 }
 
-func (q *Question) ToProblem(language string) *Problem {
+func (q *Question) ToProblem(workspace, language string) *Problem {
 	var problem Problem
 	problem.QuestionID = q.ID
 	problem.Content = q.Content
+	problem.FunctionName = q.FunctionName
 	problem.TitleSlug = formatProblemName(q.TitleSlug)
 	for _, snippet := range q.CodeSnippets {
 		if snippet.LangSlug == GetLangName(language) {
@@ -195,6 +249,7 @@ func (q *Question) ToProblem(language string) *Problem {
 			problem.LangSlug = snippet.LangSlug
 		}
 	}
+	problem.setPaths(workspace)
 	return &problem
 }
 
@@ -208,24 +263,12 @@ func (p *Problem) Extension() string {
 	return extMap[p.LangSlug]
 }
 
-func (p *Problem) DirFilePath() string {
+func (p *Problem) setPaths(workspace string) {
 	title := formatProblemName(p.TitleSlug)
-	return filepath.Join(packageLangName[p.LangSlug], title)
-}
-
-func (p *Problem) SolutionFilePath() string {
-	title := formatProblemName(p.TitleSlug)
-	return filepath.Join(packageLangName[p.LangSlug], title, fmt.Sprintf("%s%s", title, p.Extension()))
-}
-
-func (p *Problem) TestFilePath() string {
-	title := formatProblemName(p.TitleSlug)
-	return filepath.Join(packageLangName[p.LangSlug], title, fmt.Sprintf("%s_test%s", title, p.Extension()))
-}
-
-func (p *Problem) ReadmeFilePath() string {
-	title := formatProblemName(p.TitleSlug)
-	return filepath.Join(packageLangName[p.LangSlug], title, "readme.md")
+	p.DirPath = filepath.Join(workspace, packageLangName[p.LangSlug], title)
+	p.SolutionPath = filepath.Join(workspace, packageLangName[p.LangSlug], title, fmt.Sprintf("%s%s", title, p.Extension()))
+	p.TestPath = filepath.Join(workspace, packageLangName[p.LangSlug], title, fmt.Sprintf("%s_test%s", title, p.Extension()))
+	p.ReadmePath = filepath.Join(workspace, packageLangName[p.LangSlug], title, "readme.md")
 }
 
 func (q *Question) usesLang(lang string) string {

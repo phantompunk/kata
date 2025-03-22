@@ -9,6 +9,14 @@ func Equal(t *testing.T, got, want string) {
 	}
 }
 
+func BoolEqual(t *testing.T, got, want bool) {
+	t.Helper()
+
+	if got != want {
+		t.Errorf("got %v; expected: %v", got, want)
+	}
+}
+
 func NilError(t *testing.T, actual error) {
 	t.Helper()
 

@@ -3,6 +3,9 @@ package renderer
 import (
 	"bytes"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"io"
 	"text/template"
 
@@ -81,4 +84,38 @@ func langTemplates(lang string) (string, string) {
 		testBlock = lang
 	}
 	return solBlock, testBlock
+}
+
+func parseFunctionName(snippets []models.CodeSnippet) (string, error) {
+	var goSnippet string
+	for _, snippet := range snippets {
+		if snippet.LangSlug == "golang" {
+			goSnippet = snippet.Code
+			break // Added break, because we only need one golang snippet.
+		}
+	}
+
+	if goSnippet == "" {
+		return "", fmt.Errorf("no golang snippet found")
+	}
+
+	fset := token.NewFileSet()
+	node, err := parser.ParseFile(fset, "src.go", goSnippet, 0)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse go snippet: %w", err)
+	}
+
+	var functionNames []string
+	ast.Inspect(node, func(n ast.Node) bool {
+		if fn, ok := n.(*ast.FuncDecl); ok {
+			functionNames = append(functionNames, fn.Name.Name)
+		}
+		return true
+	})
+
+	if len(functionNames) == 0 {
+		return "", fmt.Errorf("no functions found in go snippet")
+	}
+
+	return functionNames[0], nil
 }

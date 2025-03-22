@@ -1,13 +1,16 @@
 package app
 
 import (
+	"bytes"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"net/http"
 	"os"
-	"path/filepath"
 
 	"github.com/phantompunk/kata/internal/config"
-	"github.com/phantompunk/kata/internal/datastore"
+	"github.com/phantompunk/kata/internal/database"
 	"github.com/phantompunk/kata/internal/models"
 	"github.com/phantompunk/kata/internal/renderer"
 	"github.com/spf13/afero"
@@ -27,7 +30,7 @@ func New() (*App, error) {
 		return nil, err
 	}
 
-	db, err := datastore.EnsureDB(datastore.GetDbPath())
+	db, err := database.EnsureDB(database.GetDbPath())
 	if err != nil {
 		fmt.Println("Failed db")
 		return nil, err
@@ -41,22 +44,51 @@ func New() (*App, error) {
 	}, nil
 }
 
+func (app *App) FetchQuestion(name, language string) (*models.Question, error) {
+	// check if question has been saved before
+	exists, err := app.Questions.Exists(name)
+	if err != nil {
+		return nil, err
+	}
+
+	if exists {
+		return app.Questions.Get(name)
+	}
+
+	// fetch the question from leetcode
+	question, err := app.Questions.Fetch(name)
+	if err != nil {
+		return nil, err
+	}
+
+	functionName := app.GetFunctionName(question.ToProblem(app.Config.Workspace, "golang"))
+	question.FunctionName = functionName
+
+	// save question to database
+	_, err = app.Questions.Insert(question)
+	if err != nil {
+		return nil, err
+	}
+
+	return question, nil
+}
+
 func (app *App) StubProblem(problem *models.Problem) error {
-	if err := app.fs.MkdirAll(filepath.Join(app.Config.Workspace, problem.DirFilePath()), os.ModePerm); err != nil {
+	if err := app.fs.MkdirAll(problem.DirPath, os.ModePerm); err != nil {
 		return fmt.Errorf("failed creating problem directory: %w", err)
 	}
 
-	file, err := app.fs.Create(filepath.Join(app.Config.Workspace, problem.SolutionFilePath()))
+	file, err := app.fs.Create(problem.SolutionPath)
 	if err != nil {
 		return fmt.Errorf("failed creating problem solution file: %w", err)
 	}
 
-	test, err := app.fs.Create(filepath.Join(app.Config.Workspace, problem.TestFilePath()))
+	test, err := app.fs.Create(problem.TestPath)
 	if err != nil {
 		return fmt.Errorf("failed create problem test file: %w", err)
 	}
 
-	readme, err := app.fs.Create(filepath.Join(app.Config.Workspace, problem.ReadmeFilePath()))
+	readme, err := app.fs.Create(problem.ReadmePath)
 	if err != nil {
 		return fmt.Errorf("failed creating readme file: %w", err)
 	}
@@ -65,9 +97,42 @@ func (app *App) StubProblem(problem *models.Problem) error {
 	app.Renderer.Render(test, problem, "test")
 	app.Renderer.Render(readme, problem, "readme")
 	if app.Renderer.Error != nil {
-		// return app.Renderer.Error
 		return fmt.Errorf("failed to render file %w", app.Renderer.Error)
 	}
 
 	return nil
+}
+
+func (app *App) GetFunctionName(problem *models.Problem) string {
+	var buf bytes.Buffer
+
+	app.Renderer.Render(&buf, problem, "solution")
+	name, err := parseFunctionName(buf.String())
+	if err != nil {
+		fmt.Println("failed %w", err)
+		return ""
+	}
+	return name
+}
+
+func parseFunctionName(snippet string) (string, error) {
+	fset := token.NewFileSet()
+	node, err := parser.ParseFile(fset, "src.go", snippet, 0)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse go snippet: %w", err)
+	}
+
+	var functionNames []string
+	ast.Inspect(node, func(n ast.Node) bool {
+		if fn, ok := n.(*ast.FuncDecl); ok {
+			functionNames = append(functionNames, fn.Name.Name)
+		}
+		return true
+	})
+
+	if len(functionNames) == 0 {
+		return "", fmt.Errorf("no functions found in go snippet")
+	}
+
+	return functionNames[0], nil
 }

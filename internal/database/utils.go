@@ -1,4 +1,4 @@
-package datastore
+package database
 
 import (
 	"database/sql"
@@ -11,15 +11,11 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-type Datastore struct {
-	DB *sql.DB
-}
-
 func GetDbPath() string {
 	return filepath.Join(xdg.DataHome, "kata", "kata.db")
 }
 
-func EnsureDB(dbPath string) (*Datastore, error) {
+func EnsureDB(dbPath string) (*sql.DB, error) {
 	if dbErr := os.MkdirAll(filepath.Dir(dbPath), os.ModePerm); dbErr != nil {
 		return nil, fmt.Errorf("failed to create database directory: %w", dbErr)
 	}
@@ -29,7 +25,7 @@ func EnsureDB(dbPath string) (*Datastore, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to create database file: %w", err)
 		}
-		return &Datastore{DB: db}, nil
+		return db, nil
 	}
 
 	db, err := sql.Open("sqlite3", dbPath)
@@ -61,7 +57,7 @@ func EnsureDB(dbPath string) (*Datastore, error) {
 		}
 	}
 
-	return &Datastore{DB: db}, nil
+	return db, nil
 }
 
 func createDatabaseFile(dbPath string) (*sql.DB, error) {
@@ -85,7 +81,7 @@ func createDatabaseFile(dbPath string) (*sql.DB, error) {
 
 const stmt string = ` 
 	CREATE TABLE questions (
-	questionId TEXT PRIMARY KEY,
+	questionId INTEGER PRIMARY KEY,
 	title TEXT,
 	titleSlug TEXT,
 	difficulty TEXT,
