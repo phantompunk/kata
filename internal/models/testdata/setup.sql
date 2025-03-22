@@ -7,7 +7,7 @@ CREATE TABLE questions (
     codeSnippets TEXT NOT NULL
 );
 
-CREATE TABLE question_status (
+CREATE TABLE status (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     questionId INTEGER NOT NULL,
     langSlug TEXT NOT NULL,
@@ -16,10 +16,15 @@ CREATE TABLE question_status (
 );
 
 INSERT INTO questions (questionId, title, titleSlug, content, difficulty, codeSnippets) VALUES (
-    1,
+    36,
     'Two Sum',
     'two-sum',
     'Sample problem description',
     'Easy',
     '[{"langSlug": "cpp","code": "Function Sample()"}]'
 );
+
+INSERT INTO status (questionId, langSlug, solved) VALUES
+(36, 'go', 0),
+(36, 'python', 0),
+(36, 'java', 1);

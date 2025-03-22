@@ -17,34 +17,31 @@ func ListFunc(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	questions, err := kata.Questions.GetAll()
-	qStr := convertQuestions(questions)
+	questions, err := kata.Questions.GetAllWithStatus(kata.Config.Tracks)
+	// statuses := kata.Questions.GetStatuses
+	qStr := convertQuestions(kata.Config.Tracks, questions)
 
-	printTable(qStr)
+	printTable(kata.Config.Tracks, qStr)
 	return nil
 }
 
-func convertQuestions(questions []models.Question) [][]string {
+func convertQuestions(tracks []string, questions []models.Question) [][]string {
 	var results [][]string
-	for _, task := range questions {
-		hasGo, hasPython := "❌", "❌"
-
-		for _, snippet := range task.CodeSnippets {
-			if snippet.LangSlug == "golang" {
-				hasGo = "✅"
-			}
-			if snippet.LangSlug == "python2" || snippet.LangSlug == "python3" {
-				hasPython = "✅"
-			}
+	for _, question := range questions {
+		row := []string{
+			fmt.Sprint(question.ID),
+			question.Title,
+			colorizeDifficulty(question.Difficulty),
 		}
 
-		results = append(results, []string{
-			fmt.Sprint(task.ID),
-			task.Title,
-			colorizeDifficulty(task.Difficulty),
-			hasGo,
-			hasPython,
-		})
+		for _, lang := range tracks {
+			status := "❌"
+			if question.LangStatus[lang] {
+				status = "✅"
+			}
+			row = append(row, status)
+		}
+		results = append(results, row)
 	}
 	return results
 }
@@ -63,7 +60,9 @@ func colorizeDifficulty(difficulty string) string {
 }
 
 // printTable displays a formatted table of questions using table.Table.
-func printTable(questions [][]string) {
+func printTable(languages []string, questions [][]string) {
+	headers := []string{"ID", "Name", "Difficulty"}
+	headers = append(headers, languages...)
 	re := lipgloss.NewRenderer(os.Stdout)
 	baseStyle := re.NewStyle().Padding(0, 1)
 	headerStyle := baseStyle.Foreground(lipgloss.Color("252")).Bold(true)
@@ -71,7 +70,7 @@ func printTable(questions [][]string) {
 	// Define table headers
 	t := table.New().
 		Border(lipgloss.DoubleBorder()).
-		Headers("ID", "Name", "Difficulty", "Go", "Python").
+		Headers(headers...).
 		Rows(questions...).
 		StyleFunc(func(row, col int) lipgloss.Style {
 			if row == table.HeaderRow {

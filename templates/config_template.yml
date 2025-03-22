@@ -4,3 +4,8 @@ workspace: '{{ .Workspace }}'
 language: '{{ .Language }}'
 # Automattically open downloaded problems using $EDITOR
 openInEditor: {{ .OpenInEditor }}
+# Track language results
+tracks:
+- go
+- python3
+- typescript

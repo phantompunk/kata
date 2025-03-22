@@ -2,18 +2,11 @@ package assert
 
 import "testing"
 
-func Equal(t *testing.T, got, want string) {
-	t.Helper()
-	if got != want {
-		t.Errorf("got %q, want %q", got, want)
-	}
-}
-
-func BoolEqual(t *testing.T, got, want bool) {
+func Equal[T comparable](t *testing.T, actual, expected T) {
 	t.Helper()
 
-	if got != want {
-		t.Errorf("got %v; expected: %v", got, want)
+	if actual != expected {
+		t.Errorf("got: %v; want: %v", actual, expected)
 	}
 }
 

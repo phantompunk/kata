@@ -54,7 +54,7 @@ func TestFetchProblem(t *testing.T) {
 		question, err := mock.FetchQuestion("two-sum")
 
 		assert.NilError(t, err)
-		assert.Equal(t, question.ID, "1")
+		assert.Equal(t, question.ID, "36")
 		assert.Equal(t, question.Content, "Sample problem description")
 		assert.Equal(t, question.CodeSnippets[0].Code, "Function Sample()")
 		assert.Equal(t, question.CodeSnippets[0].LangSlug, "cpp")
@@ -107,7 +107,7 @@ func TestQuestionModelExists(t *testing.T) {
 			m := QuestionModel{DB: db}
 
 			exists, err := m.Exists(tc.slug)
-			assert.BoolEqual(t, exists, tc.want)
+			assert.Equal(t, exists, tc.want)
 			assert.NilError(t, err)
 		})
 	}
@@ -133,6 +133,36 @@ func TestQuestionModelGet(t *testing.T) {
 
 			question, err := m.Get(tc.slug)
 			assert.Equal(t, question.Title, tc.want)
+			assert.NilError(t, err)
+		})
+	}
+}
+
+func TestQuestionModelGetWithStatus(t *testing.T) {
+	tests := []struct {
+		name   string
+		slug   string
+		want   string
+		solved string
+	}{
+		{
+			name:   "Valid Slug",
+			slug:   "two-sum",
+			want:   "Two Sum",
+			solved: "java",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			db := newTestDB(t)
+			m := QuestionModel{DB: db}
+
+			questions, err := m.GetAllWithStatus([]string{"go", "python", "java"})
+
+			assert.Equal(t, len(questions), 1)
+			assert.Equal(t, questions[0].Title, tc.want)
+			assert.Equal(t, questions[0].LangStatus[tc.solved], true)
 			assert.NilError(t, err)
 		})
 	}

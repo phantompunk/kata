@@ -34,6 +34,7 @@ type Question struct {
 	Content      string        `json:"content"`
 	FunctionName string        `json:"funcName"`
 	CodeSnippets []CodeSnippet `json:"codeSnippets"`
+	LangStatus   map[string]bool
 }
 
 type CodeSnippet struct {
@@ -227,6 +228,50 @@ func (m *QuestionModel) GetAll() ([]Question, error) {
 		}
 
 		questions = append(questions, q)
+	}
+
+	return questions, nil
+}
+
+func (m *QuestionModel) GetAllWithStatus(languages []string) ([]Question, error) {
+	stmt := `SELECT q.questionId, q.title, q.difficulty`
+	for _, lang := range languages {
+		stmt += fmt.Sprintf(", COALESCE(%s.solved, 0) AS %sSolved", lang, lang)
+	}
+	stmt += ` FROM questions q`
+	for _, lang := range languages {
+		stmt += fmt.Sprintf(" LEFT JOIN status %s ON q.questionId = %s.questionId AND %s.langSlug = '%s'", lang, lang, lang, lang)
+	}
+
+	rows, err := m.DB.Query(stmt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var questions []Question
+	for rows.Next() {
+		var q Question
+		q.LangStatus = make(map[string]bool)
+		scanArgs := []any{&q.ID, &q.Title, &q.Difficulty}
+		solvedValues := make([]int, len(languages))
+
+		for i := range languages {
+			scanArgs = append(scanArgs, &solvedValues[i])
+		}
+
+		if err := rows.Scan(scanArgs...); err != nil {
+			return nil, err
+		}
+
+		for i, lang := range languages {
+			q.LangStatus[lang] = solvedValues[i] == 1
+		}
+		questions = append(questions, q)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 
 	return questions, nil

@@ -19,9 +19,10 @@ var configTemplate string
 var cfg Config
 
 type Config struct {
-	Workspace    string `yaml:"workspace"`
-	Language     string `yaml:"language"`
-	OpenInEditor bool   `yaml:"openInEditor"`
+	Workspace    string   `yaml:"workspace"`
+	Language     string   `yaml:"language"`
+	OpenInEditor bool     `yaml:"openInEditor"`
+	Tracks       []string `yaml:"tracks"`
 	configPath   string
 }
 

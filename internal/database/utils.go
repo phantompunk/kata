@@ -50,6 +50,14 @@ func EnsureDB(dbPath string) (*sql.DB, error) {
 			content TEXT,
 			codeSnippets TEXT
 			);
+
+			CREATE TABLE status (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			questionId INTEGER NOT NULL,
+			langSlug TEXT NOT NULL,
+			solved INTEGER CHECK (solved IN (0, 1)) NOT NULL,
+			FOREIGN KEY (questionId) REFERENCES questions(questionId) ON DELETE CASCADE
+			);
 			`)
 		if err != nil {
 			db.Close()
@@ -87,4 +95,12 @@ const stmt string = `
 	difficulty TEXT,
 	content TEXT,
 	codeSnippets TEXT
+	);
+
+	CREATE TABLE status (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	questionId INTEGER NOT NULL,
+	langSlug TEXT NOT NULL,
+	solved INTEGER CHECK (solved IN (0, 1)) NOT NULL,
+	FOREIGN KEY (questionId) REFERENCES questions(questionId) ON DELETE CASCADE
 	);`
