@@ -3,25 +3,22 @@ package renderer
 import (
 	"bytes"
 	"fmt"
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"io"
+	"strings"
 	"text/template"
+	"unicode"
 
 	htmltomarkdown "github.com/JohannesKaufmann/html-to-markdown/v2"
 	"github.com/phantompunk/kata/internal/models"
 	"github.com/phantompunk/kata/templates"
-	"github.com/spf13/afero"
 )
 
 type Renderer struct {
-	FileSystem afero.Fs
-	Error      error
+	Error error
 }
 
 func New() Renderer {
-	return Renderer{FileSystem: afero.NewOsFs()}
+	return Renderer{}
 }
 
 func (r *Renderer) Render(w io.Writer, problem *models.Problem, templateType string) error {
@@ -29,7 +26,11 @@ func (r *Renderer) Render(w io.Writer, problem *models.Problem, templateType str
 		return r.Error
 	}
 
-	templ, err := template.New(templateType).ParseFS(templates.Files, "*.gohtml")
+	funcMap := template.FuncMap{
+		"pascalCase": pascalCase,
+	}
+
+	templ, err := template.New(templateType).Funcs(funcMap).ParseFS(templates.Files, "*.gohtml")
 	if err != nil {
 		return err
 	}
@@ -86,36 +87,18 @@ func langTemplates(lang string) (string, string) {
 	return solBlock, testBlock
 }
 
-func parseFunctionName(snippets []models.CodeSnippet) (string, error) {
-	var goSnippet string
-	for _, snippet := range snippets {
-		if snippet.LangSlug == "golang" {
-			goSnippet = snippet.Code
-			break // Added break, because we only need one golang snippet.
+func pascalCase(s string) string {
+	var result strings.Builder
+	nextUpper := true
+	for _, r := range s {
+		if unicode.IsSpace(r) {
+			nextUpper = true
+		} else if nextUpper {
+			result.WriteRune(unicode.ToUpper(r))
+			nextUpper = false
+		} else {
+			result.WriteRune(r)
 		}
 	}
-
-	if goSnippet == "" {
-		return "", fmt.Errorf("no golang snippet found")
-	}
-
-	fset := token.NewFileSet()
-	node, err := parser.ParseFile(fset, "src.go", goSnippet, 0)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse go snippet: %w", err)
-	}
-
-	var functionNames []string
-	ast.Inspect(node, func(n ast.Node) bool {
-		if fn, ok := n.(*ast.FuncDecl); ok {
-			functionNames = append(functionNames, fn.Name.Name)
-		}
-		return true
-	})
-
-	if len(functionNames) == 0 {
-		return "", fmt.Errorf("no functions found in go snippet")
-	}
-
-	return functionNames[0], nil
+	return result.String()
 }

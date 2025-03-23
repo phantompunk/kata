@@ -4,6 +4,7 @@ CREATE TABLE questions (
     titleSlug TEXT UNIQUE NOT NULL,
     content TEXT NOT NULL,
     difficulty TEXT CHECK (difficulty IN ('Easy', 'Medium', 'Hard')) NOT NULL,
+    functionName TEXT NOT NULL,
     codeSnippets TEXT NOT NULL
 );
 
@@ -15,12 +16,13 @@ CREATE TABLE status (
     FOREIGN KEY (questionId) REFERENCES questions(questionId) ON DELETE CASCADE
 );
 
-INSERT INTO questions (questionId, title, titleSlug, content, difficulty, codeSnippets) VALUES (
+INSERT INTO questions (questionId, title, titleSlug, content, difficulty, functionName, codeSnippets) VALUES (
     36,
     'Two Sum',
     'two-sum',
     'Sample problem description',
     'Easy',
+    'twoSum',
     '[{"langSlug": "cpp","code": "Function Sample()"}]'
 );
 

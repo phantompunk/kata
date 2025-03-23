@@ -15,7 +15,7 @@ var gQLQueryQuestion string = `query questionEditorData($titleSlug: String!) {
 }`
 
 var queryGetBySlug string = `SELECT
-	questionId, title, titleSlug, content, difficulty, codeSnippets 
+	questionId, title, titleSlug, content, difficulty, functionName, codeSnippets 
 	FROM questions
 	WHERE titleSlug = ?;`
 

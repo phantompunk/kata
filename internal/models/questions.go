@@ -124,7 +124,7 @@ func (m *QuestionModel) Get(titleSlug string) (*Question, error) {
 	var codeJSON []byte
 
 	row := m.DB.QueryRow(queryGetBySlug, titleSlug)
-	err := row.Scan(&question.ID, &question.Title, &question.TitleSlug, &question.Content, &question.Difficulty, &codeJSON)
+	err := row.Scan(&question.ID, &question.Title, &question.TitleSlug, &question.Content, &question.Difficulty, &question.FunctionName, &codeJSON)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNoRecord
@@ -147,9 +147,9 @@ func (m *QuestionModel) Insert(q *Question) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	stmt := `INSERT OR REPLACE INTO questions (questionId, title, titleSlug, difficulty, content, codeSnippets) VALUES (?, ?, ?, ?, ?, ?);`
+	stmt := `INSERT OR REPLACE INTO questions (questionId, title, titleSlug, difficulty, functionName, content, codeSnippets) VALUES (?, ?, ?, ?, ?, ?, ?);`
 
-	result, err := m.DB.Exec(stmt, q.ID, q.Title, q.TitleSlug, q.Difficulty, q.Content, snippetJSON)
+	result, err := m.DB.Exec(stmt, q.ID, q.Title, q.TitleSlug, q.Difficulty, q.FunctionName, q.Content, snippetJSON)
 	if err != nil {
 		return 0, err
 	}

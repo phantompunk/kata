@@ -44,11 +44,12 @@ func EnsureDB(dbPath string) (*sql.DB, error) {
 		_, err = db.Exec(`
 			CREATE TABLE questions (
 			questionId INTEGER PRIMARY KEY,
-			title TEXT,
-			titleSlug TEXT,
-			difficulty TEXT,
-			content TEXT,
-			codeSnippets TEXT
+			title TEXT NOT NULL,
+			titleSlug TEXT UNIQUE NOT NULL,
+			difficulty TEXT CHECK (difficulty IN ('Easy', 'Medium', 'Hard')) NOT NULL,
+			functionName TEXT NOT NULL,
+			content TEXT NOT NULL,
+			codeSnippets TEXT NOT NULL
 			);
 
 			CREATE TABLE status (
@@ -90,11 +91,12 @@ func createDatabaseFile(dbPath string) (*sql.DB, error) {
 const stmt string = ` 
 	CREATE TABLE questions (
 	questionId INTEGER PRIMARY KEY,
-	title TEXT,
-	titleSlug TEXT,
-	difficulty TEXT,
-	content TEXT,
-	codeSnippets TEXT
+	title TEXT NOT NULL,
+	titleSlug TEXT UNIQUE NOT NULL,
+	difficulty TEXT CHECK (difficulty IN ('Easy', 'Medium', 'Hard')) NOT NULL,
+	functionName TEXT NOT NULL,
+	content TEXT NOT NULL,
+	codeSnippets TEXT NOT NULL
 	);
 
 	CREATE TABLE status (
