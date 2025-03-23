@@ -10,15 +10,10 @@ import (
 	"io"
 	"net/http"
 	"path/filepath"
-	"strconv"
 	"strings"
 )
 
 const API_URL = "https://leetcode.com/graphql"
-
-type QuestionModelInterface interface {
-	GetBySlug(name, language string) (*Question, error)
-}
 
 type QuestionModel struct {
 	DB      *sql.DB
@@ -92,7 +87,6 @@ func (m *QuestionModel) FetchQuestion(name string) (*Question, error) {
 	}
 
 	if exists {
-		fmt.Println("Found")
 		return m.Get(name)
 	}
 
@@ -161,23 +155,6 @@ func (m *QuestionModel) Insert(q *Question) (int, error) {
 	return int(id), nil
 }
 
-func (m *QuestionModel) FindSnippets(q *Question) ([]CodeSnippet, error) {
-	var snippetJSON []byte
-	var snippets []CodeSnippet
-	id, _ := strconv.Atoi(q.ID)
-	err := m.DB.QueryRow("SELECT codeSnippets FROM questions WHERE questionId = ?", id).Scan(&snippetJSON)
-	if err == sql.ErrNoRows {
-		return []CodeSnippet{}, nil // Question not found
-	} else if err != nil {
-		return []CodeSnippet{}, err // Other error occurred
-	}
-	err = json.Unmarshal(snippetJSON, &snippets)
-	if err != nil {
-		return []CodeSnippet{}, err
-	}
-	return snippets, nil // Question found
-}
-
 func (m *QuestionModel) GetRandom() (Question, error) {
 	var q Question
 	var codeSnippetsJSON []byte
@@ -190,47 +167,6 @@ func (m *QuestionModel) GetRandom() (Question, error) {
 		return q, err
 	}
 	return q, nil
-}
-
-func (m *QuestionModel) Upsert(q *Question) error {
-	// check if q exists
-	snippets, err := m.FindSnippets(q)
-
-	for _, snippet := range snippets {
-		if snippet.LangSlug != q.CodeSnippets[0].LangSlug {
-			q.CodeSnippets = append(q.CodeSnippets, snippet)
-		}
-	}
-
-	_, err = m.Insert(q)
-	return err
-}
-
-func (m *QuestionModel) GetAll() ([]Question, error) {
-	stmt := `SELECT questionId, title, titleSlug, difficulty, codeSnippets from questions;`
-	rows, err := m.DB.Query(stmt)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var questions []Question
-	for rows.Next() {
-		var q Question
-		var snippetsJSON []byte
-		err := rows.Scan(&q.ID, &q.Title, &q.TitleSlug, &q.Difficulty, &snippetsJSON)
-		if err != nil {
-			return nil, err
-		}
-		err = json.Unmarshal(snippetsJSON, &q.CodeSnippets)
-		if err != nil {
-			return nil, err
-		}
-
-		questions = append(questions, q)
-	}
-
-	return questions, nil
 }
 
 func (m *QuestionModel) GetAllWithStatus(languages []string) ([]Question, error) {
@@ -323,18 +259,6 @@ func (q *Question) usesLang(lang string) string {
 		}
 	}
 	return ""
-}
-
-func (q *Question) UsesGo() string {
-	return q.usesLang("go")
-}
-
-func (q *Question) UsesPython() string {
-	return q.usesLang("python")
-}
-
-func (q *Question) DirPath() string {
-	return filepath.Join()
 }
 
 var numberToString = map[string]string{"1": "one", "2": "two", "3": "three", "4": "four"}
