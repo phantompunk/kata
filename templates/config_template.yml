@@ -4,6 +4,10 @@ workspace: '{{ .Workspace }}'
 language: '{{ .Language }}'
 # Automattically open downloaded problems using $EDITOR
 openInEditor: {{ .OpenInEditor }}
+# Leetcode Session Token
+sessionToken:
+# Leetcode CSRF Token
+csrfToken:
 # Track language results
 tracks:
 - go

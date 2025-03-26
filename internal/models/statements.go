@@ -14,6 +14,13 @@ var gQLQueryQuestion string = `query questionEditorData($titleSlug: String!) {
   }
 }`
 
+var gQLQueryStreak string = `query getStreakCounter {
+  streakCounter {
+    currentDayCompleted
+    daysSkipped
+  }
+}`
+
 var queryGetBySlug string = `SELECT
 	questionId, title, titleSlug, content, difficulty, functionName, codeSnippets 
 	FROM questions

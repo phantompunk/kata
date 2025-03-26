@@ -17,7 +17,7 @@ import (
 )
 
 type App struct {
-	Config    config.Config
+	Config    *config.Config
 	Questions models.QuestionModel
 	Renderer  renderer.Renderer
 	fs        afero.Fs
@@ -37,7 +37,7 @@ func New() (*App, error) {
 	}
 
 	return &App{
-		Config:    cfg,
+		Config:    &cfg,
 		Questions: models.QuestionModel{DB: db, Client: http.DefaultClient},
 		Renderer:  renderer.New(),
 		fs:        afero.NewOsFs(),

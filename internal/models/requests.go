@@ -13,8 +13,14 @@ type Response struct {
 	Data *Data `json:"data"`
 }
 
+type StreakCounter struct {
+	DaysSkipped         int  `json:"daysSkipped"`
+	CurrentDayCompleted bool `json:"currentDayCompleted"`
+}
+
 type Data struct {
-	Question *Question `json:"question"`
+	Question      *Question      `json:"question"`
+	StreakCounter *StreakCounter `json:"streakCounter"`
 }
 
 func GetLangName(language string) string {

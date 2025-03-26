@@ -22,6 +22,8 @@ type Config struct {
 	Workspace    string   `yaml:"workspace"`
 	Language     string   `yaml:"language"`
 	OpenInEditor bool     `yaml:"openInEditor"`
+	SessionToken string   `yaml:"sessionToken"`
+	CsrfToken    string   `yaml:"csrfToken"`
 	Tracks       []string `yaml:"tracks"`
 	configPath   string
 }
@@ -67,6 +69,7 @@ func EnsureConfig() (Config, error) {
 	if err != nil {
 		return cfg, fmt.Errorf("Could not parse config file: %w", err)
 	}
+
 	return cfg, nil
 }
 
@@ -127,4 +130,22 @@ func OpenConfig() (string, error) {
 		return "", err
 	}
 	return cfp, nil
+}
+
+func (c *Config) UpdateSessionToken(sessionToken, csrfToken string) error {
+	c.SessionToken = sessionToken
+	c.CsrfToken = csrfToken
+
+	data, err := yaml.Marshal(c)
+	if err != nil {
+		return fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	cfgPath, _ := getConfigPath()
+	err = os.WriteFile(cfgPath, data, os.ModePerm)
+	if err != nil {
+		return fmt.Errorf("failed to write config file: %w", err)
+	}
+
+	return nil
 }

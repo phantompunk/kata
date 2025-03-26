@@ -36,6 +36,12 @@ var listCmd = &cobra.Command{
 	RunE:  ListFunc,
 }
 
+var loginCmd = &cobra.Command{
+	Use:   "login",
+	Short: "Accept session and token, attempt to get user info",
+	RunE:  LoginFunc,
+}
+
 var settingsCmd = &cobra.Command{
 	Use:   "settings",
 	Short: "Configure the client",
@@ -58,5 +64,6 @@ func init() {
 	rootCmd.AddCommand(downloadCmd)
 	rootCmd.AddCommand(quizCmd)
 	rootCmd.AddCommand(listCmd)
+	rootCmd.AddCommand(loginCmd)
 	rootCmd.AddCommand(settingsCmd)
 }
