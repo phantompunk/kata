@@ -42,6 +42,18 @@ var loginCmd = &cobra.Command{
 	RunE:  LoginFunc,
 }
 
+var testCmd = &cobra.Command{
+	Use:   "test",
+	Short: "Runs problem solution against leetcode test cases",
+	RunE:  TestFunc,
+}
+
+var submitCmd = &cobra.Command{
+	Use:   "submit",
+	Short: "Submits solutions against leetcode servers",
+	RunE:  SubmitFunc,
+}
+
 var settingsCmd = &cobra.Command{
 	Use:   "settings",
 	Short: "Configure the client",
@@ -61,9 +73,17 @@ func init() {
 	downloadCmd.Flags().StringP("language", "l", "", "Programming language to use")
 	downloadCmd.Flags().BoolP("open", "o", false, "Open problem with $EDITOR")
 
+	testCmd.Flags().StringP("problem", "p", "", "LeetCode problem name")
+	testCmd.Flags().StringP("language", "l", "", "Programming language to use")
+
+	submitCmd.Flags().StringP("problem", "p", "", "LeetCode problem name")
+	submitCmd.Flags().StringP("language", "l", "", "Programming language to use")
+
 	rootCmd.AddCommand(downloadCmd)
 	rootCmd.AddCommand(quizCmd)
 	rootCmd.AddCommand(listCmd)
 	rootCmd.AddCommand(loginCmd)
+	rootCmd.AddCommand(testCmd)
+	rootCmd.AddCommand(submitCmd)
 	rootCmd.AddCommand(settingsCmd)
 }

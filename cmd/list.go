@@ -17,8 +17,11 @@ func ListFunc(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Display as Table or Markdown Table<D-y>
 	questions, err := kata.Questions.GetAllWithStatus(kata.Config.Tracks)
 	// statuses := kata.Questions.GetStatuses
+
+	// fmt.Println(kata.PrintStatuses())
 	qStr := convertQuestions(kata.Config.Tracks, questions)
 
 	printTable(kata.Config.Tracks, qStr)
