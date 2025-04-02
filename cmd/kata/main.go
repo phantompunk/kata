@@ -50,7 +50,7 @@ var testCmd = &cobra.Command{
 
 var submitCmd = &cobra.Command{
 	Use:   "submit",
-	Short: "Submits solutions against leetcode servers",
+	Short: "Submit solutions against leetcode servers",
 	RunE:  SubmitFunc,
 }
 
