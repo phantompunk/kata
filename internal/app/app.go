@@ -11,6 +11,7 @@ import (
 
 	"github.com/phantompunk/kata/internal/config"
 	"github.com/phantompunk/kata/internal/database"
+	"github.com/phantompunk/kata/internal/leetcode"
 	"github.com/phantompunk/kata/internal/models"
 	"github.com/phantompunk/kata/internal/renderer"
 	"github.com/spf13/afero"
@@ -19,6 +20,7 @@ import (
 type App struct {
 	Config    *config.Config
 	Questions models.QuestionModel
+	lcs       *leetcode.Service
 	Renderer  renderer.Renderer
 	fs        afero.Fs
 }
@@ -39,9 +41,15 @@ func New() (*App, error) {
 	return &App{
 		Config:    &cfg,
 		Questions: models.QuestionModel{DB: db, Client: http.DefaultClient},
+		lcs:       leetcode.New(),
 		Renderer:  renderer.New(),
 		fs:        afero.NewOsFs(),
 	}, nil
+}
+
+func (app *App) CheckSession() (bool, error) {
+	app.lcs.SetCookies(app.Config.SessionToken, app.Config.CsrfToken)
+	return app.lcs.Ping()
 }
 
 func (app *App) FetchQuestion(name, language string) (*models.Question, error) {
@@ -56,7 +64,7 @@ func (app *App) FetchQuestion(name, language string) (*models.Question, error) {
 	}
 
 	// fetch the question from leetcode
-	question, err := app.Questions.Fetch(name)
+	question, err := app.lcs.Fetch(name)
 	if err != nil {
 		return nil, err
 	}
@@ -113,6 +121,14 @@ func (app *App) GetFunctionName(problem *models.Problem) string {
 		return ""
 	}
 	return name
+}
+
+func (app *App) PrintQuestionStatus() ([]models.Question, error) {
+	app.Questions.GetAllWithStatus(app.Config.Tracks)
+
+	// app.Renderer.AsMarkdown()
+	// app.Renderer.QuestionsAsTable()
+	return []models.Question{}, nil
 }
 
 func parseFunctionName(snippet string) (string, error) {

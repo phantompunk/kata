@@ -22,26 +22,31 @@ func LoginFunc(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	sessionKey := SessionKey{}
-	cookies := kooky.ReadCookies(kooky.Valid, kooky.DomainHasSuffix(`leetcode.com`), kooky.Name("LEETCODE_SESSION"))
-	if len(cookies) == 0 {
-		return fmt.Errorf("failed to find LEETCODE_SESSION cookie in any browser")
-	}
-	sessionKey.SessionToken = cookies[0].Value[32:]
+	var isNewCookie bool
+	if kata.Config.SessionToken == "" || kata.Config.CsrfToken == "" {
+		// if either empty fetch fresh tokens
+		cookies := kooky.ReadCookies(kooky.Valid, kooky.DomainHasSuffix(`leetcode.com`), kooky.Name("LEETCODE_SESSION"))
+		if len(cookies) == 0 {
+			return fmt.Errorf("failed to find LEETCODE_SESSION cookie in any browser")
+		}
+		kata.Config.SessionToken = cookies[0].Value[32:]
 
-	cookies = kooky.ReadCookies(kooky.Valid, kooky.DomainHasSuffix(`leetcode.com`), kooky.Name("csrftoken"))
-	if len(cookies) == 0 {
-		return fmt.Errorf("failed to find csrftoken cookie in any browser")
+		cookies = kooky.ReadCookies(kooky.Valid, kooky.DomainHasSuffix(`leetcode.com`), kooky.Name("csrftoken"))
+		if len(cookies) == 0 {
+			return fmt.Errorf("failed to find csrftoken cookie in any browser")
+		}
+		kata.Config.CsrfToken = cookies[0].Value[32:]
+		isNewCookie = true
 	}
-	sessionKey.CsrfToken = cookies[0].Value[32:]
 
-	loggedIn, err := kata.Questions.Ping(sessionKey.SessionToken, sessionKey.CsrfToken)
+	// try my key
+	loggedIn, err := kata.CheckSession()
 	if err != nil {
 		return fmt.Errorf("ping err: %v", err.Error())
 	}
 
 	if !loggedIn {
-		return fmt.Errorf("Session cookies are invalid trying logging in via browser-must use chrome or chromium browsers")
+		return fmt.Errorf("Session cookies are invalid trying logging in via browser; must use chrome or chromium browser")
 	}
 
 	// :TODO:
@@ -52,11 +57,14 @@ func LoginFunc(cmd *cobra.Command, args []string) error {
 	// Open LC in browser
 	// openbrowser(models.API_URL)
 
-	err = kata.Config.UpdateSessionToken(sessionKey.SessionToken, sessionKey.CsrfToken)
+	err = kata.Config.Update()
 	if err != nil {
 		return fmt.Errorf("failed to update config file %v", err)
 	}
-	fmt.Println("Set Leetcode session cookies to setting")
+
+	if isNewCookie {
+		fmt.Println("Set Leetcode session cookies to setting")
+	}
 	return nil
 }
 

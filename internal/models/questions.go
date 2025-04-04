@@ -1,14 +1,11 @@
 package models
 
 import (
-	"bytes"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
-	"net/http/cookiejar"
 	"path/filepath"
 	"strings"
 
@@ -50,109 +47,6 @@ type Problem struct {
 	TestPath     string
 	DirPath      string
 	ReadmePath   string
-}
-
-func (m *QuestionModel) Fetch(name string) (*Question, error) {
-	variables := map[string]any{"titleSlug": name}
-	body, err := json.Marshal(Request{Query: gQLQueryQuestion, Variables: variables})
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", API_URL, bytes.NewBuffer(body))
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	res, err := m.Client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
-	// convert response to a question
-	body, err = io.ReadAll(res.Body)
-	var response Response
-	err = json.Unmarshal(body, &response)
-	if err != nil {
-		return nil, err
-	}
-	return response.Data.Question, nil
-}
-
-func (m *QuestionModel) Ping(session, token string) (bool, error) {
-	body, err := json.Marshal(Request{Query: gQLQueryStreak})
-	if err != nil {
-		return false, err
-	}
-
-	req, err := http.NewRequest("POST", API_URL, bytes.NewBuffer(body))
-	if err != nil {
-		return false, err
-	}
-
-	req.Header.Set("referer", "https://leetcode.com/u/phantompunk/")
-	req.Header.Set("origin", "https://leetcode.com")
-	req.Header.Set("content-type", "application/json")
-	cookies := []*http.Cookie{
-		{Name: "csrftoken", Value: token},
-		{Name: "LEETCODE_SESSION", Value: session},
-	}
-
-	jar, err := cookiejar.New(nil)
-	if err != nil {
-		return false, fmt.Errorf("Error creating cookie jar: %v", err)
-	}
-
-	jar.SetCookies(req.URL, cookies)
-	m.Client.Jar = jar
-	res, err := m.Client.Do(req)
-	if err != nil {
-		return false, err
-	}
-	defer res.Body.Close()
-
-	// convert response to a question
-	if res.StatusCode == http.StatusOK {
-		return true, nil
-	}
-	return false, nil
-
-	// body, err = io.ReadAll(res.Body)
-	// var response Response
-	// err = json.Unmarshal(body, &response)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("Error unmarshalling response: %w", err)
-	// }
-	// fmt.Println("Hmm", response.Data.StreakCounter.CurrentDayCompleted)
-	// return response.Data.StreakCounter, nil
-}
-
-func (m *QuestionModel) FetchQuestion(name string) (*Question, error) {
-	// check if question has been saved before
-	exists, err := m.Exists(name)
-	if err != nil {
-		return nil, err
-	}
-
-	if exists {
-		return m.Get(name)
-	}
-
-	// fetch the question from leetcode
-	question, err := m.Fetch(name)
-	if err != nil {
-		return nil, err
-	}
-
-	// save question to database
-	_, err = m.Insert(question)
-	if err != nil {
-		return nil, err
-	}
-
-	return question, nil
 }
 
 func (m *QuestionModel) Exists(titleSlug string) (bool, error) {

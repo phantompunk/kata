@@ -5,8 +5,8 @@ var gQLQueryQuestion string = `query questionEditorData($titleSlug: String!) {
     questionId
     content
     titleSlug
-		title
-		difficulty
+    title
+    difficulty
     codeSnippets {
       langSlug
       code

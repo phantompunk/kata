@@ -132,10 +132,7 @@ func OpenConfig() (string, error) {
 	return cfp, nil
 }
 
-func (c *Config) UpdateSessionToken(sessionToken, csrfToken string) error {
-	c.SessionToken = sessionToken
-	c.CsrfToken = csrfToken
-
+func (c *Config) Update() error {
 	data, err := yaml.Marshal(c)
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
