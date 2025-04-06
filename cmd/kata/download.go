@@ -36,7 +36,7 @@ func DownloadFunc(cmd *cobra.Command, args []string) error {
 	// fetch code snippet, save question, update functionName, return
 	question, err := kata.FetchQuestion(name, language)
 	if err != nil && question == nil {
-		return fmt.Errorf("Problem %q not found %w", name, err)
+		return fmt.Errorf("Problem %q not found, use the correct title slug", name)
 	}
 
 	problem := question.ToProblem(kata.Config.Workspace, language)

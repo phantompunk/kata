@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"go/ast"
@@ -8,6 +9,8 @@ import (
 	"go/token"
 	"net/http"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/phantompunk/kata/internal/config"
 	"github.com/phantompunk/kata/internal/database"
@@ -109,6 +112,92 @@ func (app *App) StubProblem(problem *models.Problem) error {
 	}
 
 	return nil
+}
+
+func (app *App) TestSolution(name, language string) (string, error) {
+	exists, _ := app.Questions.Exists(name)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	if !exists {
+		// return app.Questions.Get(name)
+	}
+
+	question, err := app.Questions.Get(name)
+	if err != nil {
+		return "", err
+	}
+
+	filePath := question.ToProblem(app.Config.Workspace, language).SolutionPath
+	// extract code snippet only
+	snippet := app.extractSnippet(filePath)
+	fmt.Println("Testing Snippet", snippet)
+
+	testStatusUrl, err := app.lcs.Test(snippet)
+	if err != nil {
+		return "", err
+	}
+	fmt.Println("Test Callback URL", testStatusUrl)
+	if testStatusUrl == "" {
+		return "", err
+		// return fmt.Errorf("failed to submit test")
+	}
+
+	// long poll
+	// wait for response
+	// parse response
+	res := &models.TestResponse{}
+	for range 10 {
+		res, _ = app.lcs.CheckTestStatus(testStatusUrl)
+		fmt.Println("Test Status", res.State)
+		if res.State == "SUCCESS" {
+			break
+		}
+		fmt.Print(".")
+		time.Sleep(500 * time.Millisecond)
+	}
+	fmt.Print("\n")
+
+	if res.Correct {
+		fmt.Println("Test Passed", res.State)
+		return "Passed", nil
+	}
+	return "Failed", nil
+}
+
+func (app *App) extractSnippet(path string) string {
+	file, _ := os.Open(path)
+	defer file.Close()
+
+	startMarker := fmt.Sprint("// ::KATA START::")
+	endMarker := fmt.Sprint("// ::KATA END::")
+
+	var builder strings.Builder
+	scanner := bufio.NewScanner(file)
+
+	inSnippet := false
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		if strings.TrimSpace(line) == startMarker {
+			inSnippet = true
+			continue
+		}
+
+		if strings.TrimSpace(line) == endMarker {
+			break
+		}
+
+		if inSnippet {
+			builder.WriteString(line + "\n")
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		// todo return error
+		return ""
+	}
+	return strings.TrimSpace(builder.String())
 }
 
 func (app *App) GetFunctionName(problem *models.Problem) string {

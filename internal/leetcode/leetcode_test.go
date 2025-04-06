@@ -54,3 +54,53 @@ func TestFetch(t *testing.T) {
 		assert.Equal(t, question.Title, "Two Sum")
 	})
 }
+
+func TestSolutionTest(t *testing.T) {
+	mockClient := &http.Client{}
+	session, csrftoken := "abc123", "csrf123"
+	lc := Service{mockClient, "", session, csrftoken}
+
+	t.Run("Problem ", func(t *testing.T) {
+		processing := `{"interpret_id":"runcode_123.456_789","test_case":"[2,7,11,15]\n9\n[3,2,4]\n6\n[3,3]\n6"}`
+		mockResponse(processing, mockClient)
+
+		callbackUrl, err := lc.Test("func twoSum(a int){}")
+		assert.NilError(t, err)
+		assert.Equal(t, callbackUrl, "https://leetcode.com/submissions/detail/runcode_123.456_789/check/")
+	})
+}
+
+func TestCheckTestStatus(t *testing.T) {
+	mockClient := &http.Client{}
+	session, csrftoken := "abc123", "csrf123"
+	lc := Service{mockClient, "", session, csrftoken}
+
+	t.Run("Pending status", func(t *testing.T) {
+		pending := `{"state": "PENDING"}`
+		mockResponse(pending, mockClient)
+
+		response, err := lc.CheckTestStatus("https://leetcode.com/submission/run123.456_789/check")
+		assert.NilError(t, err)
+		assert.Equal(t, response.State, "PENDING")
+	})
+
+	t.Run("Completed but failed", func(t *testing.T) {
+		failed := `{"run_success":true,"correct_answer":false,"state":"SUCCESS"}`
+		mockResponse(failed, mockClient)
+
+		response, err := lc.CheckTestStatus("https://leetcode.com/submission/run123.456_789/check")
+		assert.NilError(t, err)
+		assert.Equal(t, response.State, "SUCCESS")
+		assert.False(t, response.Correct)
+	})
+
+	t.Run("Completed and passed", func(t *testing.T) {
+		failed := `{"run_success":true,"correct_answer":true,"state":"SUCCESS"}`
+		mockResponse(failed, mockClient)
+
+		response, err := lc.CheckTestStatus("https://leetcode.com/submission/run123.456_789/check")
+		assert.NilError(t, err)
+		assert.Equal(t, response.State, "SUCCESS")
+		assert.True(t, response.Correct)
+	})
+}

@@ -13,6 +13,13 @@ type Response struct {
 	Data *Data `json:"data"`
 }
 
+type TestResponse struct {
+	InterpretID string `json:"interpret_id"`
+	TestCase    string `json:"test_case"`
+	State       string `json:"state"`
+	Correct     bool   `json:"correct_answer"`
+}
+
 type StreakCounter struct {
 	DaysSkipped         int  `json:"daysSkipped"`
 	CurrentDayCompleted bool `json:"currentDayCompleted"`
