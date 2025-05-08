@@ -44,7 +44,7 @@ func New() (*App, error) {
 	return &App{
 		Config:    &cfg,
 		Questions: models.QuestionModel{DB: db, Client: http.DefaultClient},
-		lcs:       leetcode.New(),
+		lcs:       leetcode.New(leetcode.WithCookies(cfg.SessionToken, cfg.CsrfToken)),
 		Renderer:  renderer.New(),
 		fs:        afero.NewOsFs(),
 	}, nil
@@ -134,6 +134,7 @@ func (app *App) TestSolution(name, language string) (string, error) {
 	snippet := app.extractSnippet(filePath)
 	fmt.Println("Testing Snippet", snippet)
 
+	// fmt.Println("LeetConfig", app.lcs.)
 	testStatusUrl, err := app.lcs.Test(snippet)
 	if err != nil {
 		return "", err
@@ -150,11 +151,16 @@ func (app *App) TestSolution(name, language string) (string, error) {
 	res := &models.TestResponse{}
 	for range 10 {
 		res, _ = app.lcs.CheckTestStatus(testStatusUrl)
-		fmt.Println("Test Status", res.State)
+		if res.State == "STARTED" {
+			fmt.Print("started")
+		}
+		if res.State == "PENDING" {
+			fmt.Print(".")
+		}
 		if res.State == "SUCCESS" {
+			fmt.Print("done")
 			break
 		}
-		fmt.Print(".")
 		time.Sleep(500 * time.Millisecond)
 	}
 	fmt.Print("\n")

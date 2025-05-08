@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/cookiejar"
+	"strings"
 
 	"github.com/phantompunk/kata/internal/models"
 )
@@ -154,6 +155,7 @@ func (lc *Service) Fetch(name string) (*models.Question, error) {
 }
 
 func (lc *Service) Test(snippet string) (string, error) {
+
 	// {
 	//   "lang": "golang",
 	//   "question_id": "1",
@@ -164,12 +166,15 @@ func (lc *Service) Test(snippet string) (string, error) {
 	// if err != nil {
 	// 	return "", fmt.Errorf("failed to unquote snippet: %w", err)
 	// }
+	// fmt.Printf("CodeR: %v", snippet)
+	url := "https://leetcode.com/problems/two-sum/interpret_solution/"
 	fmt.Println("Code", snippet)
+	contents := strings.ReplaceAll(snippet, "\t", "    ") // 4 spaces
 
 	variables := map[string]any{
 		"lang":        "golang",
 		"question_id": "1",
-		"typed_code":  snippet,
+		"typed_code":  contents,
 		"data_input":  "[2,7,11,15]\n9\n[3,2,4]\n6\n[3,3]\n6",
 	}
 
@@ -180,17 +185,20 @@ func (lc *Service) Test(snippet string) (string, error) {
 
 	fmt.Println("Sending", string(data))
 
-	req, err := http.NewRequest(http.MethodPost, "https://leetcode.com/problems/two-sum/interpret_solution/", bytes.NewBuffer(data))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data))
 	if err != nil {
 		return "", err
 	}
 
-	req.Header.Set("Referer", "https://leetcode.com/problemset/")
-	req.Header.Set("Origin", "https://leetcode.com")
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-csrf-token", lc.token)
-	req.Header.Set("User-Agent", "Mozilla/6.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36")
-
+	req.Header.Set("referer", "https://leetcode.com/problemset/two-sum/description")
+	req.Header.Set("origin", "https://leetcode.com")
+	req.Header.Set("content-type", "application/json")
+	req.Header.Set("x-csrftoken", lc.token)
+	req.Header.Set("user-agent", "Mozilla/6.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36")
+	fmt.Println("Token", lc.token)
+	fmt.Println("Session", lc.session)
+	// cookie := fmt.Sprintf("csrftoken=%s; LEETCODE_SESSION=%s", lc.token, lc.session)
+	// req.Header.Set("Cookie", cookie)
 	jar, err := cookiejar.New(nil)
 	if err != nil {
 		return "", err
@@ -215,7 +223,7 @@ func (lc *Service) Test(snippet string) (string, error) {
 	//	    "test_case": "[2,7,11,15]\n9\n[3,2,4]\n6\n[3,3]\n6"
 	//	}
 	body, err := io.ReadAll(res.Body)
-	fmt.Println("Raw Test Resp", string(body))
+	// fmt.Println("Raw Test Resp", string(body))
 	var response models.TestResponse
 	err = json.Unmarshal(body, &response)
 	if err != nil {
@@ -227,7 +235,7 @@ func (lc *Service) Test(snippet string) (string, error) {
 }
 
 func (lc *Service) CheckTestStatus(callbackUrl string) (*models.TestResponse, error) {
-	req, err := http.NewRequest(http.MethodGet, lc.baseUrl, nil)
+	req, err := http.NewRequest(http.MethodGet, callbackUrl, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -255,6 +263,7 @@ func (lc *Service) CheckTestStatus(callbackUrl string) (*models.TestResponse, er
 
 	// convert response to a question
 	body, err := io.ReadAll(res.Body)
+	fmt.Println("RAW Check Resp", string(body))
 	var response models.TestResponse
 	err = json.Unmarshal(body, &response)
 	if err != nil {
