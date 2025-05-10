@@ -152,13 +152,13 @@ func (app *App) TestSolution(name, language string) (string, error) {
 	for range 10 {
 		res, _ = app.lcs.CheckTestStatus(testStatusUrl)
 		if res.State == "STARTED" {
-			fmt.Print("started")
+			// fmt.Print("started")
 		}
 		if res.State == "PENDING" {
 			fmt.Print(".")
 		}
 		if res.State == "SUCCESS" {
-			fmt.Print("done")
+			// fmt.Print("done")
 			break
 		}
 		time.Sleep(500 * time.Millisecond)

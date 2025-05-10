@@ -263,7 +263,7 @@ func (lc *Service) CheckTestStatus(callbackUrl string) (*models.TestResponse, er
 
 	// convert response to a question
 	body, err := io.ReadAll(res.Body)
-	fmt.Println("RAW Check Resp", string(body))
+	// fmt.Println("RAW Check Resp", string(body))
 	var response models.TestResponse
 	err = json.Unmarshal(body, &response)
 	if err != nil {
