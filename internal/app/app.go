@@ -132,14 +132,15 @@ func (app *App) TestSolution(name, language string) (string, error) {
 	filePath := question.ToProblem(app.Config.Workspace, language).SolutionPath
 	// extract code snippet only
 	snippet := app.extractSnippet(filePath)
-	fmt.Println("Testing Snippet", snippet)
+	// fmt.Println("Testing Snippet", snippet)
 
 	// fmt.Println("LeetConfig", app.lcs.)
+	fmt.Print("Testing")
 	testStatusUrl, err := app.lcs.Test(snippet)
 	if err != nil {
 		return "", err
 	}
-	fmt.Println("Test Callback URL", testStatusUrl)
+	// fmt.Println("Test Callback URL", testStatusUrl)
 	if testStatusUrl == "" {
 		return "", err
 		// return fmt.Errorf("failed to submit test")
