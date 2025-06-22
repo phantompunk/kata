@@ -12,6 +12,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const LEETCODE_URL = "https://leetcode.com"
+
 type SessionKey struct {
 	CsrfToken    string
 	SessionToken string
@@ -26,24 +28,30 @@ func LoginFunc(cmd *cobra.Command, args []string) error {
 	var isNewCookie bool
 	if kata.Config.SessionToken == "" || kata.Config.CsrfToken == "" {
 		// if either empty fetch fresh tokens
-		refreshCookies(kata.Config)
+		err := refreshCookies(kata.Config)
+		if err != nil {
+			return fmt.Errorf("%v. Please log in at %s and try again", err, LEETCODE_URL)
+		}
 		isNewCookie = true
 	}
 
 	// try my key
 	loggedIn, err := kata.CheckSession()
 	if err != nil {
-		return fmt.Errorf("ping err: %v", err.Error())
+		return fmt.Errorf("ping err: %v. Please log in at %s and try again", err.Error(), LEETCODE_URL)
 	}
 
 	if !loggedIn {
-		refreshCookies(kata.Config)
+		err := refreshCookies(kata.Config)
+		if err != nil {
+			return fmt.Errorf("%v. Please log in at %s and try again", err, LEETCODE_URL)
+		}
 		retry, err := kata.CheckSession()
 		if err != nil {
-			return fmt.Errorf("ping err: %v", err.Error())
+			return fmt.Errorf("ping err: %v. Please log in at %s and try again", err.Error(), LEETCODE_URL)
 		}
 		if !retry {
-			return fmt.Errorf("Session cookies are invalid trying logging in via browser; must use chrome or chromium browser")
+			return fmt.Errorf("Session cookies are invalid. Please log in at %s using chrome or chromium browser and try again", LEETCODE_URL)
 		}
 		err = kata.Config.Update()
 		if err != nil {
@@ -72,13 +80,13 @@ func LoginFunc(cmd *cobra.Command, args []string) error {
 func refreshCookies(cfg *config.Config) error {
 	cookies := kooky.ReadCookies(kooky.Valid, kooky.DomainHasSuffix(`leetcode.com`), kooky.Name("LEETCODE_SESSION"))
 	if len(cookies) == 0 {
-		return fmt.Errorf("failed to find LEETCODE_SESSION cookie in any browser")
+		return fmt.Errorf("failed to find LEETCODE_SESSION cookie in any browser. Please log in at %s first", LEETCODE_URL)
 	}
 	cfg.SessionToken = cookies[0].Value[32:]
 
 	cookies = kooky.ReadCookies(kooky.Valid, kooky.DomainHasSuffix(`leetcode.com`), kooky.Name("csrftoken"))
 	if len(cookies) == 0 {
-		return fmt.Errorf("failed to find csrftoken cookie in any browser")
+		return fmt.Errorf("failed to find csrftoken cookie in any browser. Please log in at %s first", LEETCODE_URL)
 	}
 	cfg.CsrfToken = cookies[0].Value[32:]
 	return nil
