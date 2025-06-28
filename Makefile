@@ -1,10 +1,13 @@
-.PHONY: all build clean test
+.PHONY: all build clean test install
 
 binary = kata
 
 all:
 build:
 	go build -o=$(GOPATH)/bin/$(binary)
+
+install:
+	go install ./cmd/kata
 
 test:
 	go test -v -race -buildvcs ./...
