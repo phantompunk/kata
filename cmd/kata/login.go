@@ -41,6 +41,11 @@ func LoginFunc(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("ping err: %v. Please log in at %s and try again", err.Error(), LEETCODE_URL)
 	}
 
+	if loggedIn {
+		fmt.Println("Logged in to LeetCode. Session is valid.")
+		return nil
+	}
+
 	if !loggedIn {
 		err := refreshCookies(kata.Config)
 		if err != nil {
