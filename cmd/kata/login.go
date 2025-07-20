@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os/exec"
 	"runtime"
+	"time"
 
 	"github.com/browserutils/kooky"
 	_ "github.com/browserutils/kooky/browser/all"
@@ -17,6 +18,7 @@ const LEETCODE_URL = "https://leetcode.com"
 type SessionKey struct {
 	CsrfToken    string
 	SessionToken string
+	Expires      time.Time
 }
 
 func LoginFunc(cmd *cobra.Command, args []string) error {
@@ -24,6 +26,17 @@ func LoginFunc(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	// useOrReplaceCookies
+	// if tokens are missing
+	// -> Please login using supported browser
+	// if tokens are found
+	// -> Validate they are not expired
+	//    if expired
+	//	  -> Please login using supported browser
+	//	  else validate
+	//		    if not valid
+	//				-> Please login using supported browser
 
 	var isNewCookie bool
 	if kata.Config.SessionToken == "" || kata.Config.CsrfToken == "" {
@@ -82,6 +95,7 @@ func LoginFunc(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// :TODO: Cookie fetching logic to leetcode package
 func refreshCookies(cfg *config.Config) error {
 	cookies := kooky.ReadCookies(kooky.Valid, kooky.DomainHasSuffix(`leetcode.com`), kooky.Name("LEETCODE_SESSION"))
 	if len(cookies) == 0 {
