@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"text/template"
+	"time"
 
 	"github.com/adrg/xdg"
 	"github.com/go-yaml/yaml"
@@ -19,13 +20,14 @@ var configTemplate string
 var cfg Config
 
 type Config struct {
-	Workspace    string   `yaml:"workspace"`
-	Language     string   `yaml:"language"`
-	OpenInEditor bool     `yaml:"openInEditor"`
-	SessionToken string   `yaml:"sessionToken"`
-	CsrfToken    string   `yaml:"csrfToken"`
-	Tracks       []string `yaml:"tracks"`
-	configPath   string
+	Workspace      string    `yaml:"workspace"`
+	Language       string    `yaml:"language"`
+	OpenInEditor   bool      `yaml:"openInEditor"`
+	SessionExpires time.Time `yaml:"sessionExpires"`
+	SessionToken   string    `yaml:"sessionToken"`
+	CsrfToken      string    `yaml:"csrfToken"`
+	Tracks         []string  `yaml:"tracks"`
+	configPath     string
 }
 
 func ConfigFunc(cmd *cobra.Command, args []string) error {

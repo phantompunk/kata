@@ -51,6 +51,10 @@ func New() (*App, error) {
 }
 
 func (app *App) CheckSession() (bool, error) {
+	if app.Config.SessionExpires.Before(time.Now()) {
+		return false, fmt.Errorf("Session expired.")
+	}
+
 	app.lcs.SetCookies(app.Config.SessionToken, app.Config.CsrfToken)
 	return app.lcs.Ping()
 }

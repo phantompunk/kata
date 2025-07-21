@@ -1,9 +1,8 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"os/exec"
-	"runtime"
 	"time"
 
 	"github.com/browserutils/kooky"
@@ -13,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const LEETCODE_URL = "https://leetcode.com"
+const LEETCODE_URL = "https://leetcode.com/accounts/login/"
 
 type SessionKey struct {
 	CsrfToken    string
@@ -38,93 +37,119 @@ func LoginFunc(cmd *cobra.Command, args []string) error {
 	//		    if not valid
 	//				-> Please login using supported browser
 
-	var isNewCookie bool
+	isNewCookie := false
 	if kata.Config.SessionToken == "" || kata.Config.CsrfToken == "" {
-		// if either empty fetch fresh tokens
-		err := refreshCookies(kata.Config)
+		err = refreshCookies(kata.Config)
 		if err != nil {
-			return fmt.Errorf("%v. Please log in at %s and try again", err, LEETCODE_URL)
+			// fmt.Println("No session cookies found. Please log in to LeetCode using a supported browser.")
+			// return fmt.Errorf("%v. Please log in at %s and try again", err, LEETCODE_URL)
+			return err
 		}
 		isNewCookie = true
 	}
 
-	// try my key
-	loggedIn, err := kata.CheckSession()
+	isValid, err := kata.CheckSession()
 	if err != nil {
-		return fmt.Errorf("ping err: %v. Please log in at %s and try again", err.Error(), LEETCODE_URL)
+		return fmt.Errorf("Error: %v\nPlease log in at %s", err.Error(), LEETCODE_URL)
 	}
 
-	if loggedIn {
-		fmt.Println("Logged in to LeetCode. Session is valid.")
-		return nil
+	if !isValid {
+		return fmt.Errorf("Session cookies are invalid. Please log in at %s using chrome or chromium browser and try again", LEETCODE_URL)
 	}
-
-	if !loggedIn {
-		err := refreshCookies(kata.Config)
-		if err != nil {
-			return fmt.Errorf("%v. Please log in at %s and try again", err, LEETCODE_URL)
-		}
-		retry, err := kata.CheckSession()
-		if err != nil {
-			return fmt.Errorf("ping err: %v. Please log in at %s and try again", err.Error(), LEETCODE_URL)
-		}
-		if !retry {
-			return fmt.Errorf("Session cookies are invalid. Please log in at %s using chrome or chromium browser and try again", LEETCODE_URL)
-		}
-		err = kata.Config.Update()
-		if err != nil {
-			return fmt.Errorf("failed to update config file %v", err)
-		}
-	}
-
-	// :TODO:
-	// open browser
-	// print message then wait until keypress
-	// try cookies again
-	// return or error out
-	// Open LC in browser
-	// openbrowser(models.API_URL)
 
 	if isNewCookie {
-		fmt.Println("Set Leetcode session cookies to setting")
 		err = kata.Config.Update()
 		if err != nil {
 			return fmt.Errorf("failed to update config file %v", err)
 		}
 	}
+	fmt.Println("Successfully logged in to LeetCode. Session is valid.")
+
 	return nil
 }
+
+// try my key
+// loggedIn, err := kata.CheckSession()
+// if err != nil {
+// 	fmt.Println("Tried getting cookie")
+// 	return fmt.Errorf("ping err: %v. Please log in at %s and try again", err.Error(), LEETCODE_URL)
+// }
+//
+// if loggedIn {
+// 	fmt.Println("Logged in to LeetCode. Session is valid.")
+// 	return nil
+// }
+//
+// if !loggedIn {
+// 	fmt.Println("failed to login")
+// 	err := refreshCookies(kata.Config)
+// 	if err != nil {
+// 		return fmt.Errorf("%v. Please log in at %s and try again", err, LEETCODE_URL)
+// 	}
+// 	retry, err := kata.CheckSession()
+// 	if err != nil {
+// 		return fmt.Errorf("ping err: %v. Please log in at %s and try again", err.Error(), LEETCODE_URL)
+// 	}
+// 	if !retry {
+// 		return fmt.Errorf("Session cookies are invalid. Please log in at %s using chrome or chromium browser and try again", LEETCODE_URL)
+// 	}
+// 	err = kata.Config.Update()
+// 	if err != nil {
+// 		return fmt.Errorf("failed to update config file %v", err)
+// 	}
+// }
+//
+// // :TODO:
+// // open browser
+// // print message then wait until keypress
+// // try cookies again
+// // return or error out
+// // Open LC in browser
+// // openbrowser(models.API_URL)
+//
+// if isNewCookie {
+// 	fmt.Println("Set Leetcode session cookies to setting")
+// 	err = kata.Config.Update()
+// 	if err != nil {
+// 		return fmt.Errorf("failed to update config file %v", err)
+// 	}
+// }
+// 	return nil
+// }
 
 // :TODO: Cookie fetching logic to leetcode package
 func refreshCookies(cfg *config.Config) error {
-	cookies := kooky.ReadCookies(kooky.Valid, kooky.DomainHasSuffix(`leetcode.com`), kooky.Name("LEETCODE_SESSION"))
-	if len(cookies) == 0 {
-		return fmt.Errorf("failed to find LEETCODE_SESSION cookie in any browser. Please log in at %s first", LEETCODE_URL)
-	}
-	cfg.SessionToken = cookies[0].Value[32:]
+	var sessionCookie *kooky.Cookie
+	var csrfCookie *kooky.Cookie
 
-	cookies = kooky.ReadCookies(kooky.Valid, kooky.DomainHasSuffix(`leetcode.com`), kooky.Name("csrftoken"))
-	if len(cookies) == 0 {
-		return fmt.Errorf("failed to find csrftoken cookie in any browser. Please log in at %s first", LEETCODE_URL)
+	cookiesSeq := kooky.TraverseCookies(context.TODO(), kooky.Valid, kooky.DomainHasSuffix(".leetcode.com"), kooky.Name("LEETCODE_SESSION")).OnlyCookies()
+	for cookie := range cookiesSeq {
+		if cookie.Name == "LEETCODE_SESSION" {
+			sessionCookie = cookie
+			break
+		}
 	}
-	cfg.CsrfToken = cookies[0].Value[32:]
+	if sessionCookie == nil {
+		// return fmt.Errorf("Failed to find LEETCODE_SESSION cookie in any browser.\nPlease log in at %s first", LEETCODE_URL)
+		return fmt.Errorf("Failed to find LEETCODE_SESSION cookie in any browser.\nLog in at %s using a supported browser (e.g. Chrome, Chromium, Safari)", LEETCODE_URL)
+	}
+
+	cookiesSeq = kooky.TraverseCookies(context.TODO(), kooky.Valid, kooky.DomainHasSuffix(`leetcode.com`), kooky.Name("csrftoken")).OnlyCookies()
+	for cookie := range cookiesSeq {
+		if cookie.Name == "csrftoken" {
+			csrfCookie = cookie
+			break
+		}
+	}
+	if csrfCookie == nil {
+		return fmt.Errorf("Failed to find csrftoken cookie in any browser.\nLog in at %s using a supported browser (e.g. Chrome, Chromium, Safari)", LEETCODE_URL)
+	}
+
+	fmt.Println("Session cookie expires at", sessionCookie.Expires)
+	fmt.Println("Csrf cookie expires at", csrfCookie.Expires)
+
+	cfg.CsrfToken = csrfCookie.Value
+	cfg.SessionToken = sessionCookie.Value
+	cfg.SessionExpires = sessionCookie.Expires
 	return nil
-}
-
-func openbrowser(url string) {
-	var err error
-
-	switch runtime.GOOS {
-	case "linux":
-		err = exec.Command("xdg-open", url).Start()
-	case "windows":
-		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
-	case "darwin":
-		err = exec.Command("open", url).Start()
-	default:
-		err = fmt.Errorf("unsupported platform")
-	}
-	if err != nil {
-		fmt.Println("Fail to open browser")
-	}
 }
