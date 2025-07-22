@@ -232,6 +232,13 @@ func (app *App) PrintQuestionStatus() ([]models.Question, error) {
 	return []models.Question{}, nil
 }
 
+func (app *App) UpdateConfig(sessionToken, csrfToken string, expires time.Time) error {
+	app.Config.SessionToken = sessionToken
+	app.Config.CsrfToken = csrfToken
+	app.Config.SessionExpires = expires
+	return app.Config.Update()
+}
+
 func parseFunctionName(snippet string) (string, error) {
 	fset := token.NewFileSet()
 	node, err := parser.ParseFile(fset, "src.go", snippet, 0)

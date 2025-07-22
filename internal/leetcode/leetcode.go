@@ -2,6 +2,7 @@ package leetcode
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,11 +10,15 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"strings"
+	"time"
 
+	"github.com/browserutils/kooky"
+	_ "github.com/browserutils/kooky/browser/all"
 	"github.com/phantompunk/kata/internal/models"
 )
 
 const BASE_URL = "https://leetcode.com/graphql"
+const LOGIN_URL = "https://leetcode.com/accounts/login/"
 const CHECK_URL = "https://leetcode.com/submissions/detail/%s/check/"
 
 var (
@@ -59,6 +64,40 @@ func New(opts ...Option) *Service {
 }
 
 var queryUserStreak string = `query getStreakCounter { streakCounter { currentDayCompleted } }`
+
+// :TODO: Cookie fetching logic to leetcode package
+func RefreshCookies() (string, string, time.Time, error) {
+	var sessionCookie *kooky.Cookie
+	var csrfCookie *kooky.Cookie
+
+	cookiesSeq := kooky.TraverseCookies(context.TODO(), kooky.Valid, kooky.DomainHasSuffix(".leetcode.com"), kooky.Name("LEETCODE_SESSION")).OnlyCookies()
+	for cookie := range cookiesSeq {
+		if cookie.Name == "LEETCODE_SESSION" {
+			sessionCookie = cookie
+			break
+		}
+	}
+	if sessionCookie == nil {
+		// return fmt.Errorf("Failed to find LEETCODE_SESSION cookie in any browser.\nPlease log in at %s first", LEETCODE_URL)
+		return "", "", time.Time{}, fmt.Errorf("Failed to find LEETCODE_SESSION cookie in any browser.\nLog in at %s using a supported browser (e.g. Chrome, Chromium, Safari)", LOGIN_URL)
+	}
+
+	cookiesSeq = kooky.TraverseCookies(context.TODO(), kooky.Valid, kooky.DomainHasSuffix(`leetcode.com`), kooky.Name("csrftoken")).OnlyCookies()
+	for cookie := range cookiesSeq {
+		if cookie.Name == "csrftoken" {
+			csrfCookie = cookie
+			break
+		}
+	}
+	if csrfCookie == nil {
+		return "", "", time.Time{}, fmt.Errorf("Failed to find csrftoken cookie in any browser.\nLog in at %s using a supported browser (e.g. Chrome, Chromium, Safari)", LOGIN_URL)
+	}
+
+	fmt.Println("Session cookie expires at", sessionCookie.Expires)
+	fmt.Println("Csrf cookie expires at", csrfCookie.Expires)
+
+	return sessionCookie.Value, csrfCookie.Value, sessionCookie.Expires, nil
+}
 
 // More Auth -> are we authenticated?
 func (lc *Service) Ping() (bool, error) {
