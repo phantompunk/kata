@@ -9,11 +9,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var kata app.App
+var kata *app.App
+var kataErr error
 
 var rootCmd = &cobra.Command{
 	Use:   "kata",
 	Short: "CLI for practicing Leetcode",
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		kata, kataErr = app.New()
+		return kataErr
+	},
 }
 
 var downloadCmd = &cobra.Command{

@@ -6,19 +6,14 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/lipgloss/table"
-	"github.com/phantompunk/kata/internal/app"
 	"github.com/phantompunk/kata/internal/models"
 	"github.com/spf13/cobra"
 )
 
 func ListFunc(cmd *cobra.Command, args []string) error {
-	kata, err := app.New()
-	if err != nil {
-		return err
-	}
 
 	// Display as Table or Markdown Table<D-y>
-	questions, err := kata.Questions.GetAllWithStatus(kata.Config.Tracks)
+	questions, _ := kata.Questions.GetAllWithStatus(kata.Config.Tracks)
 	// statuses := kata.Questions.GetStatuses
 
 	// fmt.Println(kata.PrintStatuses())

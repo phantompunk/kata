@@ -6,16 +6,10 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/phantompunk/kata/internal/app"
 	"github.com/spf13/cobra"
 )
 
 func DownloadFunc(cmd *cobra.Command, args []string) error {
-	kata, err := app.New()
-	if err != nil {
-		return err
-	}
-
 	name, err := cmd.Flags().GetString("problem")
 	if err != nil || name == "" {
 		cmd.Usage()
