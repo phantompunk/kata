@@ -3,6 +3,7 @@ package app
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -12,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/browserutils/kooky"
 	"github.com/phantompunk/kata/internal/config"
 	"github.com/phantompunk/kata/internal/database"
 	"github.com/phantompunk/kata/internal/leetcode"
@@ -19,6 +21,8 @@ import (
 	"github.com/phantompunk/kata/internal/renderer"
 	"github.com/spf13/afero"
 )
+
+const LOGIN_URL = "https://leetcode.com/accounts/login/"
 
 type App struct {
 	Config    *config.Config
@@ -50,11 +54,8 @@ func New() (*App, error) {
 	}, nil
 }
 
-func (app *App) CheckSession() (bool, error) {
-	if app.Config.SessionExpires.Before(time.Now()) {
-		return false, fmt.Errorf("Session expired.")
-	}
-
+// CheckSession checks if the session is valid by pinging the leetcode service
+func (app *App) CheckSession() bool {
 	app.lcs.SetCookies(app.Config.SessionToken, app.Config.CsrfToken)
 	return app.lcs.Ping()
 }
@@ -232,13 +233,6 @@ func (app *App) PrintQuestionStatus() ([]models.Question, error) {
 	return []models.Question{}, nil
 }
 
-func (app *App) UpdateConfig(sessionToken, csrfToken string, expires time.Time) error {
-	app.Config.SessionToken = sessionToken
-	app.Config.CsrfToken = csrfToken
-	app.Config.SessionExpires = expires
-	return app.Config.Update()
-}
-
 func parseFunctionName(snippet string) (string, error) {
 	fset := token.NewFileSet()
 	node, err := parser.ParseFile(fset, "src.go", snippet, 0)
@@ -259,4 +253,34 @@ func parseFunctionName(snippet string) (string, error) {
 	}
 
 	return functionNames[0], nil
+}
+
+// RefreshCookies fetches the session and csrf cookies from the browser and updates the app's config.
+func (app *App) RefreshCookies() error {
+	var sessionCookie *kooky.Cookie
+	var csrfCookie *kooky.Cookie
+
+	cookiesSeq := kooky.TraverseCookies(context.TODO(), kooky.Valid, kooky.DomainHasSuffix("..leetcode.com"), kooky.Name("LEETCODE_SESSION")).OnlyCookies()
+	for cookie := range cookiesSeq {
+		if cookie.Name == "LEETCODE_SESSION" {
+			sessionCookie = cookie
+			break
+		}
+	}
+	if sessionCookie == nil || sessionCookie.Expires.Before(time.Now()) {
+		return fmt.Errorf("browser cookies %s missing or expired", "LEETCODE_SESSION")
+	}
+
+	cookiesSeq = kooky.TraverseCookies(context.TODO(), kooky.Valid, kooky.DomainHasSuffix(`leetcode.com`), kooky.Name("csrftoken")).OnlyCookies()
+	for cookie := range cookiesSeq {
+		if cookie.Name == "csrftoken" {
+			csrfCookie = cookie
+			break
+		}
+	}
+	if csrfCookie == nil {
+		return fmt.Errorf("browser cookie %s missing or expired", "csrftoken")
+	}
+
+	return app.Config.UpdateSession(sessionCookie.Value, csrfCookie.Value, sessionCookie.Expires)
 }

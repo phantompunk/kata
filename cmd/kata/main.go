@@ -44,7 +44,7 @@ var listCmd = &cobra.Command{
 var loginCmd = &cobra.Command{
 	Use:           "login",
 	Short:         "Accept session and token, attempt to get user info",
-	RunE:          LoginFunc,
+	Run:           LoginFunc,
 	SilenceErrors: true,
 	SilenceUsage:  true,
 }

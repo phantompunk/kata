@@ -148,3 +148,17 @@ func (c *Config) Update() error {
 
 	return nil
 }
+
+func (c *Config) UpdateSession(sessionToken, csrfToken string, expires time.Time) error {
+	c.SessionToken = sessionToken
+	c.CsrfToken = csrfToken
+	c.SessionExpires = expires
+	return c.Update()
+}
+
+func (c *Config) IsSessionValid() bool {
+	return c.CsrfToken != "" &&
+		c.SessionToken != "" &&
+		!c.SessionExpires.IsZero() &&
+		time.Now().Before(c.SessionExpires)
+}

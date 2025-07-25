@@ -100,23 +100,24 @@ func RefreshCookies() (string, string, time.Time, error) {
 }
 
 // More Auth -> are we authenticated?
-func (lc *Service) Ping() (bool, error) {
+func (lc *Service) Ping() bool {
 	data, err := json.Marshal(models.Request{Query: queryUserStreak})
 	if err != nil {
-		return false, err
+		return false
 	}
 
 	req, err := http.NewRequest("POST", lc.baseUrl, bytes.NewBuffer(data))
 	if err != nil {
-		return false, err
+		return false
 	}
+
 	req.Header.Set("referer", "https://leetcode.com/problemset/")
 	req.Header.Set("origin", "https://leetcode.com")
 	req.Header.Set("content-type", "application/json")
 
 	jar, err := cookiejar.New(nil)
 	if err != nil {
-		return false, fmt.Errorf("Error creating cookie jar: %v", err)
+		return false
 	}
 	cookies := []*http.Cookie{
 		{Name: "csrftoken", Value: lc.token},
@@ -127,7 +128,7 @@ func (lc *Service) Ping() (bool, error) {
 
 	res, err := lc.client.Do(req)
 	if err != nil {
-		return false, err
+		return false
 	}
 	defer res.Body.Close()
 
@@ -136,13 +137,13 @@ func (lc *Service) Ping() (bool, error) {
 	var response models.Response
 	err = json.Unmarshal(body, &response)
 	if err != nil {
-		return false, fmt.Errorf("Error unmarshalling response: %w", err)
+		return false
 	}
 
 	if response.Data.StreakCounter == nil {
-		return false, nil
+		return false
 	}
-	return true, nil
+	return true
 }
 
 var queryQuestionDetails string = `query questionEditorData($titleSlug: String!) {
