@@ -260,7 +260,7 @@ func (app *App) RefreshCookies() error {
 	var sessionCookie *kooky.Cookie
 	var csrfCookie *kooky.Cookie
 
-	cookiesSeq := kooky.TraverseCookies(context.TODO(), kooky.Valid, kooky.DomainHasSuffix("..leetcode.com"), kooky.Name("LEETCODE_SESSION")).OnlyCookies()
+	cookiesSeq := kooky.TraverseCookies(context.TODO(), kooky.Valid, kooky.DomainHasSuffix(".leetcode.com"), kooky.Name("LEETCODE_SESSION")).OnlyCookies()
 	for cookie := range cookiesSeq {
 		if cookie.Name == "LEETCODE_SESSION" {
 			sessionCookie = cookie
@@ -268,7 +268,7 @@ func (app *App) RefreshCookies() error {
 		}
 	}
 	if sessionCookie == nil || sessionCookie.Expires.Before(time.Now()) {
-		return fmt.Errorf("browser cookies %s missing or expired", "LEETCODE_SESSION")
+		return fmt.Errorf("LEETCODE_SESSION missing or expired")
 	}
 
 	cookiesSeq = kooky.TraverseCookies(context.TODO(), kooky.Valid, kooky.DomainHasSuffix(`leetcode.com`), kooky.Name("csrftoken")).OnlyCookies()
@@ -279,8 +279,9 @@ func (app *App) RefreshCookies() error {
 		}
 	}
 	if csrfCookie == nil {
-		return fmt.Errorf("browser cookie %s missing or expired", "csrftoken")
+		return fmt.Errorf("csrftoken missing or expired")
 	}
 
+	app.lcs.SetCookies(sessionCookie.Value, csrfCookie.Value)
 	return app.Config.UpdateSession(sessionCookie.Value, csrfCookie.Value, sessionCookie.Expires)
 }

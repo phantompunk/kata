@@ -44,7 +44,7 @@ var listCmd = &cobra.Command{
 var loginCmd = &cobra.Command{
 	Use:           "login",
 	Short:         "Accept session and token, attempt to get user info",
-	Run:           LoginFunc,
+	RunE:          LoginFunc,
 	SilenceErrors: true,
 	SilenceUsage:  true,
 }
@@ -85,6 +85,8 @@ func init() {
 
 	submitCmd.Flags().StringP("problem", "p", "", "LeetCode problem name")
 	submitCmd.Flags().StringP("language", "l", "", "Programming language to use")
+
+	loginCmd.Flags().BoolP("force", "f", false, "Always refresh browser cookies")
 
 	rootCmd.AddCommand(downloadCmd)
 	rootCmd.AddCommand(quizCmd)
