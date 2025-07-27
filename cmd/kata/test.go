@@ -24,9 +24,7 @@ func TestFunc(cmd *cobra.Command, args []string) error {
 	if status == "" {
 		return fmt.Errorf("failed to submit test %v", err.Error())
 	}
-	// kata.Questions.TestSolution()
-	// fmt.Printf("Testing problem %s for %s\n", name, language)
-	fmt.Println(status)
 
+	fmt.Println(status)
 	return nil
 }

@@ -30,29 +30,12 @@ type Data struct {
 	StreakCounter *StreakCounter `json:"streakCounter"`
 }
 
-func GetLangName(language string) string {
-	var commonName string
-	switch language {
-	case "go":
-		commonName = "golang"
-	case "python":
-		commonName = "python3"
-	case "c++":
-		commonName = "cpp"
-	case "c#":
-		commonName = "csharp"
-	default:
-		commonName = language
-	}
-	return commonName
-}
-
 func (r *Response) GetQuestion(language string) (*Question, error) {
 	if r != nil && r.Data != nil && r.Data.Question != nil {
 		var selected CodeSnippet
 
 		for _, snippet := range r.Data.Question.CodeSnippets {
-			if snippet.LangSlug == GetLangName(language) {
+			if snippet.LangSlug == LangName[language] {
 				selected = snippet
 				r.Data.Question.CodeSnippets = []CodeSnippet{selected}
 				return r.Data.Question, nil

@@ -21,9 +21,6 @@ var gQLQueryStreak string = `query getStreakCounter {
   }
 }`
 
-var queryGetBySlug string = `SELECT
-	questionId, title, titleSlug, content, difficulty, functionName, codeSnippets 
-	FROM questions
-	WHERE titleSlug = ?;`
 
-var queryExists = `SELECT EXISTS(SELECT 1 FROM questions WHERE titleSlug=?);`
+
+

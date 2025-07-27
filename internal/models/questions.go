@@ -12,8 +12,6 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-const API_URL = "https://leetcode.com/graphql"
-
 type QuestionModel struct {
 	DB      *sql.DB
 	Client  *http.Client
@@ -85,9 +83,8 @@ func (m *QuestionModel) Insert(q *Question) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	stmt := `INSERT OR REPLACE INTO questions (questionId, title, titleSlug, difficulty, functionName, content, codeSnippets) VALUES (?, ?, ?, ?, ?, ?, ?);`
 
-	result, err := m.DB.Exec(stmt, q.ID, q.Title, q.TitleSlug, q.Difficulty, q.FunctionName, q.Content, snippetJSON)
+	result, err := m.DB.Exec(queryInsert, q.ID, q.Title, q.TitleSlug, q.Difficulty, q.FunctionName, q.Content, snippetJSON)
 	if err != nil {
 		return 0, err
 	}
@@ -102,7 +99,7 @@ func (m *QuestionModel) Insert(q *Question) (int, error) {
 func (m *QuestionModel) GetRandom() (Question, error) {
 	var q Question
 	var codeSnippetsJSON []byte
-	err := m.DB.QueryRow("SELECT questionId, title, titleSlug, difficulty, content, codeSnippets FROM questions ORDER BY RANDOM() LIMIT 1;").Scan(&q.ID, &q.Title, &q.TitleSlug, &q.Difficulty, &q.Content, &codeSnippetsJSON)
+	err := m.DB.QueryRow(queryGetRandom).Scan(&q.ID, &q.Title, &q.TitleSlug, &q.Difficulty, &q.Content, &codeSnippetsJSON)
 	if err != nil {
 		return q, err
 	}
@@ -114,15 +111,7 @@ func (m *QuestionModel) GetRandom() (Question, error) {
 }
 
 func (m *QuestionModel) GetAllWithStatus(languages []string) ([]Question, error) {
-	stmt := `SELECT q.questionId, q.title, q.difficulty`
-	for _, lang := range languages {
-		stmt += fmt.Sprintf(", COALESCE(%s.solved, 0) AS %sSolved", lang, lang)
-	}
-	stmt += ` FROM questions q`
-	for _, lang := range languages {
-		stmt += fmt.Sprintf(" LEFT JOIN status %s ON q.questionId = %s.questionId AND %s.langSlug = '%s'", lang, lang, lang, lang)
-	}
-
+	stmt := buildSelectClause(languages) + buildFromClause(languages)
 	rows, err := m.DB.Query(stmt)
 	if err != nil {
 		return nil, err
@@ -157,19 +146,14 @@ func (m *QuestionModel) GetAllWithStatus(languages []string) ([]Question, error)
 	return questions, nil
 }
 
-var packageLangName = map[string]string{
-	"golang":  "go",
-	"python3": "python",
-}
-
 func (q *Question) ToProblem(workspace, language string) *Problem {
 	var problem Problem
 	problem.QuestionID = q.ID
 	problem.Content = q.Content
 	problem.FunctionName = q.FunctionName
-	problem.TitleSlug = formatProblemName(q.TitleSlug)
+	problem.TitleSlug = formatTitleSlug(q.TitleSlug)
 	for _, snippet := range q.CodeSnippets {
-		if snippet.LangSlug == GetLangName(language) {
+		if snippet.LangSlug == LangName[language] {
 			problem.Code = snippet.Code
 			problem.LangSlug = snippet.LangSlug
 		}
@@ -189,23 +173,14 @@ func (p *Problem) Extension() string {
 }
 
 func (p *Problem) setPaths(workspace string) {
-	title := formatProblemName(p.TitleSlug)
-	p.DirPath = filepath.Join(workspace, packageLangName[p.LangSlug], title)
-	p.SolutionPath = filepath.Join(workspace, packageLangName[p.LangSlug], title, fmt.Sprintf("%s%s", title, p.Extension()))
-	p.TestPath = filepath.Join(workspace, packageLangName[p.LangSlug], title, fmt.Sprintf("%s_test%s", title, p.Extension()))
-	p.ReadmePath = filepath.Join(workspace, packageLangName[p.LangSlug], title, "readme.md")
+	title := formatTitleSlug(p.TitleSlug)
+	p.DirPath = filepath.Join(workspace, p.LangSlug, title)
+	p.SolutionPath = filepath.Join(workspace, p.LangSlug, title, fmt.Sprintf("%s%s", title, p.Extension()))
+	p.TestPath = filepath.Join(workspace, p.LangSlug, title, fmt.Sprintf("%s_test%s", title, p.Extension()))
+	p.ReadmePath = filepath.Join(workspace, p.LangSlug, title, "readme.md")
 }
 
-func (q *Question) usesLang(lang string) string {
-	for _, snippet := range q.CodeSnippets {
-		if snippet.LangSlug == GetLangName(lang) {
-			return "y"
-		}
-	}
-	return ""
-}
-
-var numberToString = map[string]string{"1": "one", "2": "two", "3": "three", "4": "four"}
+var numberToString = map[string]string{"1": "one", "2": "two", "3": "three", "4": "four", "5": "five", "6": "six", "7": "seven", "8": "eight", "9": "nine", "0": "zero"}
 
 func convertNumberToWritten(name string) string {
 	letters := strings.Split(name, "")
@@ -218,7 +193,7 @@ func convertNumberToWritten(name string) string {
 	return strings.Join(letters, "")
 }
 
-func formatProblemName(name string) string {
+func formatTitleSlug(name string) string {
 	if hasNumber(name) {
 		return convertNumberToWritten(name)
 	}

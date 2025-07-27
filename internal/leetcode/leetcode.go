@@ -212,7 +212,7 @@ func (lc *Service) Test(question *models.Question, language, snippet string) (st
 	contents := strings.ReplaceAll(snippet, "\t", "    ") // 4 spaces
 
 	variables := map[string]any{
-		"lang":        models.GetLangName(language),
+		"lang":        models.LangName[language],
 		"question_id": question.ID,
 		"typed_code":  contents,
 		"data_input":  "[2,7,11,15]\n9\n[3,2,4]\n6\n[3,3]\n6",
@@ -222,8 +222,6 @@ func (lc *Service) Test(question *models.Question, language, snippet string) (st
 	if err != nil {
 		return "", err
 	}
-
-	// fmt.Println("Sending", string(data))
 
 	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(data))
 	if err != nil {
@@ -254,7 +252,6 @@ func (lc *Service) Test(question *models.Question, language, snippet string) (st
 	res, err := lc.client.Do(req)
 	if err != nil {
 		return "", err
-		// return nil, err
 	}
 	defer res.Body.Close()
 
