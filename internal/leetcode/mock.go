@@ -37,6 +37,7 @@ func newTestService() *Service {
 	lc, _ := New(WithHTTPClient(mockClient), WithCookies(session, csrftoken))
 	return lc
 }
+
 // func newMockClient(response string) *http.Client {
 // 	return &http.Client{
 // 		Transport: &mockRoundTripper{
