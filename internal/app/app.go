@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/browserutils/kooky"
+	_ "github.com/browserutils/kooky/browser/all"
 	"github.com/phantompunk/kata/internal/config"
 	"github.com/phantompunk/kata/internal/database"
 	"github.com/phantompunk/kata/internal/leetcode"
@@ -46,19 +47,37 @@ func New() (*App, error) {
 		return nil, err
 	}
 
+	lcs, err := leetcode.New(leetcode.WithCookies(cfg.SessionToken, cfg.CsrfToken))
+	if err != nil {
+		fmt.Println("Failed leetcode service")
+		return nil, fmt.Errorf("failed to create leetcode service: %w", err)
+	}
+
 	return &App{
 		Config:    &cfg,
 		Questions: models.QuestionModel{DB: db, Client: http.DefaultClient},
-		lcs:       leetcode.New(leetcode.WithCookies(cfg.SessionToken, cfg.CsrfToken)),
+		lcs:       lcs,
 		Renderer:  renderer.New(),
 		fs:        afero.NewOsFs(),
 	}, nil
 }
 
 // CheckSession checks if the session is valid by pinging the leetcode service
-func (app *App) CheckSession() bool {
+func (app *App) CheckSession() (bool, error) {
 	app.lcs.SetCookies(app.Config.SessionToken, app.Config.CsrfToken)
-	return app.lcs.Ping()
+	isValid, err := app.lcs.Ping()
+	if err != nil {
+		return false, fmt.Errorf("failed to ping leetcode service: %w", err)
+	}
+	return isValid, nil
+}
+
+func (app *App) ClearCookies() error {
+	app.Config.SessionToken = ""
+	app.Config.CsrfToken = ""
+	app.Config.SessionExpires = time.Time{}
+	fmt.Println("Cleared cookies from config")
+	return app.Config.Update()
 }
 
 func (app *App) FetchQuestion(name, language string) (*models.Question, error) {
@@ -255,9 +274,10 @@ func (app *App) RefreshCookies() error {
 	var sessionCookie *kooky.Cookie
 	var csrfCookie *kooky.Cookie
 
-	cookiesSeq := kooky.TraverseCookies(context.TODO(), kooky.Valid, kooky.DomainHasSuffix(".leetcode.com"), kooky.Name("LEETCODE_SESSION")).OnlyCookies()
+	cookiesSeq := kooky.TraverseCookies(context.TODO(), kooky.Valid, kooky.DomainHasSuffix(`leetcode.com`)).OnlyCookies()
 	for cookie := range cookiesSeq {
 		if cookie.Name == "LEETCODE_SESSION" {
+			fmt.Println("Found LEETCODE_SESSION cookie")
 			sessionCookie = cookie
 			break
 		}

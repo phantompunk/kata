@@ -23,8 +23,13 @@ func LoginFunc(cmd *cobra.Command, args []string) error {
 	if err := kata.RefreshCookies(); err != nil {
 		return fmt.Errorf("Could not authenticate using browser cookies: %v\nPlease login manually at %s", err, LEETCODE_URL)
 	}
+	valid, err := kata.CheckSession()
+	if err != nil {
+		return fmt.Errorf("Failed to check session: %v\nPlease login manually at %s", err, LEETCODE_URL)
+	}
 
-	if !kata.CheckSession() {
+	if !valid {
+		kata.ClearCookies()
 		return fmt.Errorf("Session cookies are invalid.\nPlease login manually at %s", LEETCODE_URL)
 	}
 
