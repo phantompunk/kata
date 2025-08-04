@@ -129,39 +129,6 @@ func (lc *Service) doRequest(method, url string, body []byte, customHeaders map[
 	return responseBody, nil
 }
 
-// // RefreshCookies fetches the session and csrf cookies from the browser.
-// func RefreshCookies() (string, string, time.Time, error) {
-// 	var sessionCookie *kooky.Cookie
-// 	var csrfCookie *kooky.Cookie
-//
-// 	cookiesSeq := kooky.TraverseCookies(context.TODO(), kooky.Valid, kooky.DomainHasSuffix(".leetcode.com"), kooky.Name("LEETCODE_SESSION")).OnlyCookies()
-// 	for cookie := range cookiesSeq {
-// 		if cookie.Name == "LEETCODE_SESSION" {
-// 			sessionCookie = cookie
-// 			break
-// 		}
-// 	}
-// 	if sessionCookie == nil {
-// 		return "", "", time.Time{}, fmt.Errorf("Failed to find LEETCODE_SESSION cookie in any browser.\nLog in at %s using a supported browser (e.g. Chrome, Chromium, Safari)", loginURL)
-// 	}
-//
-// 	cookiesSeq = kooky.TraverseCookies(context.TODO(), kooky.Valid, kooky.DomainHasSuffix(`leetcode.com`), kooky.Name("csrftoken")).OnlyCookies()
-// 	for cookie := range cookiesSeq {
-// 		if cookie.Name == "csrftoken" {
-// 			csrfCookie = cookie
-// 			break
-// 		}
-// 	}
-// 	if csrfCookie == nil {
-// 		return "", "", time.Time{}, fmt.Errorf("Failed to find csrftoken cookie in any browser.\nLog in at %s using a supported browser (e.g. Chrome, Chromium, Safari)", loginURL)
-// 	}
-//
-// 	fmt.Println("Session cookie expires at", sessionCookie.Expires)
-// 	fmt.Println("Csrf cookie expires at", csrfCookie.Expires)
-//
-// 	return sessionCookie.Value, csrfCookie.Value, sessionCookie.Expires, nil
-// }
-
 // More Auth -> are we authenticated?
 func (lc *Service) Ping() (bool, error) {
 	data, err := json.Marshal(models.Request{Query: queryUserStreak})
