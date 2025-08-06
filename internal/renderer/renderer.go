@@ -2,7 +2,6 @@ package renderer
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"strings"
 	"text/template"
@@ -14,27 +13,22 @@ import (
 )
 
 type Renderer struct {
+	templ *template.Template
 	Error error
 }
 
-func New() Renderer {
-	return Renderer{}
-}
-
-func (r *Renderer) Render(w io.Writer, problem *models.Problem, templateType string) error {
-	if r.Error != nil {
-		return r.Error
-	}
-
+func New() (*Renderer, error) {
 	funcMap := template.FuncMap{
 		"pascalCase": pascalCase,
 	}
-
-	templ, err := template.New(templateType).Funcs(funcMap).ParseFS(templates.Files, "*.gohtml")
+	templ, err := template.New("").Funcs(funcMap).ParseFS(templates.Files, "*.gohtml")
 	if err != nil {
-		return err
+		return nil, err
 	}
+	return &Renderer{templ: templ}, nil
+}
 
+func (r *Renderer) Render(w io.Writer, problem *models.Problem, templateType string) error {
 	var langBlock string
 	if templateType == "solution" || templateType == "test" {
 		sol, test := langTemplates(problem.LangSlug)
@@ -46,12 +40,17 @@ func (r *Renderer) Render(w io.Writer, problem *models.Problem, templateType str
 	}
 
 	if langBlock != "" {
+		type TemplateData struct {
+			Problem *models.Problem
+			Code    string
+		}
 		var buf bytes.Buffer
-		err = templ.ExecuteTemplate(&buf, langBlock, problem)
+		err := r.templ.ExecuteTemplate(&buf, langBlock, problem)
 		if err != nil {
 			return err
 		}
-		problem.Code = buf.String()
+		code := buf.String()
+		return r.templ.ExecuteTemplate(w, templateType, &TemplateData{problem, code})
 	}
 
 	if templateType == "readme" {
@@ -63,28 +62,18 @@ func (r *Renderer) Render(w io.Writer, problem *models.Problem, templateType str
 		problem.Content = markdown
 	}
 
-	if err = templ.ExecuteTemplate(w, templateType, problem); err != nil {
-		fmt.Println("execTempl err")
-		return err
-	}
-	return nil
+	return r.templ.ExecuteTemplate(w, templateType, problem)
 }
 
 func langTemplates(lang string) (string, string) {
-	var solBlock string
-	var testBlock string
 	switch lang {
 	case "go", "golang":
-		solBlock = "golang"
-		testBlock = "gotest"
+		return "golang", "gotest"
 	case "python", "python3":
-		solBlock = "python"
-		testBlock = "pytest"
+		return "python", "pytest"
 	default:
-		solBlock = lang
-		testBlock = lang
+		return lang, lang
 	}
-	return solBlock, testBlock
 }
 
 func pascalCase(s string) string {

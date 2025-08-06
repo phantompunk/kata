@@ -1,8 +1,20 @@
 {{define "solution"}}{{.Code}}{{end}}
 
-{{define "python"}}{{.Code}}{{end}}
-{{define "golang"}}package kata
+{{define "python"}}// ::KATA START::
 {{.Code}}
+// ::KATA END::
 {{end}}
-{{define "javascript"}}console.log("JS snippet: {{.Code}}");{{end}}
+
+{{define "golang"}}package kata
+
+// ::KATA START::
+{{.Code}}
+// ::KATA END::
+{{end}}
+
+{{define "javascript"}}
+// ::KATA START::
+{{.Code}};
+// ::KATA END::
+{{end}}
 

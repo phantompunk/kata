@@ -31,3 +31,11 @@ func NilError(t *testing.T, actual error) {
 		t.Errorf("got %v; expected: nil", actual)
 	}
 }
+
+func NotNil(t *testing.T, actual any) {
+	t.Helper()
+
+	if actual == nil {
+		t.Errorf("got nil; expected: not nil")
+	}
+}
