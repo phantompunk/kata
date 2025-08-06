@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -97,7 +96,7 @@ func (app *App) FetchQuestion(name, language string) (*models.Question, error) {
 		return nil, err
 	}
 
-	functionName := app.GetFunctionName(question.ToProblem(app.Config.Workspace, "golang"))
+	functionName := app.GetFunctionName(question.ToProblem(app.Config.Workspace, language))
 	question.FunctionName = functionName
 
 	// save question to database
@@ -139,11 +138,18 @@ func (app *App) StubProblem(problem *models.Problem) error {
 	return nil
 }
 
+const (
+	// Maximum number of attempts to check test status
+	MaxTestAttempts = 10
+	// Interval between test status checks
+	TestPollInterval = 500 * time.Millisecond
+)
+
 // TestSolution tests the solution for a given problem name and language.
 func (app *App) TestSolution(name, language string) (string, error) {
 	exists, err := app.Questions.Exists(name)
 	if err != nil {
-		return "", fmt.Errorf("checking existence: %w", err)
+		return "", fmt.Errorf("failed to check question existence: %w", err)
 	}
 
 	if !exists {
@@ -152,45 +158,52 @@ func (app *App) TestSolution(name, language string) (string, error) {
 
 	question, err := app.Questions.Get(name)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get question details: %w", err)
 	}
 
 	filePath := question.ToProblem(app.Config.Workspace, language).SolutionPath
-
 	snippet := app.extractSnippet(filePath)
+
 	testStatusUrl, err := app.lcs.Test(question, language, snippet)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to submit solution for testing: %w", err)
 	}
 
 	if testStatusUrl == "" {
-		return "", errors.New("empty testStatusUrl received from server")
+		return "", fmt.Errorf("empty testStatusUrl received from server")
 	}
 
-	res := &models.TestResponse{}
-	for range 10 {
-		res, err = app.lcs.CheckTestStatus(testStatusUrl)
-		if err != nil {
-			return "", fmt.Errorf("checking test status: %w", err)
-		}
-		if res.State == "STARTED" {
-			fmt.Print("started")
-		}
-		if res.State == "PENDING" {
-			fmt.Print(".")
-		}
-		if res.State == "SUCCESS" {
-			// fmt.Print("done")
-			break
-		}
-		time.Sleep(500 * time.Millisecond)
+	res, err := app.pollTestStatus(testStatusUrl)
+	if err != nil {
+		return "", fmt.Errorf("failed to poll test status: %w", err)
 	}
-	fmt.Print("\n")
 
 	if res.Correct {
 		return "Passed", nil
 	}
-	return fmt.Sprintf("Failed: %s", res.TestCase), nil
+
+	return fmt.Sprintf("Failed: %s. Details: %s", res.Status_Msg, res.TestCase), nil
+}
+
+func (app *App) pollTestStatus(testStatusUrl string) (*models.TestResponse, error) {
+	var res *models.TestResponse
+	var err error
+
+	for i := 0; i < MaxTestAttempts; i++ {
+		res, err = app.lcs.CheckTestStatus(testStatusUrl)
+		if err != nil {
+			return nil, fmt.Errorf("checking test status attempt %d failed: %w", i+1, err)
+		}
+
+		if res.State == "SUCCESS" || res.State == "FAILED" {
+			return res, nil
+		}
+
+		fmt.Print(".")
+		time.Sleep(TestPollInterval)
+	}
+
+	return nil, fmt.Errorf("test status check timed out after %d attempts", MaxTestAttempts)
 }
 
 func (app *App) extractSnippet(path string) string {
@@ -277,7 +290,6 @@ func (app *App) RefreshCookies() error {
 	cookiesSeq := kooky.TraverseCookies(context.TODO(), kooky.Valid, kooky.DomainHasSuffix(`leetcode.com`)).OnlyCookies()
 	for cookie := range cookiesSeq {
 		if cookie.Name == "LEETCODE_SESSION" {
-			fmt.Println("Found LEETCODE_SESSION cookie")
 			sessionCookie = cookie
 			break
 		}
