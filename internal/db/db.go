@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"embed"
 	"errors"
 	"fmt"
 	"os"
@@ -11,8 +12,12 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/sqlite3"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	_ "github.com/mattn/go-sqlite3"
 )
+
+//go:embed migrations/*.sql
+var Migrations embed.FS
 
 func GetDbPath() string {
 	return filepath.Join(xdg.DataHome, "kata", "kata.db")
@@ -37,12 +42,17 @@ func EnsureDB() (*sql.DB, error) {
 }
 
 func runMigrations(db *sql.DB) error {
+	d, err := iofs.New(Migrations, "migrations")
+	if err != nil {
+		return fmt.Errorf("failed to create migrations source: %w", err)
+	}
+
 	driver, err := sqlite3.WithInstance(db, &sqlite3.Config{})
 	if err != nil {
 		return fmt.Errorf("failed to create SQLite driver instance: %w", err)
 	}
 
-	m, err := migrate.NewWithDatabaseInstance("file://./migrations", "sqlite3", driver)
+	m, err := migrate.NewWithInstance("iofs", d, "sqlite3", driver)
 	if err != nil {
 		return fmt.Errorf("failed to create migration instance: %w", err)
 	}

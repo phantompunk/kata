@@ -1,0 +1,2 @@
+ALTER TABLE questions
+ADD COLUMN testcases TEXT NOT NULL DEFAULT '[]';

@@ -1,2 +1,1 @@
-ALTER TABLE questions
-ADD COLUMN testCases TEXT NOT NULL DEFAULT '[]';
+ALTER TABLE questions DROP COLUMN testcases;
