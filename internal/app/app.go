@@ -16,7 +16,7 @@ import (
 	"github.com/browserutils/kooky"
 	_ "github.com/browserutils/kooky/browser/all"
 	"github.com/phantompunk/kata/internal/config"
-	"github.com/phantompunk/kata/internal/database"
+	"github.com/phantompunk/kata/internal/db"
 	"github.com/phantompunk/kata/internal/leetcode"
 	"github.com/phantompunk/kata/internal/models"
 	"github.com/phantompunk/kata/internal/renderer"
@@ -29,7 +29,7 @@ type App struct {
 	Config    *config.Config
 	Questions models.QuestionModel
 	lcs       *leetcode.Service
-	Renderer  renderer.Renderer
+	Renderer  *renderer.Renderer
 	fs        afero.Fs
 }
 
@@ -40,7 +40,7 @@ func New() (*App, error) {
 		return nil, err
 	}
 
-	db, err := database.EnsureDB(database.GetDbPath())
+	db, err := db.EnsureDB()
 	if err != nil {
 		fmt.Println("Failed db")
 		return nil, err
@@ -48,15 +48,19 @@ func New() (*App, error) {
 
 	lcs, err := leetcode.New(leetcode.WithCookies(cfg.SessionToken, cfg.CsrfToken))
 	if err != nil {
-		fmt.Println("Failed leetcode service")
 		return nil, fmt.Errorf("failed to create leetcode service: %w", err)
+	}
+
+	renderer, err := renderer.New()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create renderer: %w", err)
 	}
 
 	return &App{
 		Config:    &cfg,
 		Questions: models.QuestionModel{DB: db, Client: http.DefaultClient},
 		lcs:       lcs,
-		Renderer:  renderer.New(),
+		Renderer:  renderer,
 		fs:        afero.NewOsFs(),
 	}, nil
 }
@@ -182,14 +186,14 @@ func (app *App) TestSolution(name, language string) (string, error) {
 		return "Passed", nil
 	}
 
-	return fmt.Sprintf("Failed: %s. Details: %s", res.Status_Msg, res.TestCase), nil
+	return fmt.Sprintf("Failed: %s. Details: %s", res.StatusMsg, res.TestCase), nil
 }
 
 func (app *App) pollTestStatus(testStatusUrl string) (*models.TestResponse, error) {
 	var res *models.TestResponse
 	var err error
 
-	for i := 0; i < MaxTestAttempts; i++ {
+	for i := range MaxTestAttempts {
 		res, err = app.lcs.CheckTestStatus(testStatusUrl)
 		if err != nil {
 			return nil, fmt.Errorf("checking test status attempt %d failed: %w", i+1, err)
