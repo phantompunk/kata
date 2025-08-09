@@ -4,12 +4,14 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,6 +22,7 @@ import (
 	"github.com/phantompunk/kata/internal/leetcode"
 	"github.com/phantompunk/kata/internal/models"
 	"github.com/phantompunk/kata/internal/renderer"
+	"github.com/phantompunk/kata/internal/repository"
 	"github.com/spf13/afero"
 )
 
@@ -28,6 +31,7 @@ const LOGIN_URL = "https://leetcode.com/accounts/login/"
 type App struct {
 	Config    *config.Config
 	Questions models.QuestionModel
+	repo      *repository.Queries
 	lcs       *leetcode.Service
 	Renderer  *renderer.Renderer
 	fs        afero.Fs
@@ -46,6 +50,8 @@ func New() (*App, error) {
 		return nil, err
 	}
 
+	repo := repository.New(db)
+
 	lcs, err := leetcode.New(leetcode.WithCookies(cfg.SessionToken, cfg.CsrfToken))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create leetcode service: %w", err)
@@ -59,6 +65,7 @@ func New() (*App, error) {
 	return &App{
 		Config:    &cfg,
 		Questions: models.QuestionModel{DB: db, Client: http.DefaultClient},
+		repo:      repo,
 		lcs:       lcs,
 		Renderer:  renderer,
 		fs:        afero.NewOsFs(),
@@ -83,36 +90,115 @@ func (app *App) ClearCookies() error {
 	return app.Config.Update()
 }
 
-func (app *App) FetchQuestion(name, language string) (*models.Question, error) {
-	// check if question has been saved before
-	exists, err := app.Questions.Exists(name)
-	if err != nil {
+func toModelQuestion(repoQuestion repository.Question) (*models.Question, error) {
+	var modelQuestion models.Question
+	modelQuestion.ID = fmt.Sprintf("%d", repoQuestion.Questionid)
+	modelQuestion.Title = repoQuestion.Title
+	modelQuestion.TitleSlug = repoQuestion.Titleslug
+	modelQuestion.Difficulty = repoQuestion.Difficulty
+	modelQuestion.FunctionName = repoQuestion.Functionname
+	modelQuestion.Content = repoQuestion.Content
+
+	if err := json.Unmarshal([]byte(repoQuestion.Codesnippets), &modelQuestion.CodeSnippets); err != nil {
 		return nil, err
 	}
+	if err := json.Unmarshal([]byte(repoQuestion.Testcases), &modelQuestion.TestCases); err != nil {
+		return nil, err
+	}
+	return &modelQuestion, nil
+}
 
-	if exists {
-		return app.Questions.Get(name)
+func ToProblem(repoQuestion repository.Question, workspace, language string) *models.Problem {
+	var problem models.Problem
+	problem.QuestionID = fmt.Sprintf("%d", repoQuestion.Questionid)
+	problem.TitleSlug = repoQuestion.Titleslug
+	problem.FunctionName = repoQuestion.Functionname
+	problem.Content = repoQuestion.Content
+
+	var codeSnippets []models.CodeSnippet
+	if err := json.Unmarshal([]byte(repoQuestion.Codesnippets), &codeSnippets); err != nil {
+		fmt.Println("Failed to unmarshal code snippets:", err)
+		return nil
+	}
+	problem.Code = ""
+	for _, snippet := range codeSnippets {
+		if snippet.LangSlug == language {
+			problem.Code = snippet.Code
+			break
+		}
+	}
+	problem.LangSlug = models.LangName[language]
+	problem.SetPaths(workspace)
+	return &problem
+}
+
+func toRepoCreateParams(modelQuestion *models.Question) (repository.CreateParams, error) {
+	var params repository.CreateParams
+	qId, _ := strconv.ParseInt(modelQuestion.ID, 10, 64)
+	params.Questionid = qId
+	params.Title = modelQuestion.Title
+	params.Titleslug = modelQuestion.TitleSlug
+	params.Difficulty = modelQuestion.Difficulty
+	params.Functionname = modelQuestion.FunctionName
+	params.Content = modelQuestion.Content
+
+	codeSnippets, err := json.Marshal(modelQuestion.CodeSnippets)
+	if err != nil {
+		return params, err
+	}
+	params.Codesnippets = string(codeSnippets)
+
+	testCases, err := json.Marshal(modelQuestion.TestCases)
+	if err != nil {
+		return params, err
+	}
+	params.Testcases = string(testCases)
+
+	return params, nil
+}
+
+func (app *App) FetchQuestion(name, language string) (repository.Question, error) {
+	// check if question has been saved before
+	exists, err := app.repo.Exists(context.Background(), name)
+	if err != nil {
+		return repository.Question{}, err
+	}
+
+	if exists == 1 {
+		return app.repo.GetBySlug(context.Background(), name)
+		// repoQuestion, err := app.repo.GetBySlug(context.Background(), name)
+		// if err != nil {
+		// 	return nil, err
+		// }
+
+		// return toModelQuestion(repoQuestion)
 	}
 
 	// fetch the question from leetcode
 	question, err := app.lcs.Fetch(name)
 	if err != nil {
-		return nil, err
+		return repository.Question{}, err
 	}
 
 	functionName := app.GetFunctionName(question.ToProblem(app.Config.Workspace, language))
 	question.FunctionName = functionName
 
 	// save question to database
-	_, err = app.Questions.Insert(question)
+	params, err := toRepoCreateParams(question)
 	if err != nil {
-		return nil, err
+		return repository.Question{}, err
 	}
 
-	return question, nil
+	return app.repo.Create(context.Background(), params)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	//
+	// return question, nil
 }
 
-func (app *App) StubProblem(problem *models.Problem) error {
+func (app *App) StubProblem(question repository.Question, lang string) error {
+	problem := ToProblem(question, app.Config.Workspace, lang)
 	if err := app.fs.MkdirAll(problem.DirPath, os.ModePerm); err != nil {
 		return fmt.Errorf("failed creating problem directory: %w", err)
 	}
@@ -132,11 +218,17 @@ func (app *App) StubProblem(problem *models.Problem) error {
 		return fmt.Errorf("failed creating readme file: %w", err)
 	}
 
-	app.Renderer.Render(file, problem, "solution")
-	app.Renderer.Render(test, problem, "test")
-	app.Renderer.Render(readme, problem, "readme")
-	if app.Renderer.Error != nil {
-		return fmt.Errorf("failed to render file %w", app.Renderer.Error)
+	if err := app.Renderer.Render(file, problem, "solution"); err != nil {
+		return fmt.Errorf("failed to render solution file: %w", err)
+	}
+	fmt.Println("Problem stubbed at", problem.SolutionPath)
+
+	if err := app.Renderer.Render(test, problem, "test"); err != nil {
+		return fmt.Errorf("failed to render test file: %w", err)
+	}
+
+	if err := app.Renderer.Render(readme, problem, "readme"); err != nil {
+		return fmt.Errorf("failed to render readme file: %w", err)
 	}
 
 	return nil
@@ -151,18 +243,23 @@ const (
 
 // TestSolution tests the solution for a given problem name and language.
 func (app *App) TestSolution(name, language string) (string, error) {
-	exists, err := app.Questions.Exists(name)
+	exists, err := app.repo.Exists(context.Background(), name)
 	if err != nil {
 		return "", fmt.Errorf("failed to check question existence: %w", err)
 	}
 
-	if !exists {
+	if exists == 0 {
 		return "", fmt.Errorf("question %q not found", name)
 	}
 
-	question, err := app.Questions.Get(name)
+	repoQuestion, err := app.repo.GetBySlug(context.Background(), name)
 	if err != nil {
 		return "", fmt.Errorf("failed to get question details: %w", err)
+	}
+
+	question, err := toModelQuestion(repoQuestion)
+	if err != nil {
+		return "", fmt.Errorf("failed to convert question: %w", err)
 	}
 
 	filePath := question.ToProblem(app.Config.Workspace, language).SolutionPath
@@ -257,11 +354,23 @@ func (app *App) GetFunctionName(problem *models.Problem) string {
 }
 
 func (app *App) PrintQuestionStatus() ([]models.Question, error) {
-	app.Questions.GetAllWithStatus(app.Config.Tracks)
+	repoQuestions, err := app.repo.ListAll(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	var modelQuestions []models.Question
+	for _, repoQ := range repoQuestions {
+		modelQ, err := toModelQuestion(repoQ)
+		if err != nil {
+			return nil, err
+		}
+		modelQuestions = append(modelQuestions, *modelQ)
+	}
 
 	// app.Renderer.AsMarkdown()
 	// app.Renderer.QuestionsAsTable()
-	return []models.Question{}, nil
+	return modelQuestions, nil
 }
 
 func parseFunctionName(snippet string) (string, error) {

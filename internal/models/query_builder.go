@@ -13,7 +13,7 @@ func buildSelectClause(languages []string) string {
 func buildFromClause(languages []string) string {
 	fromClause := " FROM questions q"
 	for _, lang := range languages {
-		fromClause += fmt.Sprintf(" LEFT JOIN status %s ON q.questionId = %s.questionId AND %s.langSlug = '%s'", lang, lang, lang, lang)
+		fromClause += fmt.Sprintf(" LEFT JOIN submissions %s ON q.questionId = %s.questionId AND %s.langSlug = '%s'", lang, lang, lang, lang)
 	}
 	return fromClause
 }

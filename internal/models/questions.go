@@ -26,6 +26,7 @@ type Question struct {
 	Content      string        `json:"content"`
 	FunctionName string        `json:"funcName"`
 	CodeSnippets []CodeSnippet `json:"codeSnippets"`
+	TestCases    []string      `json:"exampleTestcaseList"`
 	LangStatus   map[string]bool
 }
 
@@ -112,6 +113,7 @@ func (m *QuestionModel) GetRandom() (Question, error) {
 
 func (m *QuestionModel) GetAllWithStatus(languages []string) ([]Question, error) {
 	stmt := buildSelectClause(languages) + buildFromClause(languages)
+	fmt.Println("Executing query:", stmt)
 	rows, err := m.DB.Query(stmt)
 	if err != nil {
 		return nil, err
@@ -158,7 +160,7 @@ func (q *Question) ToProblem(workspace, language string) *Problem {
 			problem.LangSlug = snippet.LangSlug
 		}
 	}
-	problem.setPaths(workspace)
+	problem.SetPaths(workspace)
 	return &problem
 }
 
@@ -172,7 +174,7 @@ func (p *Problem) Extension() string {
 	return extMap[p.LangSlug]
 }
 
-func (p *Problem) setPaths(workspace string) {
+func (p *Problem) SetPaths(workspace string) {
 	title := formatTitleSlug(p.TitleSlug)
 	p.DirPath = filepath.Join(workspace, p.LangSlug, title)
 	p.SolutionPath = filepath.Join(workspace, p.LangSlug, title, fmt.Sprintf("%s%s", title, p.Extension()))

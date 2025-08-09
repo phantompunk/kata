@@ -29,20 +29,15 @@ func DownloadFunc(cmd *cobra.Command, args []string) error {
 
 	// fetch code snippet, save question, update functionName, return
 	question, err := kata.FetchQuestion(name, language)
-	if err != nil && question == nil {
+	if err != nil {
 		return fmt.Errorf("Problem %q not found, use the correct title slug", name)
 	}
 
-	problem := question.ToProblem(kata.Config.Workspace, language)
-	err = kata.StubProblem(problem)
+	err = kata.StubProblem(question, language)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println("Problem stubbed at", problem.SolutionPath)
-	if open {
-		openWithEditor(filepath.Join(kata.Config.Workspace, problem.SolutionPath))
-	}
 	return nil
 }
 
