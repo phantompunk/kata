@@ -21,7 +21,7 @@ const checkURL = "https://leetcode.com/submissions/detail/%s/check/"
 const testURL = "https://leetcode.com/problems/%s/interpret_solution/"
 
 var (
-	ErrNotFound = errors.New("no matching question found")
+	ErrQuestionNotFound = errors.New("no matching question found")
 )
 
 // Service struct represents the LeetCode API client.
@@ -105,8 +105,6 @@ func (lc *Service) doRequest(method, url string, body []byte, customHeaders map[
 		req.Header.Set(key, value)
 	}
 
-	fmt.Println("URL:", url)
-
 	if err := lc.setClientCookies(url); err != nil {
 		return nil, fmt.Errorf("failed to set cookies for request: %w", err)
 	}
@@ -187,7 +185,7 @@ func (lc *Service) Fetch(name string) (*models.Question, error) {
 	}
 
 	if response.Data.Question == nil {
-		return nil, ErrNotFound
+		return nil, ErrQuestionNotFound
 	}
 
 	return response.Data.Question, nil

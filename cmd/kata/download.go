@@ -2,78 +2,35 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
-	"path/filepath"
 
+	"github.com/phantompunk/kata/internal/app"
 	"github.com/spf13/cobra"
 )
 
 func DownloadFunc(cmd *cobra.Command, args []string) error {
 	name, err := cmd.Flags().GetString("problem")
-	if err != nil || name == "" {
-		cmd.Usage()
-		fmt.Println()
-		return fmt.Errorf("Use \"kata download --problem two-sum\" to download and stub a problem")
+	if err != nil {
+		return fmt.Errorf("could not read --problem flag: %w", err)
+	}
+	if name == "" {
+		return fmt.Errorf(`missing --problem flag, e.g. "kata download --problem two-sum"`)
 	}
 
 	language, err := cmd.Flags().GetString("language")
-	if err != nil || language == "" {
-		language = kata.Config.Language
+	if err != nil {
+		return fmt.Errorf("could not read --language flag: %w", err)
 	}
 
 	open, err := cmd.Flags().GetBool("open")
-	if err != nil || !open && kata.Config.OpenInEditor {
-		open = kata.Config.OpenInEditor
-	}
-
-	// fetch code snippet, save question, update functionName, return
-	question, err := kata.FetchQuestion(name, language)
 	if err != nil {
-		return fmt.Errorf("Problem %q not found, use the correct title slug", name)
+		return fmt.Errorf("could not read --open flag: %w", err)
 	}
 
-	err = kata.StubProblem(question, language)
-	if err != nil {
-		return err
+	opts := app.AppOptions{
+		Problem:  name,
+		Language: language,
+		Open:     open,
 	}
 
-	return nil
-}
-
-func openWithEditor(pathToFile string) error {
-	textEditor := findTextEditor()
-
-	command := exec.Command(textEditor, pathToFile)
-	command.Stdout = os.Stdout
-	command.Stdin = os.Stdin
-	command.Stderr = os.Stderr
-	err := os.Chdir(filepath.Dir(pathToFile))
-	err = command.Run()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func findTextEditor() string {
-	if isCommandAvailable("nvim") {
-		return "nvim"
-	} else if isCommandAvailable("vim") {
-		return "vim"
-	} else if isCommandAvailable("nano") {
-		return "nano"
-	} else if isCommandAvailable("editor") {
-		return "editor"
-	} else {
-		return "vi"
-	}
-}
-
-func isCommandAvailable(name string) bool {
-	cmd := exec.Command("command", "-v", name)
-	if err := cmd.Run(); err != nil {
-		return false
-	}
-	return true
+	return kata.DownloadQuestion(opts)
 }

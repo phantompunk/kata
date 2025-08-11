@@ -1,20 +1,26 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
 	"github.com/phantompunk/kata/internal/app"
 	"github.com/phantompunk/kata/internal/config"
+	"github.com/phantompunk/kata/internal/leetcode"
 	"github.com/spf13/cobra"
 )
 
 var kata *app.App
 var kataErr error
 
+type CommandFunc func(cmd *cobra.Command, args []string) error
+
 var rootCmd = &cobra.Command{
-	Use:   "kata",
-	Short: "CLI for practicing Leetcode",
+	Use:           "kata",
+	Short:         "CLI for practicing Leetcode",
+	SilenceUsage:  true,
+	SilenceErrors: true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		kata, kataErr = app.New()
 		return kataErr
@@ -22,11 +28,9 @@ var rootCmd = &cobra.Command{
 }
 
 var downloadCmd = &cobra.Command{
-	Use:           "download",
-	Short:         "Download and stub a Leetcode problem",
-	RunE:          DownloadFunc,
-	SilenceErrors: true,
-	SilenceUsage:  true,
+	Use:   "download",
+	Short: "Download and stub a Leetcode problem",
+	RunE:  HandleErrors(DownloadFunc),
 }
 
 var quizCmd = &cobra.Command{
@@ -76,9 +80,11 @@ func main() {
 
 func init() {
 	// Define flags
+	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Enable verbose output")
 	downloadCmd.Flags().StringP("problem", "p", "", "LeetCode problem name")
 	downloadCmd.Flags().StringP("language", "l", "", "Programming language to use")
 	downloadCmd.Flags().BoolP("open", "o", false, "Open problem with $EDITOR")
+	downloadCmd.MarkFlagRequired("problem")
 
 	testCmd.Flags().StringP("problem", "p", "", "LeetCode problem name")
 	testCmd.Flags().StringP("language", "l", "", "Programming language to use")
@@ -95,4 +101,33 @@ func init() {
 	rootCmd.AddCommand(testCmd)
 	rootCmd.AddCommand(submitCmd)
 	rootCmd.AddCommand(settingsCmd)
+}
+
+func HandleErrors(fn CommandFunc) CommandFunc {
+	return func(cmd *cobra.Command, args []string) error {
+		err := fn(cmd, args)
+		if err == nil {
+			return nil
+		}
+
+		if v, _ := cmd.Flags().GetBool("verbose"); v || kata.Config.Verbose {
+			return fmt.Errorf("Error %+v", err)
+		}
+
+		return fmt.Errorf("%s", userMessage(err))
+	}
+}
+
+func userMessage(err error) string {
+	switch {
+	case errors.Is(err, leetcode.ErrQuestionNotFound):
+		return "No matching question found. Please check the problem slug."
+	// case errors.Is(err, kata.ErrInvalidFlag):
+	// 	return "Invalid flag provided. Use --help for usage instructions."
+	// case errors.Is(err, kata.ErrPermissionDenied):
+	// 	return "Permission denied. Please check your file permissions."
+	default:
+		// Fallback: show generic message without internal stack traces
+		return "An unexpected error occurred. Please try again."
+	}
 }

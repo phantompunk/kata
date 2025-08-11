@@ -26,7 +26,19 @@ import (
 	"github.com/spf13/afero"
 )
 
-const LOGIN_URL = "https://leetcode.com/accounts/login/"
+const (
+	LoginUrl = "https://leetcode.com/accounts/login/"
+	// Maximum number of attempts to check test status
+	MaxTestAttempts = 10
+	// Interval between test status checks
+	TestPollInterval = 500 * time.Millisecond
+)
+
+type AppOptions struct {
+	Problem  string
+	Language string
+	Open     bool
+}
 
 type App struct {
 	Config    *config.Config
@@ -72,6 +84,31 @@ func New() (*App, error) {
 	}, nil
 }
 
+func (app *App) DownloadQuestion(opts AppOptions) error {
+	if opts.Language == "" {
+		opts.Language = app.Config.Language
+	}
+
+	if !opts.Open && app.Config.OpenInEditor {
+		opts.Open = true
+	}
+
+	question, err := app.GetQuestion(opts.Problem, opts.Language)
+	if err != nil {
+		return fmt.Errorf("fetching question %q: %w", opts.Problem, err)
+	}
+
+	if err := app.Stub(question, opts); err != nil {
+		return fmt.Errorf("stubbing problem %q: %w", opts.Problem, err)
+	}
+
+	if opts.Open {
+		// :TODO: Open the solution file in the editor
+	}
+
+	return nil
+}
+
 // CheckSession checks if the session is valid by pinging the leetcode service
 func (app *App) CheckSession() (bool, error) {
 	app.lcs.SetCookies(app.Config.SessionToken, app.Config.CsrfToken)
@@ -90,6 +127,7 @@ func (app *App) ClearCookies() error {
 	return app.Config.Update()
 }
 
+// :TODO: Move this to a separate package
 func toModelQuestion(repoQuestion repository.Question) (*models.Question, error) {
 	var modelQuestion models.Question
 	modelQuestion.ID = fmt.Sprintf("%d", repoQuestion.Questionid)
@@ -132,6 +170,7 @@ func ToProblem(repoQuestion repository.Question, workspace, language string) *mo
 	return &problem
 }
 
+// TODO: Move this to a separate package
 func toRepoCreateParams(modelQuestion *models.Question) (repository.CreateParams, error) {
 	var params repository.CreateParams
 	qId, _ := strconv.ParseInt(modelQuestion.ID, 10, 64)
@@ -157,48 +196,43 @@ func toRepoCreateParams(modelQuestion *models.Question) (repository.CreateParams
 	return params, nil
 }
 
-func (app *App) FetchQuestion(name, language string) (repository.Question, error) {
-	// check if question has been saved before
+func (app *App) GetQuestion(name, language string) (*models.Question, error) {
 	exists, err := app.repo.Exists(context.Background(), name)
 	if err != nil {
-		return repository.Question{}, err
+		return nil, fmt.Errorf("failed to check question existence: %w", err)
 	}
 
 	if exists == 1 {
-		return app.repo.GetBySlug(context.Background(), name)
-		// repoQuestion, err := app.repo.GetBySlug(context.Background(), name)
-		// if err != nil {
-		// 	return nil, err
-		// }
+		repoQuestion, err := app.repo.GetBySlug(context.Background(), name)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get question details: %w", err)
+		}
 
-		// return toModelQuestion(repoQuestion)
+		modelQuestion, err := toModelQuestion(repoQuestion)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert question: %w", err)
+		}
+
+		return modelQuestion, nil
 	}
 
-	// fetch the question from leetcode
 	question, err := app.lcs.Fetch(name)
 	if err != nil {
-		return repository.Question{}, err
+		return nil, err
 	}
 
-	functionName := app.GetFunctionName(question.ToProblem(app.Config.Workspace, language))
-	question.FunctionName = functionName
-
-	// save question to database
+	question.FunctionName = app.GetFunctionName(question.ToProblem(app.Config.Workspace, language))
 	params, err := toRepoCreateParams(question)
 	if err != nil {
-		return repository.Question{}, err
+		return nil, fmt.Errorf("failed to convert question to repository params: %w", err)
 	}
 
-	return app.repo.Create(context.Background(), params)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	//
-	// return question, nil
+	app.repo.Create(context.Background(), params)
+	return question, nil
 }
 
-func (app *App) StubProblem(question repository.Question, lang string) error {
-	problem := ToProblem(question, app.Config.Workspace, lang)
+func (app *App) Stub(question *models.Question, opts AppOptions) error {
+	problem := question.ToProblem(app.Config.Workspace, opts.Language)
 	if err := app.fs.MkdirAll(problem.DirPath, os.ModePerm); err != nil {
 		return fmt.Errorf("failed creating problem directory: %w", err)
 	}
@@ -233,13 +267,6 @@ func (app *App) StubProblem(question repository.Question, lang string) error {
 
 	return nil
 }
-
-const (
-	// Maximum number of attempts to check test status
-	MaxTestAttempts = 10
-	// Interval between test status checks
-	TestPollInterval = 500 * time.Millisecond
-)
 
 // TestSolution tests the solution for a given problem name and language.
 func (app *App) TestSolution(name, language string) (string, error) {

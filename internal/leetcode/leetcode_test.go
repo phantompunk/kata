@@ -37,7 +37,7 @@ func TestFetch(t *testing.T) {
 		mockResponse(notFound, lc.client)
 
 		question, err := lc.Fetch("two-sum")
-		assert.Equal(t, err, ErrNotFound)
+		assert.Equal(t, err, ErrQuestionNotFound)
 		assert.Equal(t, question, nil)
 	})
 
@@ -98,16 +98,3 @@ func TestCheckTestStatus(t *testing.T) {
 		assert.True(t, response.Correct)
 	})
 }
-
-// func TestLCTokens(t *testing.T) {
-// 	t.Run("Missing tokens", func(t *testing.T) {
-// 		cfg := config.Config{}
-// 		failed := `{"run_success":true,"correct_answer":false,"state":"SUCCESS"}`
-// 		mockResponse(failed, mockClient)
-//
-// 		response, err := lc.CheckTestStatus("https://leetcode.com/submission/run123.456_789/check")
-// 		assert.NilError(t, err)
-// 		assert.Equal(t, response.State, "SUCCESS")
-// 		assert.False(t, response.Correct)
-// 	})
-// }

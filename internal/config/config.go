@@ -23,6 +23,7 @@ type Config struct {
 	Workspace      string    `yaml:"workspace"`
 	Language       string    `yaml:"language"`
 	OpenInEditor   bool      `yaml:"openInEditor"`
+	Verbose        bool      `yaml:"verbose"`
 	SessionExpires time.Time `yaml:"sessionExpires"`
 	SessionToken   string    `yaml:"sessionToken"`
 	CsrfToken      string    `yaml:"csrfToken"`
@@ -90,6 +91,7 @@ func defaultConfig() Config {
 		Workspace:    "/Users/rigo/Workspace/katas",
 		Language:     "python",
 		OpenInEditor: false,
+		Verbose:      false,
 	}
 }
 
