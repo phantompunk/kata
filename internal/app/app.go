@@ -109,6 +109,19 @@ func (app *App) DownloadQuestion(opts AppOptions) error {
 	return nil
 }
 
+func (app *App) ListQuestions() error {
+	questions, err := app.repo.GetAllWithStatus(context.Background(), app.Config.Tracks)
+	if err != nil {
+		return fmt.Errorf("listing questions: %w", err)
+	}
+
+	if err := app.Renderer.QuestionsAsTable(questions, app.Config.Tracks); err != nil {
+		return fmt.Errorf("rendering questions as table: %w", err)
+	}
+
+	return nil
+}
+
 // CheckSession checks if the session is valid by pinging the leetcode service
 func (app *App) CheckSession() (bool, error) {
 	app.lcs.SetCookies(app.Config.SessionToken, app.Config.CsrfToken)
