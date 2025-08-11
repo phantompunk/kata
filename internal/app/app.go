@@ -38,6 +38,7 @@ type AppOptions struct {
 	Problem  string
 	Language string
 	Open     bool
+	Force    bool
 }
 
 type App struct {
@@ -119,6 +120,31 @@ func (app *App) ListQuestions() error {
 		return fmt.Errorf("rendering questions as table: %w", err)
 	}
 
+	return nil
+}
+
+func (app *App) Login(opts AppOptions) error {
+	if app.Config.IsSessionValid() && !opts.Force {
+		fmt.Println("You are already logged in")
+		return nil
+	}
+
+	// TODO: Improve user error message
+	if err := app.RefreshCookies(); err != nil {
+		return fmt.Errorf("could not authenticate using browser cookies: %w\nPlease login manually at %s", err, LoginUrl)
+	}
+
+	valid, err := app.CheckSession()
+	if err != nil {
+		return fmt.Errorf("failed to check session: %w\nPlease login manually at %s", err, LoginUrl)
+	}
+
+	if !valid {
+		app.ClearCookies()
+		return fmt.Errorf("session cookies are invalid.\nPlease login manually at %s", LoginUrl)
+	}
+
+	fmt.Println("Successfully logged in using browser cookies.")
 	return nil
 }
 
@@ -443,21 +469,26 @@ func (app *App) RefreshCookies() error {
 	cookiesSeq := kooky.TraverseCookies(context.TODO(), kooky.Valid, kooky.DomainHasSuffix(`leetcode.com`)).OnlyCookies()
 	for cookie := range cookiesSeq {
 		if cookie.Name == "LEETCODE_SESSION" {
+			fmt.Println("Found LEETCODE_SESSION cookie")
 			sessionCookie = cookie
+			continue
+		}
+
+		if cookie.Name == "csrftoken" {
+			fmt.Println("Found csrftoken cookie")
+			csrfCookie = cookie
+			continue
+		}
+
+		if sessionCookie != nil && csrfCookie != nil {
 			break
 		}
 	}
+
 	if sessionCookie == nil || sessionCookie.Expires.Before(time.Now()) {
 		return fmt.Errorf("LEETCODE_SESSION missing or expired")
 	}
 
-	cookiesSeq = kooky.TraverseCookies(context.TODO(), kooky.Valid, kooky.DomainHasSuffix(`leetcode.com`), kooky.Name("csrftoken")).OnlyCookies()
-	for cookie := range cookiesSeq {
-		if cookie.Name == "csrftoken" {
-			csrfCookie = cookie
-			break
-		}
-	}
 	if csrfCookie == nil {
 		return fmt.Errorf("csrftoken missing or expired")
 	}

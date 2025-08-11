@@ -42,15 +42,13 @@ var quizCmd = &cobra.Command{
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "Show all completed Leetcode problems",
-	RunE:  ListFunc,
+	RunE:  HandleErrors(ListFunc),
 }
 
 var loginCmd = &cobra.Command{
-	Use:           "login",
-	Short:         "Accept session and token, attempt to get user info",
-	RunE:          LoginFunc,
-	SilenceErrors: true,
-	SilenceUsage:  true,
+	Use:   "login",
+	Short: "Accept session and token, attempt to get user info",
+	RunE:  HandleErrors(LoginFunc),
 }
 
 var testCmd = &cobra.Command{
