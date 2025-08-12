@@ -54,7 +54,7 @@ var loginCmd = &cobra.Command{
 var testCmd = &cobra.Command{
 	Use:   "test",
 	Short: "Runs problem solution against leetcode test cases",
-	RunE:  TestFunc,
+	RunE:  HandleErrors(TestFunc),
 }
 
 var submitCmd = &cobra.Command{

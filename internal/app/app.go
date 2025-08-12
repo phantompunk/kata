@@ -203,6 +203,29 @@ func isCommandAvailable(name string) bool {
 	return true
 }
 
+func (app *App) Test(opts AppOptions) error {
+	if !app.Config.IsSessionValid() {
+		return fmt.Errorf("session is not valid. Please login using 'kata login' command")
+	}
+
+	valid, err := app.CheckSession()
+	if err != nil {
+		return fmt.Errorf("failed to check session: %w", err)
+	}
+
+	if !valid {
+		return fmt.Errorf("session is not valid. Please login using 'kata login' command")
+	}
+
+	status, err := app.TestSolution(opts.Problem, opts.Language)
+	if err != nil {
+		return fmt.Errorf("testing solution for %q: %w", opts.Problem, err)
+	}
+
+	fmt.Println("Test status:", status)
+	return nil
+}
+
 // CheckSession checks if the session is valid by pinging the leetcode service
 func (app *App) CheckSession() (bool, error) {
 	app.lcs.SetCookies(app.Config.SessionToken, app.Config.CsrfToken)
@@ -378,15 +401,11 @@ func (app *App) TestSolution(name, language string) (string, error) {
 		return "", fmt.Errorf("failed to get question details: %w", err)
 	}
 
-	question, err := toModelQuestion(repoQuestion)
-	if err != nil {
-		return "", fmt.Errorf("failed to convert question: %w", err)
-	}
+	problem := repoQuestion.ToProblem(app.Config.Workspace, language)
+	snippet := app.extractSnippet(problem.SolutionPath)
+	fmt.Println("Extracted snippet:", snippet)
 
-	filePath := question.ToProblem(app.Config.Workspace, language).SolutionPath
-	snippet := app.extractSnippet(filePath)
-
-	testStatusUrl, err := app.lcs.Test(question, language, snippet)
+	testStatusUrl, err := app.lcs.Test(problem, language, snippet)
 	if err != nil {
 		return "", fmt.Errorf("failed to submit solution for testing: %w", err)
 	}
@@ -428,6 +447,7 @@ func (app *App) pollTestStatus(testStatusUrl string) (*models.TestResponse, erro
 	return nil, fmt.Errorf("test status check timed out after %d attempts", MaxTestAttempts)
 }
 
+// TODO: Move this to a separate package
 func (app *App) extractSnippet(path string) string {
 	file, _ := os.Open(path)
 	defer file.Close()
@@ -524,13 +544,11 @@ func (app *App) RefreshCookies() error {
 	cookiesSeq := kooky.TraverseCookies(context.TODO(), kooky.Valid, kooky.DomainHasSuffix(`leetcode.com`)).OnlyCookies()
 	for cookie := range cookiesSeq {
 		if cookie.Name == "LEETCODE_SESSION" {
-			fmt.Println("Found LEETCODE_SESSION cookie")
 			sessionCookie = cookie
 			continue
 		}
 
 		if cookie.Name == "csrftoken" {
-			fmt.Println("Found csrftoken cookie")
 			csrfCookie = cookie
 			continue
 		}

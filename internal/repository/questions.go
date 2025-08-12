@@ -45,13 +45,34 @@ func (q *Queries) GetAllWithStatus(ctx context.Context, languages []string) ([]m
 	return questions, nil
 }
 
+func (q *Question) ToModelQuestion() (*models.Question, error) {
+	var modelQuestion models.Question
+	modelQuestion.ID = fmt.Sprintf("%d", q.Questionid)
+	modelQuestion.Title = q.Title
+	modelQuestion.TitleSlug = q.Titleslug
+	modelQuestion.Difficulty = q.Difficulty
+	modelQuestion.FunctionName = q.Functionname
+	modelQuestion.Content = q.Content
+
+	if err := json.Unmarshal([]byte(q.Codesnippets), &modelQuestion.CodeSnippets); err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal([]byte(q.Testcases), &modelQuestion.TestCases); err != nil {
+		return nil, err
+	}
+	return &modelQuestion, nil
+}
+
 func (q *Question) ToProblem(workspace, language string) *models.Problem {
 	var problem models.Problem
 	problem.QuestionID = fmt.Sprintf("%d", q.Questionid)
 	problem.Content = q.Content
-	// TODO: parse function name
-	// problem.FunctionName = q.FunctionName
+	problem.FunctionName = q.Functionname
 	problem.TitleSlug = formatTitleSlug(q.Titleslug)
+
+	if err := json.Unmarshal([]byte(q.Testcases), &q.Testcases); err != nil {
+		return nil
+	}
 
 	var codeSnippets []models.CodeSnippet
 	if err := json.Unmarshal([]byte(q.Codesnippets), &codeSnippets); err != nil {

@@ -42,11 +42,37 @@ type Problem struct {
 	LangSlug     string
 	TitleSlug    string
 	FunctionName string
+	TestCases    []string
 	SolutionPath string
 	TestPath     string
 	DirPath      string
 	ReadmePath   string
 }
+
+// func (modelQuestion *Question) AsParams() (repository.CreateParams, error) {
+// 	var params repository.CreateParams
+// 	qId, _ := strconv.ParseInt(modelQuestion.ID, 10, 64)
+// 	params.Questionid = qId
+// 	params.Title = modelQuestion.Title
+// 	params.Titleslug = modelQuestion.TitleSlug
+// 	params.Difficulty = modelQuestion.Difficulty
+// 	params.Functionname = modelQuestion.FunctionName
+// 	params.Content = modelQuestion.Content
+//
+// 	codeSnippets, err := json.Marshal(modelQuestion.CodeSnippets)
+// 	if err != nil {
+// 		return params, err
+// 	}
+// 	params.Codesnippets = string(codeSnippets)
+//
+// 	testCases, err := json.Marshal(modelQuestion.TestCases)
+// 	if err != nil {
+// 		return params, err
+// 	}
+// 	params.Testcases = string(testCases)
+//
+// 	return params, nil
+// }
 
 func (m *QuestionModel) Exists(titleSlug string) (bool, error) {
 	var exists bool

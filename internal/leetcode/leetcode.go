@@ -191,18 +191,20 @@ func (lc *Service) Fetch(name string) (*models.Question, error) {
 	return response.Data.Question, nil
 }
 
-func (lc *Service) Test(question *models.Question, language, snippet string) (string, error) {
-	url := fmt.Sprintf(testURL, question.TitleSlug)
+func (lc *Service) Test(problem *models.Problem, language, snippet string) (string, error) {
+	url := fmt.Sprintf(testURL, problem.TitleSlug)
 	contents := strings.ReplaceAll(snippet, "\t", "    ") // Consistent 4 spaces
 
 	// The data_input is hardcoded here. In a real scenario, you'd want to fetch
 	// the test cases for the question or allow the user to provide them.
 	variables := map[string]any{
 		"lang":        models.LangName[language],
-		"question_id": question.ID,
+		"question_id": problem.QuestionID,
 		"typed_code":  contents,
-		"data_input":  "[2,7,11,15]\n9\n[3,2,4]\n6\n[3,3]\n6", // :TODO: Make dynamic
+		"data_input":  problem.TestCases,
 	}
+
+	fmt.Printf("Test cases: %s\n", problem.TestCases)
 
 	data, err := json.Marshal(variables)
 	if err != nil {
@@ -210,7 +212,7 @@ func (lc *Service) Test(question *models.Question, language, snippet string) (st
 	}
 
 	headers := map[string]string{
-		"referer": fmt.Sprintf("https://leetcode.com/problemset/%s/description", question.TitleSlug),
+		"referer": fmt.Sprintf("https://leetcode.com/problemset/%s/description", problem.TitleSlug),
 	}
 
 	body, err := lc.doRequest(http.MethodPost, url, data, headers)
@@ -232,7 +234,6 @@ func (lc *Service) Test(question *models.Question, language, snippet string) (st
 
 func (lc *Service) CheckTestStatus(callbackUrl string) (*models.TestResponse, error) {
 	headers := map[string]string{"referer": "https://leetcode.com/problemset/"}
-	fmt.Println("Callback URL:", callbackUrl)
 	body, err := lc.doRequest("GET", callbackUrl, nil, headers)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check test status: %w", err)

@@ -60,7 +60,7 @@ func TestSolutionTest(t *testing.T) {
 		processing := `{"interpret_id":"runcode_123.456_789","test_case":"[2,7,11,15]\n9\n[3,2,4]\n6\n[3,3]\n6"}`
 		mockResponse(processing, lc.client)
 
-		callbackUrl, err := lc.Test(question, language, "func twoSum(a int){}")
+		callbackUrl, err := lc.Test(question.ToProblem("", language), language, "func twoSum(a int){}")
 		assert.NilError(t, err)
 		assert.Equal(t, callbackUrl, "https://leetcode.com/submissions/detail/runcode_123.456_789/check/")
 	})
