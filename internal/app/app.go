@@ -9,8 +9,9 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"net/http"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -42,12 +43,11 @@ type AppOptions struct {
 }
 
 type App struct {
-	Config    *config.Config
-	Questions models.QuestionModel
-	repo      *repository.Queries
-	lcs       *leetcode.Service
-	Renderer  *renderer.Renderer
-	fs        afero.Fs
+	Config   *config.Config
+	repo     *repository.Queries
+	lcs      *leetcode.Service
+	Renderer *renderer.Renderer
+	fs       afero.Fs
 }
 
 func New() (*App, error) {
@@ -76,12 +76,11 @@ func New() (*App, error) {
 	}
 
 	return &App{
-		Config:    &cfg,
-		Questions: models.QuestionModel{DB: db, Client: http.DefaultClient},
-		repo:      repo,
-		lcs:       lcs,
-		Renderer:  renderer,
-		fs:        afero.NewOsFs(),
+		Config:   &cfg,
+		repo:     repo,
+		lcs:      lcs,
+		Renderer: renderer,
+		fs:       afero.NewOsFs(),
 	}, nil
 }
 
@@ -146,6 +145,62 @@ func (app *App) Login(opts AppOptions) error {
 
 	fmt.Println("Successfully logged in using browser cookies.")
 	return nil
+}
+
+func (app *App) Quiz(opts AppOptions) error {
+	if opts.Language == "" {
+		opts.Language = app.Config.Language
+	}
+
+	question, err := app.repo.GetRandom(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to get random question: %w", err)
+	}
+
+	problem := question.ToProblem(app.Config.Workspace, opts.Language)
+	if app.Config.OpenInEditor || opts.Open {
+		if err := openWithEditor(problem.SolutionPath); err != nil {
+			return fmt.Errorf("failed to open solution file in editor: %w", err)
+		}
+	}
+	return nil
+}
+
+func openWithEditor(pathToFile string) error {
+	textEditor := findTextEditor()
+
+	command := exec.Command(textEditor, pathToFile)
+	command.Stdout = os.Stdout
+	command.Stdin = os.Stdin
+	command.Stderr = os.Stderr
+	err := os.Chdir(filepath.Dir(pathToFile))
+	err = command.Run()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func findTextEditor() string {
+	if isCommandAvailable("nvim") {
+		return "nvim"
+	} else if isCommandAvailable("vim") {
+		return "vim"
+	} else if isCommandAvailable("nano") {
+		return "nano"
+	} else if isCommandAvailable("editor") {
+		return "editor"
+	} else {
+		return "vi"
+	}
+}
+
+func isCommandAvailable(name string) bool {
+	cmd := exec.Command("command", "-v", name)
+	if err := cmd.Run(); err != nil {
+		return false
+	}
+	return true
 }
 
 // CheckSession checks if the session is valid by pinging the leetcode service
