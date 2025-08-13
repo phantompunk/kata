@@ -1,22 +1,12 @@
 package models
 
 import (
-	"database/sql"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"net/http"
 	"path/filepath"
 	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
 )
-
-type QuestionModel struct {
-	DB      *sql.DB
-	Client  *http.Client
-	BaseUrl string
-}
 
 type Question struct {
 	ID           string        `json:"questionId"`
@@ -48,131 +38,6 @@ type Problem struct {
 	TestPath     string
 	DirPath      string
 	ReadmePath   string
-}
-
-// func (modelQuestion *Question) AsParams() (repository.CreateParams, error) {
-// 	var params repository.CreateParams
-// 	qId, _ := strconv.ParseInt(modelQuestion.ID, 10, 64)
-// 	params.Questionid = qId
-// 	params.Title = modelQuestion.Title
-// 	params.Titleslug = modelQuestion.TitleSlug
-// 	params.Difficulty = modelQuestion.Difficulty
-// 	params.Functionname = modelQuestion.FunctionName
-// 	params.Content = modelQuestion.Content
-//
-// 	codeSnippets, err := json.Marshal(modelQuestion.CodeSnippets)
-// 	if err != nil {
-// 		return params, err
-// 	}
-// 	params.Codesnippets = string(codeSnippets)
-//
-// 	testCases, err := json.Marshal(modelQuestion.TestCases)
-// 	if err != nil {
-// 		return params, err
-// 	}
-// 	params.Testcases = string(testCases)
-//
-// 	return params, nil
-// }
-
-func (m *QuestionModel) Exists(titleSlug string) (bool, error) {
-	var exists bool
-
-	err := m.DB.QueryRow(queryExists, titleSlug).Scan(&exists)
-	return exists, err
-}
-
-// Get retrieves a Question from the local database based on its titleSlug.
-func (m *QuestionModel) Get(titleSlug string) (*Question, error) {
-	var question Question
-	var codeJSON []byte
-
-	row := m.DB.QueryRow(queryGetBySlug, titleSlug)
-	err := row.Scan(&question.ID, &question.Title, &question.TitleSlug, &question.Content, &question.Difficulty, &question.FunctionName, &codeJSON)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrNoRecord
-		} else {
-			fmt.Println("Unexpected error")
-			return nil, err
-		}
-	}
-
-	err = json.Unmarshal(codeJSON, &question.CodeSnippets)
-	if err != nil {
-		return nil, err
-	}
-
-	return &question, nil
-}
-
-func (m *QuestionModel) Insert(q *Question) (int, error) {
-	snippetJSON, err := json.Marshal(q.CodeSnippets)
-	if err != nil {
-		return 0, err
-	}
-
-	result, err := m.DB.Exec(queryInsert, q.ID, q.Title, q.TitleSlug, q.Difficulty, q.FunctionName, q.Content, snippetJSON)
-	if err != nil {
-		return 0, err
-	}
-
-	id, err := result.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-	return int(id), nil
-}
-
-func (m *QuestionModel) GetRandom() (Question, error) {
-	var q Question
-	var codeSnippetsJSON []byte
-	err := m.DB.QueryRow(queryGetRandom).Scan(&q.ID, &q.Title, &q.TitleSlug, &q.Difficulty, &q.Content, &codeSnippetsJSON)
-	if err != nil {
-		return q, err
-	}
-	err = json.Unmarshal(codeSnippetsJSON, &q.CodeSnippets)
-	if err != nil {
-		return q, err
-	}
-	return q, nil
-}
-
-func (m *QuestionModel) GetAllWithStatus(languages []string) ([]Question, error) {
-	stmt := buildSelectClause(languages) + buildFromClause(languages)
-	fmt.Println("Executing query:", stmt)
-	rows, err := m.DB.Query(stmt)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var questions []Question
-	for rows.Next() {
-		var q Question
-		q.LangStatus = make(map[string]bool)
-		scanArgs := []any{&q.ID, &q.Title, &q.Difficulty}
-		solvedValues := make([]int, len(languages))
-
-		for i := range languages {
-			scanArgs = append(scanArgs, &solvedValues[i])
-		}
-
-		if err := rows.Scan(scanArgs...); err != nil {
-			return nil, err
-		}
-
-		for i, lang := range languages {
-			q.LangStatus[lang] = solvedValues[i] == 1
-		}
-		questions = append(questions, q)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return questions, nil
 }
 
 func (q *Question) ToProblem(workspace, language string) *Problem {

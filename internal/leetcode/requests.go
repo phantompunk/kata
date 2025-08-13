@@ -1,7 +1,9 @@
-package models
+package leetcode
 
 import (
 	"fmt"
+
+	"github.com/phantompunk/kata/internal/models"
 )
 
 type Request struct {
@@ -27,18 +29,18 @@ type StreakCounter struct {
 }
 
 type Data struct {
-	Question      *Question      `json:"question"`
-	StreakCounter *StreakCounter `json:"streakCounter"`
+	Question      *models.Question `json:"question"`
+	StreakCounter *StreakCounter   `json:"streakCounter"`
 }
 
-func (r *Response) GetQuestion(language string) (*Question, error) {
+func (r *Response) GetQuestion(language string) (*models.Question, error) {
 	if r != nil && r.Data != nil && r.Data.Question != nil {
-		var selected CodeSnippet
+		var selected models.CodeSnippet
 
 		for _, snippet := range r.Data.Question.CodeSnippets {
-			if snippet.LangSlug == LangName[language] {
+			if snippet.LangSlug == models.LangName[language] {
 				selected = snippet
-				r.Data.Question.CodeSnippets = []CodeSnippet{selected}
+				r.Data.Question.CodeSnippets = []models.CodeSnippet{selected}
 				return r.Data.Question, nil
 			}
 		}

@@ -22,6 +22,7 @@ const (
 	loginURL   = "https://leetcode.com/accounts/login/"
 	checkURL   = "https://leetcode.com/submissions/detail/%s/check/"
 	testURL    = "https://leetcode.com/problems/%s/interpret_solution/"
+
 	// Maximum number of attempts to check test status
 	MaxTestAttempts = 10
 	// Interval between test status checks
@@ -30,6 +31,31 @@ const (
 
 var (
 	ErrQuestionNotFound = errors.New("no matching question found")
+)
+
+const (
+	queryUserStreak = `
+		query getStreakCounter {
+			streakCounter {
+				currentDayCompleted
+			}
+		}`
+
+	queryQuestionDetails = `
+		query questionEditorData($titleSlug: String!) {
+			question(titleSlug: $titleSlug) {
+				questionId
+				content
+				titleSlug
+				title
+				difficulty
+				exampleTestcaseList
+				codeSnippets {
+					langSlug
+					code
+				}
+			}
+		}`
 )
 
 // Service struct represents the LeetCode API client.
@@ -137,7 +163,7 @@ func (lc *Service) doRequest(method, url string, body []byte, customHeaders map[
 
 // More Auth -> are we authenticated?
 func (lc *Service) Ping() (bool, error) {
-	data, err := json.Marshal(models.Request{Query: queryUserStreak})
+	data, err := json.Marshal(Request{Query: queryUserStreak})
 	if err != nil {
 		return false, fmt.Errorf("failed to marshal request data: %w", err)
 	}
@@ -151,7 +177,7 @@ func (lc *Service) Ping() (bool, error) {
 		return false, fmt.Errorf("failed to do request: %w", err)
 	}
 
-	var response models.Response
+	var response Response
 	err = json.Unmarshal(body, &response)
 	if err != nil {
 		return false, fmt.Errorf("failed to unmarshal response: %w", err)
@@ -160,24 +186,9 @@ func (lc *Service) Ping() (bool, error) {
 	return response.Data.StreakCounter != nil, nil
 }
 
-var queryQuestionDetails string = `query questionEditorData($titleSlug: String!) {
-  question(titleSlug: $titleSlug) {
-    questionId
-    content
-    titleSlug
-    title
-    difficulty
-	  exampleTestcaseList
-    codeSnippets {
-      langSlug
-      code
-    }
-  }
-}`
-
 func (lc *Service) Fetch(name string) (*models.Question, error) {
 	variables := map[string]any{"titleSlug": name}
-	data, err := json.Marshal(models.Request{Query: queryQuestionDetails, Variables: variables})
+	data, err := json.Marshal(Request{Query: queryQuestionDetails, Variables: variables})
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request data: %w", err)
 	}
@@ -187,7 +198,7 @@ func (lc *Service) Fetch(name string) (*models.Question, error) {
 		return nil, fmt.Errorf("failed to do request: %w", err)
 	}
 
-	var response models.Response
+	var response Response
 	err = json.Unmarshal(body, &response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
@@ -225,7 +236,7 @@ func (lc *Service) Test(problem *models.Problem, language, snippet string) (stri
 		return "", fmt.Errorf("test submission failed: %w", err)
 	}
 
-	var response models.TestResponse
+	var response TestResponse
 	if err := json.Unmarshal(body, &response); err != nil {
 		return "", fmt.Errorf("failed to unmarshal test response: %w", err)
 	}
@@ -237,14 +248,14 @@ func (lc *Service) Test(problem *models.Problem, language, snippet string) (stri
 	return fmt.Sprintf(checkURL, response.InterpretID), nil
 }
 
-func (lc *Service) CheckTestStatus(callbackUrl string) (*models.TestResponse, error) {
+func (lc *Service) CheckTestStatus(callbackUrl string) (*TestResponse, error) {
 	headers := map[string]string{"referer": "https://leetcode.com/problemset/"}
 	body, err := lc.doRequest("GET", callbackUrl, nil, headers)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check test status: %w", err)
 	}
 
-	var response models.TestResponse
+	var response TestResponse
 	err = json.Unmarshal(body, &response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal test status response: %w", err)
@@ -253,8 +264,8 @@ func (lc *Service) CheckTestStatus(callbackUrl string) (*models.TestResponse, er
 	return &response, nil
 }
 
-func (lc *Service) PollTestStatus(testStatusUrl string) (*models.TestResponse, error) {
-	var res *models.TestResponse
+func (lc *Service) PollTestStatus(testStatusUrl string) (*TestResponse, error) {
+	var res *TestResponse
 	var err error
 
 	for i := range MaxTestAttempts {
