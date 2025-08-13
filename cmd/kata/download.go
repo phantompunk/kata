@@ -26,10 +26,16 @@ func DownloadFunc(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("could not read --open flag: %w", err)
 	}
 
+	force, err := cmd.Flags().GetBool("force")
+	if err != nil {
+		return fmt.Errorf("could not read --force flag: %w", err)
+	}
+
 	opts := app.AppOptions{
 		Problem:  name,
 		Language: language,
 		Open:     open,
+		Force:    force,
 	}
 
 	return kata.DownloadQuestion(opts)

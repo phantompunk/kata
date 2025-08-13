@@ -82,6 +82,7 @@ func init() {
 	downloadCmd.Flags().StringP("problem", "p", "", "LeetCode problem name")
 	downloadCmd.Flags().StringP("language", "l", "", "Programming language to use")
 	downloadCmd.Flags().BoolP("open", "o", false, "Open problem with $EDITOR")
+	downloadCmd.Flags().BoolP("force", "f", false, "Force download even if problem already exists")
 	downloadCmd.MarkFlagRequired("problem")
 
 	testCmd.Flags().StringP("problem", "p", "", "LeetCode problem name")

@@ -93,7 +93,7 @@ func (app *App) DownloadQuestion(opts AppOptions) error {
 		opts.Open = true
 	}
 
-	question, err := app.GetQuestion(opts.Problem, opts.Language)
+	question, err := app.GetQuestion(opts.Problem, opts.Language, opts.Force)
 	if err != nil {
 		return fmt.Errorf("fetching question %q: %w", opts.Problem, err)
 	}
@@ -317,13 +317,13 @@ func toRepoCreateParams(modelQuestion *models.Question) (repository.CreateParams
 	return params, nil
 }
 
-func (app *App) GetQuestion(name, language string) (*models.Question, error) {
+func (app *App) GetQuestion(name, language string, force bool) (*models.Question, error) {
 	exists, err := app.repo.Exists(context.Background(), name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check question existence: %w", err)
 	}
 
-	if exists == 1 {
+	if exists == 1 && !force {
 		repoQuestion, err := app.repo.GetBySlug(context.Background(), name)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get question details: %w", err)
