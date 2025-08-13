@@ -68,11 +68,9 @@ func (q *Question) ToProblem(workspace, language string) *models.Problem {
 	problem.QuestionID = fmt.Sprintf("%d", q.Questionid)
 	problem.Content = q.Content
 	problem.FunctionName = q.Functionname
-	problem.TitleSlug = formatTitleSlug(q.Titleslug)
-
-	if err := json.Unmarshal([]byte(q.Testcases), &q.Testcases); err != nil {
-		return nil
-	}
+	problem.TitleSlug = q.Titleslug
+	problem.Slug = formatTitleSlug(q.Titleslug)
+	problem.TestCases = q.Testcases
 
 	var codeSnippets []models.CodeSnippet
 	if err := json.Unmarshal([]byte(q.Codesnippets), &codeSnippets); err != nil {

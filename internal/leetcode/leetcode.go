@@ -10,15 +10,23 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"strings"
+	"time"
 
 	_ "github.com/browserutils/kooky/browser/all"
 	"github.com/phantompunk/kata/internal/models"
 )
 
-const baseURL = "https://leetcode.com/graphql"
-const loginURL = "https://leetcode.com/accounts/login/"
-const checkURL = "https://leetcode.com/submissions/detail/%s/check/"
-const testURL = "https://leetcode.com/problems/%s/interpret_solution/"
+const (
+	baseURL    = "https://leetcode.com/graphql"
+	problemURL = "https://leetcode.com/problems/%s/"
+	loginURL   = "https://leetcode.com/accounts/login/"
+	checkURL   = "https://leetcode.com/submissions/detail/%s/check/"
+	testURL    = "https://leetcode.com/problems/%s/interpret_solution/"
+	// Maximum number of attempts to check test status
+	MaxTestAttempts = 10
+	// Interval between test status checks
+	TestPollInterval = 500 * time.Millisecond
+)
 
 var (
 	ErrQuestionNotFound = errors.New("no matching question found")
@@ -159,6 +167,7 @@ var queryQuestionDetails string = `query questionEditorData($titleSlug: String!)
     titleSlug
     title
     difficulty
+	  exampleTestcaseList
     codeSnippets {
       langSlug
       code
@@ -195,8 +204,6 @@ func (lc *Service) Test(problem *models.Problem, language, snippet string) (stri
 	url := fmt.Sprintf(testURL, problem.TitleSlug)
 	contents := strings.ReplaceAll(snippet, "\t", "    ") // Consistent 4 spaces
 
-	// The data_input is hardcoded here. In a real scenario, you'd want to fetch
-	// the test cases for the question or allow the user to provide them.
 	variables := map[string]any{
 		"lang":        models.LangName[language],
 		"question_id": problem.QuestionID,
@@ -204,15 +211,13 @@ func (lc *Service) Test(problem *models.Problem, language, snippet string) (stri
 		"data_input":  problem.TestCases,
 	}
 
-	fmt.Printf("Test cases: %s\n", problem.TestCases)
-
 	data, err := json.Marshal(variables)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal test request: %w", err)
 	}
 
 	headers := map[string]string{
-		"referer": fmt.Sprintf("https://leetcode.com/problemset/%s/description", problem.TitleSlug),
+		"referer": fmt.Sprintf(problemURL, problem.TitleSlug),
 	}
 
 	body, err := lc.doRequest(http.MethodPost, url, data, headers)
@@ -246,4 +251,25 @@ func (lc *Service) CheckTestStatus(callbackUrl string) (*models.TestResponse, er
 	}
 
 	return &response, nil
+}
+
+func (lc *Service) PollTestStatus(testStatusUrl string) (*models.TestResponse, error) {
+	var res *models.TestResponse
+	var err error
+
+	for i := range MaxTestAttempts {
+		res, err = lc.CheckTestStatus(testStatusUrl)
+		if err != nil {
+			return nil, fmt.Errorf("checking test status attempt %d failed: %w", i+1, err)
+		}
+
+		if res.State == "SUCCESS" || res.State == "FAILED" {
+			return res, nil
+		}
+
+		fmt.Print(".")
+		time.Sleep(TestPollInterval)
+	}
+
+	return nil, fmt.Errorf("test status check timed out after %d attempts", MaxTestAttempts)
 }

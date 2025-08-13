@@ -41,8 +41,9 @@ type Problem struct {
 	Code         string
 	LangSlug     string
 	TitleSlug    string
+	Slug         string
 	FunctionName string
-	TestCases    []string
+	TestCases    string
 	SolutionPath string
 	TestPath     string
 	DirPath      string

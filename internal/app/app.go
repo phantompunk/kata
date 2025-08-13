@@ -204,6 +204,10 @@ func isCommandAvailable(name string) bool {
 }
 
 func (app *App) Test(opts AppOptions) error {
+	if opts.Language == "" {
+		opts.Language = app.Config.Language
+	}
+
 	if !app.Config.IsSessionValid() {
 		return fmt.Errorf("session is not valid. Please login using 'kata login' command")
 	}
@@ -403,7 +407,6 @@ func (app *App) TestSolution(name, language string) (string, error) {
 
 	problem := repoQuestion.ToProblem(app.Config.Workspace, language)
 	snippet := app.extractSnippet(problem.SolutionPath)
-	fmt.Println("Extracted snippet:", snippet)
 
 	testStatusUrl, err := app.lcs.Test(problem, language, snippet)
 	if err != nil {
@@ -414,7 +417,7 @@ func (app *App) TestSolution(name, language string) (string, error) {
 		return "", fmt.Errorf("empty testStatusUrl received from server")
 	}
 
-	res, err := app.pollTestStatus(testStatusUrl)
+	res, err := app.lcs.PollTestStatus(testStatusUrl)
 	if err != nil {
 		return "", fmt.Errorf("failed to poll test status: %w", err)
 	}
@@ -424,27 +427,6 @@ func (app *App) TestSolution(name, language string) (string, error) {
 	}
 
 	return fmt.Sprintf("Failed: %s. Details: %s", res.StatusMsg, res.TestCase), nil
-}
-
-func (app *App) pollTestStatus(testStatusUrl string) (*models.TestResponse, error) {
-	var res *models.TestResponse
-	var err error
-
-	for i := range MaxTestAttempts {
-		res, err = app.lcs.CheckTestStatus(testStatusUrl)
-		if err != nil {
-			return nil, fmt.Errorf("checking test status attempt %d failed: %w", i+1, err)
-		}
-
-		if res.State == "SUCCESS" || res.State == "FAILED" {
-			return res, nil
-		}
-
-		fmt.Print(".")
-		time.Sleep(TestPollInterval)
-	}
-
-	return nil, fmt.Errorf("test status check timed out after %d attempts", MaxTestAttempts)
 }
 
 // TODO: Move this to a separate package
