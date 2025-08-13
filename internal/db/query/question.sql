@@ -26,3 +26,10 @@ SELECT EXISTS (
   SELECT 1 FROM questions
   WHERE titleSlug = ?
 );
+
+-- name: Submit :one
+INSERT INTO submissions (
+  id, questionId, langSlug, solved
+) VALUES (
+  ?, ?, ?, ?
+) RETURNING *;

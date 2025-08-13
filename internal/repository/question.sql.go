@@ -166,3 +166,35 @@ func (q *Queries) ListAll(ctx context.Context) ([]Question, error) {
 	}
 	return items, nil
 }
+
+const submit = `-- name: Submit :one
+INSERT INTO submissions (
+  id, questionId, langSlug, solved
+) VALUES (
+  ?, ?, ?, ?
+) RETURNING id, questionid, langslug, solved
+`
+
+type SubmitParams struct {
+	ID         int64
+	Questionid int64
+	Langslug   string
+	Solved     int64
+}
+
+func (q *Queries) Submit(ctx context.Context, arg SubmitParams) (Submission, error) {
+	row := q.db.QueryRowContext(ctx, submit,
+		arg.ID,
+		arg.Questionid,
+		arg.Langslug,
+		arg.Solved,
+	)
+	var i Submission
+	err := row.Scan(
+		&i.ID,
+		&i.Questionid,
+		&i.Langslug,
+		&i.Solved,
+	)
+	return i, err
+}
