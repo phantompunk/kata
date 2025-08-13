@@ -57,7 +57,7 @@ func (q *Question) ToModelQuestion() (*models.Question, error) {
 	if err := json.Unmarshal([]byte(q.Codesnippets), &modelQuestion.CodeSnippets); err != nil {
 		return nil, err
 	}
-	if err := json.Unmarshal([]byte(q.Testcases), &modelQuestion.TestCases); err != nil {
+	if err := json.Unmarshal([]byte(q.Testcases), &modelQuestion.TestCaseList); err != nil {
 		return nil, err
 	}
 	return &modelQuestion, nil
@@ -77,6 +77,7 @@ func (q *Question) ToProblem(workspace, language string) *models.Problem {
 		fmt.Println("Failed to unmarshal code snippets:", err)
 		return nil
 	}
+
 	problem.Code = ""
 	for _, snippet := range codeSnippets {
 		if snippet.LangSlug == language {

@@ -29,10 +29,6 @@ import (
 
 const (
 	LoginUrl = "https://leetcode.com/accounts/login/"
-	// Maximum number of attempts to check test status
-	MaxTestAttempts = 10
-	// Interval between test status checks
-	TestPollInterval = 500 * time.Millisecond
 )
 
 type AppOptions struct {
@@ -221,12 +217,10 @@ func (app *App) Test(opts AppOptions) error {
 		return fmt.Errorf("session is not valid. Please login using 'kata login' command")
 	}
 
-	status, err := app.TestSolution(opts.Problem, opts.Language)
-	if err != nil {
+	if _, err := app.TestSolution(opts.Problem, opts.Language); err != nil {
 		return fmt.Errorf("testing solution for %q: %w", opts.Problem, err)
 	}
 
-	fmt.Println("Test status:", status)
 	return nil
 }
 
@@ -261,9 +255,7 @@ func toModelQuestion(repoQuestion repository.Question) (*models.Question, error)
 	if err := json.Unmarshal([]byte(repoQuestion.Codesnippets), &modelQuestion.CodeSnippets); err != nil {
 		return nil, err
 	}
-	if err := json.Unmarshal([]byte(repoQuestion.Testcases), &modelQuestion.TestCases); err != nil {
-		return nil, err
-	}
+	modelQuestion.Testcases = repoQuestion.Testcases
 	return &modelQuestion, nil
 }
 
@@ -308,10 +300,7 @@ func toRepoCreateParams(modelQuestion *models.Question) (repository.CreateParams
 	}
 	params.Codesnippets = string(codeSnippets)
 
-	testCases, err := json.Marshal(modelQuestion.TestCases)
-	if err != nil {
-		return params, err
-	}
+	testCases := strings.Join(modelQuestion.TestCaseList, "\n")
 	params.Testcases = string(testCases)
 
 	return params, nil
@@ -408,6 +397,7 @@ func (app *App) TestSolution(name, language string) (string, error) {
 	problem := repoQuestion.ToProblem(app.Config.Workspace, language)
 	snippet := app.extractSnippet(problem.SolutionPath)
 
+	fmt.Printf("Testing %s", problem.TitleSlug)
 	testStatusUrl, err := app.lcs.Test(problem, language, snippet)
 	if err != nil {
 		return "", fmt.Errorf("failed to submit solution for testing: %w", err)
@@ -423,10 +413,12 @@ func (app *App) TestSolution(name, language string) (string, error) {
 	}
 
 	if res.Correct {
+		fmt.Println("Passed")
 		return "Passed", nil
 	}
 
-	return fmt.Sprintf("Failed: %s. Details: %s", res.StatusMsg, res.TestCase), nil
+	fmt.Println("Failed")
+	return fmt.Sprintf("Failed: %s.", res.StatusMsg), nil
 }
 
 // TODO: Move this to a separate package

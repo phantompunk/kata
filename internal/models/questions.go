@@ -16,7 +16,8 @@ type Question struct {
 	Content      string        `json:"content"`
 	FunctionName string        `json:"funcName"`
 	CodeSnippets []CodeSnippet `json:"codeSnippets"`
-	TestCases    []string      `json:"exampleTestcaseList"`
+	TestCaseList []string      `json:"exampleTestcaseList"`
+	Testcases    string        `json:"testCases"`
 	LangStatus   map[string]bool
 }
 

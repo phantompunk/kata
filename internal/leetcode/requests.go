@@ -17,7 +17,13 @@ type Response struct {
 
 type TestResponse struct {
 	InterpretID string `json:"interpret_id"`
-	TestCase    string `json:"test_case"`
+	State       string `json:"state"`
+	StatusMsg   string `json:"status_msg"`
+	Correct     bool   `json:"correct_answer"`
+}
+
+type SubmitTestResponse struct {
+	InterpretID string `json:"interpret_id"`
 	State       string `json:"state"`
 	StatusMsg   string `json:"status_msg"`
 	Correct     bool   `json:"correct_answer"`

@@ -249,8 +249,7 @@ func (lc *Service) Test(problem *models.Problem, language, snippet string) (stri
 }
 
 func (lc *Service) CheckTestStatus(callbackUrl string) (*TestResponse, error) {
-	headers := map[string]string{"referer": "https://leetcode.com/problemset/"}
-	body, err := lc.doRequest("GET", callbackUrl, nil, headers)
+	body, err := lc.doRequest("GET", callbackUrl, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check test status: %w", err)
 	}
