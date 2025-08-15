@@ -3,23 +3,25 @@ package main
 import (
 	"fmt"
 
+	"github.com/phantompunk/kata/internal/app"
 	"github.com/spf13/cobra"
 )
 
 func SubmitFunc(cmd *cobra.Command, args []string) error {
 	name, err := cmd.Flags().GetString("problem")
-	if err != nil || name == "" {
-		cmd.Usage()
-		fmt.Println()
-		return fmt.Errorf("Use \"kata download --problem two-sum\" to download and stub a problem")
+	if err != nil {
+		return fmt.Errorf("could not read --problem flag: %w", err)
 	}
 
 	language, err := cmd.Flags().GetString("language")
-	if err != nil || language == "" {
-		language = kata.Config.Language
+	if err != nil {
+		return fmt.Errorf("could not read --language flag: %w", err)
 	}
 
-	fmt.Printf("Submitting solution for %s for %s\n", name, language)
+	opts := app.AppOptions{
+		Problem:  name,
+		Language: language,
+	}
 
-	return nil
+	return kata.Submit(opts)
 }

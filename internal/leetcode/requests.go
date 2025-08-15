@@ -1,7 +1,9 @@
 package leetcode
 
 import (
+	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"github.com/phantompunk/kata/internal/models"
 )
@@ -16,17 +18,35 @@ type Response struct {
 }
 
 type TestResponse struct {
-	InterpretID string `json:"interpret_id"`
-	State       string `json:"state"`
-	StatusMsg   string `json:"status_msg"`
-	Correct     bool   `json:"correct_answer"`
+	InterpretID  string       `json:"interpret_id"`
+	SubmissionID SubmissionID `json:"submission_id"`
+	QuestionID   string       `json:"question_id"`
+	State        string       `json:"state"`
+	StatusMsg    string       `json:"status_msg"`
+	Correct      bool         `json:"correct_answer"`
 }
 
-type SubmitTestResponse struct {
-	InterpretID string `json:"interpret_id"`
-	State       string `json:"state"`
-	StatusMsg   string `json:"status_msg"`
-	Correct     bool   `json:"correct_answer"`
+type SubmissionID string
+
+// Custom unmarshal to handle both int and string
+func (s *SubmissionID) UnmarshalJSON(data []byte) error {
+	// If it's quoted, it's a string
+	if len(data) > 0 && data[0] == '"' {
+		var str string
+		if err := json.Unmarshal(data, &str); err != nil {
+			return err
+		}
+		*s = SubmissionID(str)
+		return nil
+	}
+
+	// Otherwise, try integer
+	var num int64
+	if err := json.Unmarshal(data, &num); err != nil {
+		return err
+	}
+	*s = SubmissionID(strconv.FormatInt(num, 10))
+	return nil
 }
 
 type StreakCounter struct {

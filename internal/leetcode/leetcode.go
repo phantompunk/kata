@@ -22,6 +22,7 @@ const (
 	loginURL   = "https://leetcode.com/accounts/login/"
 	checkURL   = "https://leetcode.com/submissions/detail/%s/check/"
 	testURL    = "https://leetcode.com/problems/%s/interpret_solution/"
+	submitURL  = "https://leetcode.com/problems/%s/submit/"
 
 	// Maximum number of attempts to check test status
 	MaxTestAttempts = 10
@@ -248,11 +249,50 @@ func (lc *Service) Test(problem *models.Problem, language, snippet string) (stri
 	return fmt.Sprintf(checkURL, response.InterpretID), nil
 }
 
+func (lc *Service) Submit(problem *models.Problem, language, snippet string) (string, error) {
+	url := fmt.Sprintf(submitURL, problem.TitleSlug)
+	contents := strings.ReplaceAll(snippet, "\t", "    ") // Consistent 4 spaces
+
+	variables := map[string]any{
+		"lang":        models.LangName[language],
+		"question_id": problem.QuestionID,
+		"typed_code":  contents,
+	}
+
+	data, err := json.Marshal(variables)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal test request: %w", err)
+	}
+
+	headers := map[string]string{
+		"referer": fmt.Sprintf(problemURL, problem.TitleSlug),
+	}
+
+	body, err := lc.doRequest(http.MethodPost, url, data, headers)
+	if err != nil {
+		return "", fmt.Errorf("test submission failed: %w", err)
+	}
+	// fmt.Printf("Response body: %s\n", string(body))
+
+	var response TestResponse
+	if err := json.Unmarshal(body, &response); err != nil {
+		return "", fmt.Errorf("failed to unmarshal test response: %w", err)
+	}
+
+	if response.SubmissionID == "" {
+		return "", errors.New("submission_id not found in test response")
+	}
+
+	return fmt.Sprintf(checkURL, response.SubmissionID), nil
+}
+
 func (lc *Service) CheckTestStatus(callbackUrl string) (*TestResponse, error) {
+	// fmt.Printf("Checking test status at %s\n", callbackUrl)
 	body, err := lc.doRequest("GET", callbackUrl, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check test status: %w", err)
 	}
+	// fmt.Printf("Response check body: %s\n", string(body))
 
 	var response TestResponse
 	err = json.Unmarshal(body, &response)
@@ -264,14 +304,12 @@ func (lc *Service) CheckTestStatus(callbackUrl string) (*TestResponse, error) {
 }
 
 func (lc *Service) PollTestStatus(testStatusUrl string) (*TestResponse, error) {
-	var res *TestResponse
-	var err error
-
 	for i := range MaxTestAttempts {
-		res, err = lc.CheckTestStatus(testStatusUrl)
+		res, err := lc.CheckTestStatus(testStatusUrl)
 		if err != nil {
 			return nil, fmt.Errorf("checking test status attempt %d failed: %w", i+1, err)
 		}
+		// fmt.Println("Test status:", res.State)
 
 		if res.State == "SUCCESS" || res.State == "FAILED" {
 			return res, nil
