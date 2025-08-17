@@ -14,7 +14,7 @@ type Request struct {
 }
 
 type Response struct {
-	Data *Data `json:"data"`
+	Data Data `json:"data"`
 }
 
 type TestResponse struct {
@@ -24,6 +24,17 @@ type TestResponse struct {
 	State        string       `json:"state"`
 	StatusMsg    string       `json:"status_msg"`
 	Correct      bool         `json:"correct_answer"`
+}
+
+type AuthResponse struct {
+	Data struct {
+		UserStatus UserStatus `json:"userStatus"`
+	} `json:"data"`
+}
+
+type UserStatus struct {
+	IsSignedIn bool   `json:"isSignedIn"`
+	Username   string `json:"username"`
 }
 
 type SubmissionID string
@@ -55,12 +66,12 @@ type StreakCounter struct {
 }
 
 type Data struct {
-	Question      *models.Question `json:"question"`
-	StreakCounter *StreakCounter   `json:"streakCounter"`
+	Question *models.Question `json:"question"`
+	Auth     *AuthResponse    `json:"userStatus"`
 }
 
 func (r *Response) GetQuestion(language string) (*models.Question, error) {
-	if r != nil && r.Data != nil && r.Data.Question != nil {
+	if r != nil && r.Data.Question != nil {
 		var selected models.CodeSnippet
 
 		for _, snippet := range r.Data.Question.CodeSnippets {

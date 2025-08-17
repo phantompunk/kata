@@ -16,14 +16,15 @@ func (m *mockRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 	return m.roundTripFunc(req), nil
 }
 
-func mockResponse(response string, client *http.Client) *http.Client {
+func mockResponse(status int, response string, client *http.Client) *http.Client {
 	client.Jar, _ = cookiejar.New(nil)
 	client.Transport = &mockRoundTripper{
 		roundTripFunc: func(req *http.Request) *http.Response {
 			return &http.Response{
-				StatusCode: http.StatusOK,
+				StatusCode: status,
 				Body:       io.NopCloser(bytes.NewReader([]byte(response))),
 				Header:     make(http.Header),
+				Request:    req,
 			}
 		},
 	}
@@ -32,22 +33,11 @@ func mockResponse(response string, client *http.Client) *http.Client {
 
 func newTestService() *Service {
 	cookiejar, _ := cookiejar.New(nil)
-	mockClient := &http.Client{Jar: cookiejar}
-	session, csrftoken := "abc123", "csrf123"
-	lc, _ := New(WithHTTPClient(mockClient), WithCookies(session, csrftoken))
+	mockClient := &http.Client{
+		Jar:       cookiejar,
+		Transport: &mockRoundTripper{},
+	}
+	session, csrf := "abc123", "csrf123"
+	lc, _ := New(WithHTTPClient(mockClient), WithCookies(session, csrf))
 	return lc
 }
-
-// func newMockClient(response string) *http.Client {
-// 	return &http.Client{
-// 		Transport: &mockRoundTripper{
-// 			roundTripFunc: func(req *http.Request) *http.Response {
-// 				return &http.Response{
-// 					StatusCode: http.StatusOK,
-// 					Body:       io.NopCloser(bytes.NewReader([]byte(response))),
-// 					Header:     make(http.Header),
-// 				}
-// 			},
-// 		},
-// 	}
-// }

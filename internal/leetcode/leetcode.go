@@ -2,6 +2,7 @@ package leetcode
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -32,15 +33,17 @@ const (
 
 var (
 	ErrQuestionNotFound = errors.New("no matching question found")
+	ErrNotAuthenticated = errors.New("not authenticated")
 )
 
 const (
-	queryUserStreak = `
-		query getStreakCounter {
-			streakCounter {
-				currentDayCompleted
-			}
-		}`
+	queryUserAuth = `
+	query globalData {
+		userStatus {
+			isSignedIn
+			username
+		}
+	}`
 
 	queryQuestionDetails = `
 		query questionEditorData($titleSlug: String!) {
@@ -125,8 +128,10 @@ func (s *Service) setClientCookies(rawURL string) error {
 	return nil
 }
 
-func (lc *Service) doRequest(method, url string, body []byte, customHeaders map[string]string) ([]byte, error) {
-	req, err := http.NewRequest(method, url, bytes.NewBuffer(body))
+type Map map[string]string
+
+func (lc *Service) doRequest(ctx context.Context, method, url string, body io.Reader, customHeaders Map) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -164,27 +169,24 @@ func (lc *Service) doRequest(method, url string, body []byte, customHeaders map[
 
 // More Auth -> are we authenticated?
 func (lc *Service) Ping() (bool, error) {
-	data, err := json.Marshal(Request{Query: queryUserStreak})
+	data, err := json.Marshal(Request{Query: queryUserAuth})
 	if err != nil {
 		return false, fmt.Errorf("failed to marshal request data: %w", err)
 	}
 
-	headers := map[string]string{
-		"referer": "https://leetcode.com/problemset/",
-	}
-
-	body, err := lc.doRequest("POST", lc.baseUrl, data, headers)
+	body, err := lc.doRequest(context.Background(), "POST", lc.baseUrl, bytes.NewBuffer(data), nil)
 	if err != nil {
-		return false, fmt.Errorf("failed to do request: %w", err)
+		return false, ErrNotAuthenticated
+		// return false, fmt.Errorf("failed to do request: %w", err)
 	}
 
-	var response Response
+	var response AuthResponse
 	err = json.Unmarshal(body, &response)
 	if err != nil {
 		return false, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
-	return response.Data.StreakCounter != nil, nil
+	return response.Data.UserStatus.IsSignedIn, nil
 }
 
 func (lc *Service) Fetch(name string) (*models.Question, error) {
@@ -194,7 +196,7 @@ func (lc *Service) Fetch(name string) (*models.Question, error) {
 		return nil, fmt.Errorf("failed to marshal request data: %w", err)
 	}
 
-	body, err := lc.doRequest("POST", lc.baseUrl, data, nil)
+	body, err := lc.doRequest(context.Background(), "POST", lc.baseUrl, bytes.NewReader(data), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to do request: %w", err)
 	}
@@ -232,7 +234,7 @@ func (lc *Service) Test(problem *models.Problem, language, snippet string) (stri
 		"referer": fmt.Sprintf(problemURL, problem.TitleSlug),
 	}
 
-	body, err := lc.doRequest(http.MethodPost, url, data, headers)
+	body, err := lc.doRequest(context.Background(), http.MethodPost, url, bytes.NewReader(data), headers)
 	if err != nil {
 		return "", fmt.Errorf("test submission failed: %w", err)
 	}
@@ -268,7 +270,7 @@ func (lc *Service) Submit(problem *models.Problem, language, snippet string) (st
 		"referer": fmt.Sprintf(problemURL, problem.TitleSlug),
 	}
 
-	body, err := lc.doRequest(http.MethodPost, url, data, headers)
+	body, err := lc.doRequest(context.Background(), http.MethodPost, url, bytes.NewReader(data), headers)
 	if err != nil {
 		return "", fmt.Errorf("test submission failed: %w", err)
 	}
@@ -288,7 +290,7 @@ func (lc *Service) Submit(problem *models.Problem, language, snippet string) (st
 
 func (lc *Service) CheckTestStatus(callbackUrl string) (*TestResponse, error) {
 	// fmt.Printf("Checking test status at %s\n", callbackUrl)
-	body, err := lc.doRequest("GET", callbackUrl, nil, nil)
+	body, err := lc.doRequest(context.Background(), "GET", callbackUrl, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check test status: %w", err)
 	}
