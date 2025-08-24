@@ -121,10 +121,10 @@ func userMessage(err error) string {
 	switch {
 	case errors.Is(err, leetcode.ErrQuestionNotFound):
 		return "No matching question found. Please check the problem slug."
-	// case errors.Is(err, kata.ErrInvalidFlag):
-	// 	return "Invalid flag provided. Use --help for usage instructions."
-	// case errors.Is(err, kata.ErrPermissionDenied):
-	// 	return "Permission denied. Please check your file permissions."
+	case errors.Is(err, leetcode.ErrNotAuthenticated):
+		return "Session is not valid try logging in manually at https://leetcode.com"
+	case errors.Is(err, app.ErrCookiesNotFound):
+		return "Browser cookies not found or invalid try logging in manually at https://leetcode.com"
 	default:
 		// Fallback: show generic message without internal stack traces
 		return "An unexpected error occurred. Please try again."

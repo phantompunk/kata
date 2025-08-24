@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -29,6 +30,11 @@ import (
 
 const (
 	LoginUrl = "https://leetcode.com/accounts/login/"
+)
+
+var (
+	ErrCookiesNotFound  = errors.New("session cookies not found")
+	ErrNotAuthenticated = errors.New("not authenticated")
 )
 
 type AppOptions struct {
@@ -124,19 +130,18 @@ func (app *App) Login(opts AppOptions) error {
 		return nil
 	}
 
-	// TODO: Improve user error message
 	if err := app.RefreshCookies(); err != nil {
-		return fmt.Errorf("could not authenticate using browser cookies: %w\nPlease login manually at %s", err, LoginUrl)
+		return fmt.Errorf("%w: %w", ErrCookiesNotFound, err)
 	}
 
-	valid, err := app.CheckSession()
+	valid, err := app.lcs.Ping()
 	if err != nil {
-		return fmt.Errorf("failed to check session: %w\nPlease login manually at %s", err, LoginUrl)
+		return err
 	}
 
 	if !valid {
 		app.ClearCookies()
-		return fmt.Errorf("session cookies are invalid.\nPlease login manually at %s", LoginUrl)
+		return ErrNotAuthenticated
 	}
 
 	fmt.Println("Successfully logged in using browser cookies.")

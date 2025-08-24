@@ -34,6 +34,7 @@ const (
 var (
 	ErrQuestionNotFound = errors.New("no matching question found")
 	ErrNotAuthenticated = errors.New("not authenticated")
+	ErrBuildingRequest  = errors.New("not able to build request")
 )
 
 const (
@@ -108,7 +109,8 @@ func New(opts ...Option) (*Service, error) {
 		}
 
 		lcs.client = &http.Client{
-			Jar: jar,
+			Timeout: 10 * time.Second,
+			Jar:     jar,
 		}
 	}
 	return lcs, nil
@@ -176,8 +178,7 @@ func (lc *Service) Ping() (bool, error) {
 
 	body, err := lc.doRequest(context.Background(), "POST", lc.baseUrl, bytes.NewBuffer(data), nil)
 	if err != nil {
-		return false, ErrNotAuthenticated
-		// return false, fmt.Errorf("failed to do request: %w", err)
+		return false, fmt.Errorf("failed to do request: %w", err)
 	}
 
 	var response AuthResponse
