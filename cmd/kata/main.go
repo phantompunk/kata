@@ -28,9 +28,10 @@ var rootCmd = &cobra.Command{
 }
 
 var downloadCmd = &cobra.Command{
-	Use:   "download",
-	Short: "Download and stub a Leetcode problem",
-	RunE:  HandleErrors(DownloadFunc),
+	Use:     "download",
+	Short:   "Download and stub a Leetcode problem",
+	RunE:    HandleErrors(DownloadFunc),
+	Aliases: []string{"get"},
 }
 
 var quizCmd = &cobra.Command{
@@ -83,7 +84,7 @@ func init() {
 	downloadCmd.Flags().StringP("language", "l", "", "Programming language to use")
 	downloadCmd.Flags().BoolP("open", "o", false, "Open problem with $EDITOR")
 	downloadCmd.Flags().BoolP("force", "f", false, "Force download even if problem already exists")
-	downloadCmd.MarkFlagRequired("problem")
+	// downloadCmd.MarkFlagRequired("problem")
 
 	testCmd.Flags().StringP("problem", "p", "", "LeetCode problem name")
 	testCmd.Flags().StringP("language", "l", "", "Programming language to use")
@@ -122,9 +123,7 @@ func userMessage(err error) string {
 	case errors.Is(err, leetcode.ErrQuestionNotFound):
 		return "No matching question found. Please check the problem slug."
 	case errors.Is(err, leetcode.ErrNotAuthenticated):
-		return "Session is not valid try logging in manually at https://leetcode.com"
-	case errors.Is(err, app.ErrCookiesNotFound):
-		return "Browser cookies not found or invalid try logging in manually at https://leetcode.com"
+		return "Not auth"
 	default:
 		// Fallback: show generic message without internal stack traces
 		return "An unexpected error occurred. Please try again."

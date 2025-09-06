@@ -95,6 +95,10 @@ func (app *App) DownloadQuestion(opts AppOptions) error {
 		opts.Open = true
 	}
 
+	if id, err := strconv.Atoi(opts.Problem); err == nil {
+		opts.Problem = MapIDtoSlug[id]
+	}
+
 	question, err := app.GetQuestion(opts.Problem, opts.Language, opts.Force)
 	if err != nil {
 		return fmt.Errorf("fetching question %q: %w", opts.Problem, err)

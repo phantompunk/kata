@@ -2,6 +2,7 @@ package leetcode
 
 import (
 	"net/http"
+	"strconv"
 	"testing"
 
 	"github.com/phantompunk/kata/internal/assert"
@@ -56,6 +57,16 @@ func TestFetch(t *testing.T) {
 		mockResponse(http.StatusOK, found, lc.client)
 
 		question, err := lc.Fetch("two-sum")
+		assert.NilError(t, err)
+		assert.Equal(t, question.Title, "Two Sum")
+		assert.Equal(t, question.ID, "1")
+	})
+
+	t.Run("Problem found by id", func(t *testing.T) {
+		found := `{"data":{"question":{"questionId":"1","content":"<p>Given an array of integers</p>","titleSlug":"two-sum","title":"Two Sum","difficulty":"Easy","codeSnippets":[{"langSlug":"golang","code":"func twoSum(nums []int, target int) []int {\n    \n}"}]}}}`
+		mockResponse(http.StatusOK, found, lc.client)
+
+		question, err := lc.Fetch("1")
 		assert.NilError(t, err)
 		assert.Equal(t, question.Title, "Two Sum")
 		assert.Equal(t, question.ID, "1")
