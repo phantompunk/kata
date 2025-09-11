@@ -80,18 +80,13 @@ func main() {
 func init() {
 	// Define flags
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Enable verbose output")
-	downloadCmd.Flags().StringP("problem", "p", "", "LeetCode problem name")
 	downloadCmd.Flags().StringP("language", "l", "", "Programming language to use")
 	downloadCmd.Flags().BoolP("open", "o", false, "Open problem with $EDITOR")
 	downloadCmd.Flags().BoolP("force", "f", false, "Force download even if problem already exists")
 	// downloadCmd.MarkFlagRequired("problem")
 
-	testCmd.Flags().StringP("problem", "p", "", "LeetCode problem name")
 	testCmd.Flags().StringP("language", "l", "", "Programming language to use")
-
-	submitCmd.Flags().StringP("problem", "p", "", "LeetCode problem name")
 	submitCmd.Flags().StringP("language", "l", "", "Programming language to use")
-
 	loginCmd.Flags().BoolP("force", "f", false, "Always refresh browser cookies")
 
 	rootCmd.AddCommand(downloadCmd)

@@ -8,10 +8,10 @@ import (
 )
 
 func TestFunc(cmd *cobra.Command, args []string) error {
-	name, err := cmd.Flags().GetString("problem")
-	if err != nil {
-		return fmt.Errorf("could not read --problem flag: %w", err)
+	if len(args) == 0 {
+		return fmt.Errorf(`missing problem, try "kata get two-sum" or "kata get 1"`)
 	}
+	name := args[0]
 
 	language, err := cmd.Flags().GetString("language")
 	if err != nil {

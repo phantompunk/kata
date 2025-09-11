@@ -87,6 +87,14 @@ func New() (*App, error) {
 	}, nil
 }
 
+func convertToSlug(name string) string {
+	if id, err := strconv.Atoi(name); err == nil {
+		return MapIDtoSlug[id]
+	}
+
+	return name
+}
+
 func (app *App) DownloadQuestion(opts AppOptions) error {
 	if opts.Language == "" {
 		opts.Language = app.Config.Language
@@ -96,9 +104,7 @@ func (app *App) DownloadQuestion(opts AppOptions) error {
 		opts.Open = true
 	}
 
-	if id, err := strconv.Atoi(opts.Problem); err == nil {
-		opts.Problem = MapIDtoSlug[id]
-	}
+	opts.Problem = convertToSlug(opts.Problem)
 
 	question, err := app.GetQuestion(opts.Problem, opts.Language, opts.Force)
 	if err != nil {
@@ -171,6 +177,8 @@ func (app *App) Test(opts AppOptions) error {
 		opts.Language = app.Config.Language
 	}
 
+	opts.Problem = convertToSlug(opts.Problem)
+
 	if err := app.CheckSession(); err != nil {
 		return fmt.Errorf("failed to check session: %w", err)
 	}
@@ -182,6 +190,8 @@ func (app *App) Submit(opts AppOptions) error {
 	if opts.Language == "" {
 		opts.Language = app.Config.Language
 	}
+
+	opts.Problem = convertToSlug(opts.Problem)
 
 	if err := app.CheckSession(); err != nil {
 		return fmt.Errorf("failed to check session: %w", err)
