@@ -124,8 +124,11 @@ func userMessage(err error) string {
 		return "No matching question found. Please check the problem slug."
 	case errors.Is(err, leetcode.ErrNotAuthenticated):
 		return "Not auth"
+	case errors.Is(err, app.ErrCookiesNotFound):
+		return "Session not found. Please sign in to https://leetcode.com then run 'kata login' again"
+	case errors.Is(err, app.ErrInvalidSession):
+		return "Session expired. Please sign in to https://leetcode.com then run 'kata login' again"
 	default:
-		// Fallback: show generic message without internal stack traces
 		return "An unexpected error occurred. Please try again."
 	}
 }

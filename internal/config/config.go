@@ -164,3 +164,11 @@ func (c *Config) IsSessionValid() bool {
 		!c.SessionExpires.IsZero() &&
 		time.Now().Before(c.SessionExpires)
 }
+
+func (c *Config) ClearSession() error {
+	c.SessionToken = ""
+	c.CsrfToken = ""
+	c.SessionExpires = time.Time{}
+	fmt.Println("Cleared cookies from config")
+	return c.Update()
+}

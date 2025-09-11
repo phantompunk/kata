@@ -173,7 +173,7 @@ func (lc *Service) doRequest(ctx context.Context, method, url string, body io.Re
 func (lc *Service) Ping() (bool, error) {
 	data, err := json.Marshal(Request{Query: queryUserAuth})
 	if err != nil {
-		return false, fmt.Errorf("failed to marshal request data: %w", err)
+		return false, err
 	}
 
 	body, err := lc.doRequest(context.Background(), "POST", lc.baseUrl, bytes.NewBuffer(data), nil)

@@ -35,6 +35,7 @@ const (
 var (
 	ErrCookiesNotFound  = errors.New("session cookies not found")
 	ErrNotAuthenticated = errors.New("not authenticated")
+	ErrInvalidSession   = errors.New("session is not valid")
 )
 
 type AppOptions struct {
@@ -138,17 +139,11 @@ func (app *App) Login(opts AppOptions) error {
 		return fmt.Errorf("%w: %w", ErrCookiesNotFound, err)
 	}
 
-	valid, err := app.lcs.Ping()
-	if err != nil {
-		return err
+	if err := app.CheckSession(); err != nil {
+		return fmt.Errorf("failed to check session: %w", err)
 	}
 
-	if !valid {
-		app.ClearCookies()
-		return ErrNotAuthenticated
-	}
-
-	fmt.Println("Successfully logged in using browser cookies.")
+	fmt.Println("Successfully logged in using browser session.")
 	return nil
 }
 
@@ -176,24 +171,11 @@ func (app *App) Test(opts AppOptions) error {
 		opts.Language = app.Config.Language
 	}
 
-	if !app.Config.IsSessionValid() {
-		return fmt.Errorf("session is not valid. Please login using 'kata login' command")
-	}
-
-	valid, err := app.CheckSession()
-	if err != nil {
+	if err := app.CheckSession(); err != nil {
 		return fmt.Errorf("failed to check session: %w", err)
 	}
 
-	if !valid {
-		return fmt.Errorf("session is not valid. Please login using 'kata login' command")
-	}
-
-	if _, err := app.TestSolution(opts.Problem, opts.Language); err != nil {
-		return fmt.Errorf("testing solution for %q: %w", opts.Problem, err)
-	}
-
-	return nil
+	return app.TestSolution(opts.Problem, opts.Language)
 }
 
 func (app *App) Submit(opts AppOptions) error {
@@ -201,17 +183,8 @@ func (app *App) Submit(opts AppOptions) error {
 		opts.Language = app.Config.Language
 	}
 
-	if !app.Config.IsSessionValid() {
-		return fmt.Errorf("session is not valid. Please login using 'kata login' command")
-	}
-
-	valid, err := app.CheckSession()
-	if err != nil {
+	if err := app.CheckSession(); err != nil {
 		return fmt.Errorf("failed to check session: %w", err)
-	}
-
-	if !valid {
-		return fmt.Errorf("session is not valid. Please login using 'kata login' command")
 	}
 
 	return app.SubmitSolution(opts.Problem, opts.Language)
@@ -255,21 +228,22 @@ func isCommandAvailable(name string) bool {
 }
 
 // CheckSession checks if the session is valid by pinging the leetcode service
-func (app *App) CheckSession() (bool, error) {
-	app.lcs.SetCookies(app.Config.SessionToken, app.Config.CsrfToken)
-	isValid, err := app.lcs.Ping()
-	if err != nil {
-		return false, fmt.Errorf("failed to ping leetcode service: %w", err)
+func (app *App) CheckSession() error {
+	if !app.Config.IsSessionValid() {
+		app.Config.ClearSession()
+		return ErrInvalidSession
 	}
-	return isValid, nil
-}
 
-func (app *App) ClearCookies() error {
-	app.Config.SessionToken = ""
-	app.Config.CsrfToken = ""
-	app.Config.SessionExpires = time.Time{}
-	fmt.Println("Cleared cookies from config")
-	return app.Config.Update()
+	valid, err := app.lcs.Ping()
+	if err != nil {
+		return fmt.Errorf("failed to ping leetcode service: %w", err)
+	}
+
+	if !valid {
+		app.Config.ClearSession()
+		return ErrInvalidSession
+	}
+	return nil
 }
 
 // :TODO: Move this to a separate package
@@ -409,19 +383,19 @@ func (app *App) Stub(question *models.Question, opts AppOptions) error {
 }
 
 // TestSolution tests the solution for a given problem name and language.
-func (app *App) TestSolution(name, language string) (string, error) {
+func (app *App) TestSolution(name, language string) error {
 	exists, err := app.repo.Exists(context.Background(), name)
 	if err != nil {
-		return "", fmt.Errorf("failed to check question existence: %w", err)
+		return fmt.Errorf("failed to check question existence: %w", err)
 	}
 
 	if exists == 0 {
-		return "", fmt.Errorf("question %q not found", name)
+		return fmt.Errorf("question %q not found", name)
 	}
 
 	repoQuestion, err := app.repo.GetBySlug(context.Background(), name)
 	if err != nil {
-		return "", fmt.Errorf("failed to get question details: %w", err)
+		return fmt.Errorf("failed to get question details: %w", err)
 	}
 
 	problem := repoQuestion.ToProblem(app.Config.Workspace, language)
@@ -430,25 +404,25 @@ func (app *App) TestSolution(name, language string) (string, error) {
 	fmt.Printf("Testing %s", problem.TitleSlug)
 	testStatusUrl, err := app.lcs.Test(problem, language, snippet)
 	if err != nil {
-		return "", fmt.Errorf("failed to submit solution for testing: %w", err)
+		return fmt.Errorf("failed to submit solution for testing: %w", err)
 	}
 
 	if testStatusUrl == "" {
-		return "", fmt.Errorf("empty testStatusUrl received from server")
+		return fmt.Errorf("empty testStatusUrl received from server")
 	}
 
 	res, err := app.lcs.PollTestStatus(testStatusUrl)
 	if err != nil {
-		return "", fmt.Errorf("failed to poll test status: %w", err)
+		return fmt.Errorf("failed to poll test status: %w", err)
 	}
 
 	if res.Correct {
 		fmt.Println("Passed")
-		return "Passed", nil
+		return nil
 	}
 
 	fmt.Println("Failed")
-	return fmt.Sprintf("Failed: %s.", res.StatusMsg), nil
+	return nil
 }
 
 // SubmitSolution tests the solution for a given problem name and language.
