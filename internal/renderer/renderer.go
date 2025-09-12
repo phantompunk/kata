@@ -10,8 +10,9 @@ import (
 	"unicode"
 
 	htmltomarkdown "github.com/JohannesKaufmann/html-to-markdown/v2"
+	"github.com/charmbracelet/bubbles/table"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/lipgloss/table"
 	"github.com/phantompunk/kata/internal/models"
 	"github.com/phantompunk/kata/templates"
 )
@@ -19,6 +20,46 @@ import (
 type Renderer struct {
 	templ *template.Template
 	Error error
+}
+
+var baseStyle = lipgloss.NewStyle().
+	BorderStyle(lipgloss.NormalBorder()).
+	BorderForeground(lipgloss.Color("240"))
+
+// Define the Bubble Tea model
+type model struct {
+	table table.Model
+}
+
+func (m model) Init() tea.Cmd {
+	return nil
+}
+
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "esc":
+			if m.table.Focused() {
+				m.table.Blur()
+			} else {
+				m.table.Focus()
+			}
+		case "q", "ctrl+c":
+			return m, tea.Quit
+		case "enter":
+			return m, tea.Batch(
+				tea.Printf("Let's go to %s!", m.table.SelectedRow()[1]),
+			)
+		}
+	}
+	m.table, cmd = m.table.Update(msg)
+	return m, cmd
+}
+
+func (m model) View() string {
+	return baseStyle.Render(m.table.View()) + "\n"
 }
 
 func New() (*Renderer, error) {
@@ -140,22 +181,86 @@ func colorizeDifficulty(difficulty string) string {
 func printTable(languages []string, questions [][]string) {
 	headers := []string{"ID", "Name", "Difficulty"}
 	headers = append(headers, languages...)
-	re := lipgloss.NewRenderer(os.Stdout)
-	baseStyle := re.NewStyle().Padding(0, 1)
-	headerStyle := baseStyle.Foreground(lipgloss.Color("252")).Bold(true)
+	// re := lipgloss.NewRenderer(os.Stdout)
+	// baseStyle := re.NewStyle().Padding(0, 1)
+	// headerStyle := baseStyle.Foreground(lipgloss.Color("252")).Bold(true)
 
 	// Define table headers
-	t := table.New().
-		Border(lipgloss.DoubleBorder()).
-		Headers(headers...).
-		Rows(questions...).
-		StyleFunc(func(row, col int) lipgloss.Style {
-			if row == table.HeaderRow {
-				return headerStyle
-			}
-			return baseStyle
-		})
+	// t := table.New().
+	// 	Border(lipgloss.DoubleBorder()).
+	// 	Headers(headers...).
+	// 	Rows(questions...).
+	// 	StyleFunc(func(row, col int) lipgloss.Style {
+	// 		if row == table.HeaderRow {
+	// 			return headerStyle
+	// 		}
+	// 		return baseStyle
+	// 	})
+	//
+	// // Render table
+	// fmt.Println(t.Render())
+}
 
-	// Render table
-	fmt.Println(t.Render())
+func (r *Renderer) ProblemsTable(questions []models.Question, languages []string) error {
+	data := convert(languages, questions)
+	showTable(languages, data)
+	return nil
+}
+
+func convert(tracks []string, questions []models.Question) []table.Row {
+	var rows []table.Row
+	for _, question := range questions {
+		row := []string{
+			fmt.Sprint(question.ID),
+			question.Title,
+			colorizeDifficulty(question.Difficulty),
+		}
+
+		for _, lang := range tracks {
+			status := "❌"
+			if question.LangStatus[lang] {
+				status = "✅"
+			}
+			row = append(row, status)
+		}
+		rows = append(rows, row)
+	}
+	return rows
+}
+
+func showTable(languages []string, rows []table.Row) {
+	columns := []table.Column{
+		{Title: "ID", Width: 4},
+		{Title: "Name", Width: 30},
+		{Title: "Difficulty", Width: 15},
+	}
+
+	for _, lang := range languages {
+		columns = append(columns, table.Column{Title: lang, Width: 4})
+	}
+
+	t := table.New(
+		table.WithColumns(columns),
+		table.WithRows(rows),
+		table.WithFocused(true),
+		table.WithHeight(10),
+	)
+	s := table.DefaultStyles()
+	s.Header = s.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("240")).
+		BorderBottom(true).
+		Bold(false)
+	s.Selected = s.Selected.
+		Foreground(lipgloss.Color("229")).
+		Background(lipgloss.Color("57")).
+		Bold(false)
+	t.SetStyles(s)
+
+	m := model{t}
+	if _, err := tea.NewProgram(m).Run(); err != nil {
+		fmt.Println("Error running program:", err)
+		os.Exit(1)
+	}
+
 }

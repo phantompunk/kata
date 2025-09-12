@@ -128,7 +128,7 @@ func (app *App) ListQuestions() error {
 		return fmt.Errorf("listing questions: %w", err)
 	}
 
-	if err := app.Renderer.QuestionsAsTable(questions, app.Config.Tracks); err != nil {
+	if err := app.Renderer.ProblemsTable(questions, app.Config.Tracks); err != nil {
 		return fmt.Errorf("rendering questions as table: %w", err)
 	}
 
