@@ -21,6 +21,7 @@ func ProblemsTable(questions []models.Question, languages []string) error {
 		table.WithHeight(10),
 	)
 	s := table.DefaultStyles()
+	s.Selected = lipgloss.NewStyle().Bold(true)
 	s.Header = s.Header.
 		BorderStyle(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color("240")).
@@ -50,7 +51,7 @@ func createRows(questions []models.Question, tracks []string) []table.Row {
 			if question.LangStatus[lang] {
 				status = "✅"
 			}
-			row = append(row, centeredStyle.Width(len(lang)).Render(status))
+			row = append(row, centered.Width(len(lang)).Render(status))
 		}
 		rows = append(rows, row)
 	}
@@ -61,12 +62,12 @@ func createColumns(languages []string) []table.Column {
 	columns := []table.Column{
 		{Title: "ID", Width: 4},
 		{Title: "Name", Width: 30},
-		{Title: "Difficulty", Width: 13},
+		{Title: "Difficulty", Width: 14},
 	}
 
 	for _, lang := range languages {
 		columns = append(columns, table.Column{
-			Title: centeredStyle.Render(lang),
+			Title: centered.Render(lang),
 			Width: len(lang) + 2,
 		})
 	}
@@ -75,9 +76,9 @@ func createColumns(languages []string) []table.Column {
 
 func colorize(difficulty string) string {
 	styles := map[string]lipgloss.Style{
-		"Easy":   lipgloss.NewStyle().Align(lipgloss.Center).Foreground(lipgloss.Color("2")), // Green
-		"Medium": lipgloss.NewStyle().Align(lipgloss.Center).Foreground(lipgloss.Color("3")), // Yellow
-		"Hard":   lipgloss.NewStyle().Align(lipgloss.Center).Foreground(lipgloss.Color("1")), // Red
+		"Easy":   centered.PaddingLeft(2).Foreground(lipgloss.Color("2")), // Green
+		"Medium": centered.PaddingLeft(1).Foreground(lipgloss.Color("3")), // Yellow
+		"Hard":   centered.PaddingLeft(2).Foreground(lipgloss.Color("1")), // Red
 	}
 
 	if style, exists := styles[difficulty]; exists {

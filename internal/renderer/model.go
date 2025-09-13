@@ -7,10 +7,10 @@ import (
 )
 
 var baseStyle = lipgloss.NewStyle().
-	BorderStyle(lipgloss.NormalBorder()).
+	BorderStyle(lipgloss.DoubleBorder()).
 	BorderForeground(lipgloss.Color("240"))
 
-var centeredStyle = lipgloss.NewStyle().
+var centered = lipgloss.NewStyle().
 	Align(lipgloss.Center)
 
 // Define the Bubble Tea model
