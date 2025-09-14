@@ -169,6 +169,8 @@ func (app *App) Quiz(opts AppOptions) error {
 			return fmt.Errorf("failed to open solution file in editor: %w", err)
 		}
 	}
+
+	fmt.Printf("Pop Quiz!\nTry solving this random problem again:\n\nID: %s\nTitle: %s\nDifficulty: %s\nStatus: solved\n", problem.QuestionID, problem.TitleSlug, problem.TitleSlug)
 	return nil
 }
 

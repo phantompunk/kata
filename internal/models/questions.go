@@ -3,6 +3,7 @@ package models
 import (
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -55,6 +56,11 @@ func (q *Question) ToProblem(workspace, language string) *Problem {
 	}
 	problem.SetPaths(workspace)
 	return &problem
+}
+
+func (p *Problem) ID() int {
+	id, _ := strconv.Atoi(p.QuestionID)
+	return id
 }
 
 func (p *Problem) Extension() string {
