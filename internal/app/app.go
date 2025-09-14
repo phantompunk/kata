@@ -36,6 +36,7 @@ var (
 	ErrCookiesNotFound  = errors.New("session cookies not found")
 	ErrNotAuthenticated = errors.New("not authenticated")
 	ErrInvalidSession   = errors.New("session is not valid")
+	ErrDuplicateProblem = errors.New("question has already been downloaded")
 )
 
 type AppOptions struct {
@@ -328,7 +329,11 @@ func (app *App) GetQuestion(name, language string, force bool) (*models.Question
 		return nil, fmt.Errorf("failed to check question existence: %w", err)
 	}
 
-	if exists == 1 && !force {
+	if exists == 1 {
+		if !force {
+			return nil, ErrDuplicateProblem
+		}
+
 		repoQuestion, err := app.repo.GetBySlug(context.Background(), name)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get question details: %w", err)
