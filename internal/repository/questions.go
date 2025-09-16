@@ -47,17 +47,17 @@ func (q *Queries) GetAllWithStatus(ctx context.Context, languages []string) ([]m
 
 func (q *Question) ToModelQuestion() (*models.Question, error) {
 	var modelQuestion models.Question
-	modelQuestion.ID = fmt.Sprintf("%d", q.Questionid)
+	modelQuestion.ID = fmt.Sprintf("%d", q.QuestionID)
 	modelQuestion.Title = q.Title
-	modelQuestion.TitleSlug = q.Titleslug
+	modelQuestion.TitleSlug = q.TitleSlug
 	modelQuestion.Difficulty = q.Difficulty
-	modelQuestion.FunctionName = q.Functionname
+	modelQuestion.FunctionName = q.FunctionName
 	modelQuestion.Content = q.Content
 
-	if err := json.Unmarshal([]byte(q.Codesnippets), &modelQuestion.CodeSnippets); err != nil {
+	if err := json.Unmarshal([]byte(q.CodeSnippets), &modelQuestion.CodeSnippets); err != nil {
 		return nil, err
 	}
-	if err := json.Unmarshal([]byte(q.Testcases), &modelQuestion.TestCaseList); err != nil {
+	if err := json.Unmarshal([]byte(q.TestCases), &modelQuestion.TestCaseList); err != nil {
 		return nil, err
 	}
 	return &modelQuestion, nil
@@ -65,15 +65,15 @@ func (q *Question) ToModelQuestion() (*models.Question, error) {
 
 func (q *Question) ToProblem(workspace, language string) *models.Problem {
 	var problem models.Problem
-	problem.QuestionID = fmt.Sprintf("%d", q.Questionid)
+	problem.QuestionID = fmt.Sprintf("%d", q.QuestionID)
 	problem.Content = q.Content
-	problem.FunctionName = q.Functionname
-	problem.TitleSlug = q.Titleslug
-	problem.Slug = formatTitleSlug(q.Titleslug)
-	problem.TestCases = q.Testcases
+	problem.FunctionName = q.FunctionName
+	problem.TitleSlug = q.TitleSlug
+	problem.Slug = formatTitleSlug(q.TitleSlug)
+	problem.TestCases = q.TestCases
 
 	var codeSnippets []models.CodeSnippet
-	if err := json.Unmarshal([]byte(q.Codesnippets), &codeSnippets); err != nil {
+	if err := json.Unmarshal([]byte(q.CodeSnippets), &codeSnippets); err != nil {
 		fmt.Println("Failed to unmarshal code snippets:", err)
 		return nil
 	}
@@ -91,7 +91,7 @@ func (q *Question) ToProblem(workspace, language string) *models.Problem {
 }
 
 func buildSelectClause(languages []string) string {
-	selectClause := "SELECT q.questionId, q.title, q.difficulty"
+	selectClause := "SELECT q.question_id, q.title, q.difficulty"
 	for _, lang := range languages {
 		selectClause += fmt.Sprintf(", COALESCE(%s.solved, 0) AS %sSolved", lang, lang)
 	}
@@ -102,7 +102,7 @@ func buildFromClause(languages []string) string {
 	fromClause := " FROM questions q"
 	for _, language := range languages {
 		lang := strings.ToLower(language)
-		fromClause += fmt.Sprintf(" LEFT JOIN submissions %s ON q.questionId = %s.questionId AND %s.langSlug = '%s'", lang, lang, lang, lang)
+		fromClause += fmt.Sprintf(" LEFT JOIN submissions %s ON q.question_id = %s.question_id AND %s.lang_slug = '%s'", lang, lang, lang, lang)
 	}
 	return fromClause
 }
@@ -134,4 +134,16 @@ func hasNumber(name string) bool {
 		}
 	}
 	return false
+}
+
+func (q *GetRandomRow) ToProblem(workspace, language string) *models.Problem {
+	var problem models.Problem
+	problem.QuestionID = fmt.Sprintf("%d", q.QuestionID)
+
+	problem.TitleSlug = q.TitleSlug
+	problem.Slug = formatTitleSlug(q.TitleSlug)
+	problem.LastAttempted = q.LastAttempted
+	problem.LangSlug = models.LangName[language]
+	problem.SetPaths(workspace)
+	return &problem
 }

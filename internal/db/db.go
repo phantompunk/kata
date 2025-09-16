@@ -20,6 +20,7 @@ import (
 var Migrations embed.FS
 
 func GetDbPath() string {
+
 	return filepath.Join(xdg.DataHome, "kata", "kata.db")
 }
 

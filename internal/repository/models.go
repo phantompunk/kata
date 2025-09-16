@@ -5,19 +5,21 @@
 package repository
 
 type Question struct {
-	Questionid   int64
+	QuestionID   int64
 	Title        string
-	Titleslug    string
+	TitleSlug    string
 	Difficulty   string
-	Functionname string
+	FunctionName string
 	Content      string
-	Codesnippets string
-	Testcases    string
+	CodeSnippets string
+	TestCases    string
+	CreatedAt    string
 }
 
 type Submission struct {
-	ID         int64
-	Questionid int64
-	Langslug   string
-	Solved     int64
+	ID            int64
+	QuestionID    int64
+	LangSlug      string
+	Solved        int64
+	LastAttempted string
 }

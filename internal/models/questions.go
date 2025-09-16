@@ -20,6 +20,7 @@ type Question struct {
 	TestCaseList []string      `json:"exampleTestcaseList"`
 	Testcases    string        `json:"testCases"`
 	LangStatus   map[string]bool
+	CreatedAt    string
 }
 
 type CodeSnippet struct {
@@ -28,18 +29,19 @@ type CodeSnippet struct {
 }
 
 type Problem struct {
-	QuestionID   string
-	Content      string
-	Code         string
-	LangSlug     string
-	TitleSlug    string
-	Slug         string
-	FunctionName string
-	TestCases    string
-	SolutionPath string
-	TestPath     string
-	DirPath      string
-	ReadmePath   string
+	QuestionID    string
+	Content       string
+	Code          string
+	LangSlug      string
+	TitleSlug     string
+	Slug          string
+	FunctionName  string
+	TestCases     string
+	LastAttempted string
+	SolutionPath  string
+	TestPath      string
+	DirPath       string
+	ReadmePath    string
 }
 
 func (q *Question) ToProblem(workspace, language string) *Problem {
@@ -47,6 +49,7 @@ func (q *Question) ToProblem(workspace, language string) *Problem {
 	problem.QuestionID = q.ID
 	problem.Content = q.Content
 	problem.FunctionName = q.FunctionName
+	problem.LastAttempted = q.CreatedAt
 	problem.TitleSlug = formatTitleSlug(q.TitleSlug)
 	for _, snippet := range q.CodeSnippets {
 		if snippet.LangSlug == LangName[language] {

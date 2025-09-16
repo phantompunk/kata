@@ -11,44 +11,45 @@ import (
 
 const create = `-- name: Create :one
 INSERT INTO questions (
-  questionId, title, titleSlug, difficulty, functionName, content, codeSnippets, testCases
+  question_id, title, title_slug, difficulty, function_name, content, code_snippets, test_cases, created_at
 ) VALUES (
-  ?, ?, ?, ?, ?, ?, ?, ?
-) RETURNING questionid, title, titleslug, difficulty, functionname, content, codesnippets, testcases
+  ?, ?, ?, ?, ?, ?, ?, ?, DATE('now')
+) RETURNING question_id, title, title_slug, difficulty, function_name, content, code_snippets, test_cases, created_at
 `
 
 type CreateParams struct {
-	Questionid   int64
+	QuestionID   int64
 	Title        string
-	Titleslug    string
+	TitleSlug    string
 	Difficulty   string
-	Functionname string
+	FunctionName string
 	Content      string
-	Codesnippets string
-	Testcases    string
+	CodeSnippets string
+	TestCases    string
 }
 
 func (q *Queries) Create(ctx context.Context, arg CreateParams) (Question, error) {
 	row := q.db.QueryRowContext(ctx, create,
-		arg.Questionid,
+		arg.QuestionID,
 		arg.Title,
-		arg.Titleslug,
+		arg.TitleSlug,
 		arg.Difficulty,
-		arg.Functionname,
+		arg.FunctionName,
 		arg.Content,
-		arg.Codesnippets,
-		arg.Testcases,
+		arg.CodeSnippets,
+		arg.TestCases,
 	)
 	var i Question
 	err := row.Scan(
-		&i.Questionid,
+		&i.QuestionID,
 		&i.Title,
-		&i.Titleslug,
+		&i.TitleSlug,
 		&i.Difficulty,
-		&i.Functionname,
+		&i.FunctionName,
 		&i.Content,
-		&i.Codesnippets,
-		&i.Testcases,
+		&i.CodeSnippets,
+		&i.TestCases,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -56,83 +57,99 @@ func (q *Queries) Create(ctx context.Context, arg CreateParams) (Question, error
 const exists = `-- name: Exists :one
 SELECT EXISTS (
   SELECT 1 FROM questions
-  WHERE titleSlug = ?
+  WHERE title_slug = ?
 )
 `
 
-func (q *Queries) Exists(ctx context.Context, titleslug string) (int64, error) {
-	row := q.db.QueryRowContext(ctx, exists, titleslug)
+func (q *Queries) Exists(ctx context.Context, titleSlug string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, exists, titleSlug)
 	var column_1 int64
 	err := row.Scan(&column_1)
 	return column_1, err
 }
 
 const getByID = `-- name: GetByID :one
-SELECT questionid, title, titleslug, difficulty, functionname, content, codesnippets, testcases FROM questions
-WHERE questionId = ? LIMIT 1
+SELECT question_id, title, title_slug, difficulty, function_name, content, code_snippets, test_cases, created_at FROM questions
+WHERE question_id = ? LIMIT 1
 `
 
-func (q *Queries) GetByID(ctx context.Context, questionid int64) (Question, error) {
-	row := q.db.QueryRowContext(ctx, getByID, questionid)
+func (q *Queries) GetByID(ctx context.Context, questionID int64) (Question, error) {
+	row := q.db.QueryRowContext(ctx, getByID, questionID)
 	var i Question
 	err := row.Scan(
-		&i.Questionid,
+		&i.QuestionID,
 		&i.Title,
-		&i.Titleslug,
+		&i.TitleSlug,
 		&i.Difficulty,
-		&i.Functionname,
+		&i.FunctionName,
 		&i.Content,
-		&i.Codesnippets,
-		&i.Testcases,
+		&i.CodeSnippets,
+		&i.TestCases,
+		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getBySlug = `-- name: GetBySlug :one
-SELECT questionid, title, titleslug, difficulty, functionname, content, codesnippets, testcases FROM questions
-WHERE titleSlug = ? LIMIT 1
+SELECT question_id, title, title_slug, difficulty, function_name, content, code_snippets, test_cases, created_at FROM questions
+WHERE title_slug = ? LIMIT 1
 `
 
-func (q *Queries) GetBySlug(ctx context.Context, titleslug string) (Question, error) {
-	row := q.db.QueryRowContext(ctx, getBySlug, titleslug)
+func (q *Queries) GetBySlug(ctx context.Context, titleSlug string) (Question, error) {
+	row := q.db.QueryRowContext(ctx, getBySlug, titleSlug)
 	var i Question
 	err := row.Scan(
-		&i.Questionid,
+		&i.QuestionID,
 		&i.Title,
-		&i.Titleslug,
+		&i.TitleSlug,
 		&i.Difficulty,
-		&i.Functionname,
+		&i.FunctionName,
 		&i.Content,
-		&i.Codesnippets,
-		&i.Testcases,
+		&i.CodeSnippets,
+		&i.TestCases,
+		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getRandom = `-- name: GetRandom :one
-SELECT questionid, title, titleslug, difficulty, functionname, content, codesnippets, testcases FROM questions
-ORDER BY RANDOM() LIMIT 1
+SELECT q.question_id, q.title, q.title_slug, q.difficulty, COALESCE(s.solved, 0) AS solved,
+    COALESCE(s.last_attempted, q.created_at) AS last_attempted
+FROM questions q
+LEFT JOIN submissions s ON s.question_id = q.question_id
+WHERE q.question_id = (
+    SELECT question_id FROM questions
+    ORDER BY RANDOM()
+    LIMIT 1
+) LIMIT 1
 `
 
-func (q *Queries) GetRandom(ctx context.Context) (Question, error) {
+type GetRandomRow struct {
+	QuestionID    int64
+	Title         string
+	TitleSlug     string
+	Difficulty    string
+	Solved        int64
+	LastAttempted string
+}
+
+func (q *Queries) GetRandom(ctx context.Context) (GetRandomRow, error) {
 	row := q.db.QueryRowContext(ctx, getRandom)
-	var i Question
+	var i GetRandomRow
 	err := row.Scan(
-		&i.Questionid,
+		&i.QuestionID,
 		&i.Title,
-		&i.Titleslug,
+		&i.TitleSlug,
 		&i.Difficulty,
-		&i.Functionname,
-		&i.Content,
-		&i.Codesnippets,
-		&i.Testcases,
+		&i.Solved,
+		&i.LastAttempted,
 	)
 	return i, err
 }
 
 const listAll = `-- name: ListAll :many
-SELECT questionid, title, titleslug, difficulty, functionname, content, codesnippets, testcases FROM questions
-ORDER BY questionId ASC
+SELECT question_id, title, title_slug, difficulty, function_name, content, code_snippets, test_cases, created_at FROM questions
+ORDER BY question_id ASC
 `
 
 func (q *Queries) ListAll(ctx context.Context) ([]Question, error) {
@@ -145,14 +162,15 @@ func (q *Queries) ListAll(ctx context.Context) ([]Question, error) {
 	for rows.Next() {
 		var i Question
 		if err := rows.Scan(
-			&i.Questionid,
+			&i.QuestionID,
 			&i.Title,
-			&i.Titleslug,
+			&i.TitleSlug,
 			&i.Difficulty,
-			&i.Functionname,
+			&i.FunctionName,
 			&i.Content,
-			&i.Codesnippets,
-			&i.Testcases,
+			&i.CodeSnippets,
+			&i.TestCases,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -169,32 +187,35 @@ func (q *Queries) ListAll(ctx context.Context) ([]Question, error) {
 
 const submit = `-- name: Submit :one
 INSERT INTO submissions (
-  id, questionId, langSlug, solved
+  id, question_id, lang_slug, solved, last_attempted
 ) VALUES (
-  ?, ?, ?, ?
-) RETURNING id, questionid, langslug, solved
+  ?, ?, ?, ?, ?
+) RETURNING id, question_id, lang_slug, solved, last_attempted
 `
 
 type SubmitParams struct {
-	ID         int64
-	Questionid int64
-	Langslug   string
-	Solved     int64
+	ID            int64
+	QuestionID    int64
+	LangSlug      string
+	Solved        int64
+	LastAttempted string
 }
 
 func (q *Queries) Submit(ctx context.Context, arg SubmitParams) (Submission, error) {
 	row := q.db.QueryRowContext(ctx, submit,
 		arg.ID,
-		arg.Questionid,
-		arg.Langslug,
+		arg.QuestionID,
+		arg.LangSlug,
 		arg.Solved,
+		arg.LastAttempted,
 	)
 	var i Submission
 	err := row.Scan(
 		&i.ID,
-		&i.Questionid,
-		&i.Langslug,
+		&i.QuestionID,
+		&i.LangSlug,
 		&i.Solved,
+		&i.LastAttempted,
 	)
 	return i, err
 }

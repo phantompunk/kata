@@ -19,6 +19,7 @@ import (
 
 	"github.com/browserutils/kooky"
 	_ "github.com/browserutils/kooky/browser/all"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/phantompunk/kata/internal/config"
 	"github.com/phantompunk/kata/internal/db"
 	"github.com/phantompunk/kata/internal/leetcode"
@@ -154,6 +155,15 @@ func (app *App) Login(opts AppOptions) error {
 	return nil
 }
 
+var quizTmpl = `✓ Selected a random problem from your history:
+
+  Title: %s
+  Difficulty: %s
+  Last Attempted: %s
+  Status: Solved
+
+To get started, run: kata solve %s`
+
 func (app *App) Quiz(opts AppOptions) error {
 	if opts.Language == "" {
 		opts.Language = app.Config.Language
@@ -164,14 +174,18 @@ func (app *App) Quiz(opts AppOptions) error {
 		return fmt.Errorf("failed to get random question: %w", err)
 	}
 
+	// TODO: Get submissions for question
+
+	// TODO: Create template -> use render
 	problem := question.ToProblem(app.Config.Workspace, opts.Language)
+
+	fmt.Printf(quizTmpl, lipgloss.NewStyle().Foreground(lipgloss.Color("4")).Render(fmt.Sprintf("%d", question.QuestionID)), question.Difficulty, problem.LastAttempted, problem.SolutionPath)
 	if app.Config.OpenInEditor || opts.Open {
 		if err := openWithEditor(problem.SolutionPath); err != nil {
 			return fmt.Errorf("failed to open solution file in editor: %w", err)
 		}
 	}
 
-	fmt.Printf("Pop Quiz!\nTry solving this random problem again:\n\nID: %s\nTitle: %s\nDifficulty: %s\nStatus: solved\n", problem.QuestionID, problem.TitleSlug, problem.TitleSlug)
 	return nil
 }
 
@@ -262,29 +276,29 @@ func (app *App) CheckSession() error {
 // :TODO: Move this to a separate package
 func toModelQuestion(repoQuestion repository.Question) (*models.Question, error) {
 	var modelQuestion models.Question
-	modelQuestion.ID = fmt.Sprintf("%d", repoQuestion.Questionid)
+	modelQuestion.ID = fmt.Sprintf("%d", repoQuestion.QuestionID)
 	modelQuestion.Title = repoQuestion.Title
-	modelQuestion.TitleSlug = repoQuestion.Titleslug
+	modelQuestion.TitleSlug = repoQuestion.TitleSlug
 	modelQuestion.Difficulty = repoQuestion.Difficulty
-	modelQuestion.FunctionName = repoQuestion.Functionname
+	modelQuestion.FunctionName = repoQuestion.FunctionName
 	modelQuestion.Content = repoQuestion.Content
 
-	if err := json.Unmarshal([]byte(repoQuestion.Codesnippets), &modelQuestion.CodeSnippets); err != nil {
+	if err := json.Unmarshal([]byte(repoQuestion.CodeSnippets), &modelQuestion.CodeSnippets); err != nil {
 		return nil, err
 	}
-	modelQuestion.Testcases = repoQuestion.Testcases
+	modelQuestion.Testcases = repoQuestion.TestCases
 	return &modelQuestion, nil
 }
 
 func ToProblem(repoQuestion repository.Question, workspace, language string) *models.Problem {
 	var problem models.Problem
-	problem.QuestionID = fmt.Sprintf("%d", repoQuestion.Questionid)
-	problem.TitleSlug = repoQuestion.Titleslug
-	problem.FunctionName = repoQuestion.Functionname
+	problem.QuestionID = fmt.Sprintf("%d", repoQuestion.QuestionID)
+	problem.TitleSlug = repoQuestion.TitleSlug
+	problem.FunctionName = repoQuestion.FunctionName
 	problem.Content = repoQuestion.Content
 
 	var codeSnippets []models.CodeSnippet
-	if err := json.Unmarshal([]byte(repoQuestion.Codesnippets), &codeSnippets); err != nil {
+	if err := json.Unmarshal([]byte(repoQuestion.CodeSnippets), &codeSnippets); err != nil {
 		fmt.Println("Failed to unmarshal code snippets:", err)
 		return nil
 	}
@@ -304,21 +318,21 @@ func ToProblem(repoQuestion repository.Question, workspace, language string) *mo
 func toRepoCreateParams(modelQuestion *models.Question) (repository.CreateParams, error) {
 	var params repository.CreateParams
 	qId, _ := strconv.ParseInt(modelQuestion.ID, 10, 64)
-	params.Questionid = qId
+	params.QuestionID = qId
 	params.Title = modelQuestion.Title
-	params.Titleslug = modelQuestion.TitleSlug
+	params.TitleSlug = modelQuestion.TitleSlug
 	params.Difficulty = modelQuestion.Difficulty
-	params.Functionname = modelQuestion.FunctionName
+	params.FunctionName = modelQuestion.FunctionName
 	params.Content = modelQuestion.Content
 
 	codeSnippets, err := json.Marshal(modelQuestion.CodeSnippets)
 	if err != nil {
 		return params, err
 	}
-	params.Codesnippets = string(codeSnippets)
+	params.CodeSnippets = string(codeSnippets)
 
 	testCases := strings.Join(modelQuestion.TestCaseList, "\n")
-	params.Testcases = string(testCases)
+	params.TestCases = string(testCases)
 
 	return params, nil
 }
@@ -479,8 +493,8 @@ func (app *App) SubmitSolution(name, language string) error {
 	if res.Correct || res.StatusMsg == "Accepted" {
 		fmt.Println("Passed")
 		app.repo.Submit(context.Background(), repository.SubmitParams{
-			Questionid: repoQuestion.Questionid,
-			Langslug:   language,
+			QuestionID: repoQuestion.QuestionID,
+			LangSlug:   language,
 			Solved:     1,
 		})
 		return nil

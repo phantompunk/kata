@@ -1,17 +1,20 @@
 CREATE TABLE questions (
-  questionId INTEGER PRIMARY KEY,
+  question_id INTEGER PRIMARY KEY,
   title TEXT NOT NULL,
-  titleSlug TEXT UNIQUE NOT NULL,
+  title_slug TEXT UNIQUE NOT NULL,
   difficulty TEXT CHECK (difficulty IN ('Easy', 'Medium', 'Hard')) NOT NULL,
-  functionName TEXT NOT NULL,
+  function_name TEXT NOT NULL,
   content TEXT NOT NULL,
-  codeSnippets TEXT NOT NULL
+  code_snippets TEXT NOT NULL,
+  test_cases TEXT NOT NULL DEFAULT '[]',
+  created_at TEXT NOT NULL DEFAULT (DATE('now'))
 );
 
 CREATE TABLE submissions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  questionId INTEGER NOT NULL,
-  langSlug TEXT NOT NULL,
+  question_id INTEGER NOT NULL,
+  lang_slug TEXT NOT NULL,
   solved INTEGER CHECK (solved IN (0, 1)) NOT NULL,
-  FOREIGN KEY (questionId) REFERENCES questions(questionId) ON DELETE CASCADE
+  last_attempted TEXT NOT NULL DEFAULT (DATE('now')),
+  FOREIGN KEY (question_id) REFERENCES questions(question_id) ON DELETE CASCADE
 );

@@ -37,7 +37,7 @@ var downloadCmd = &cobra.Command{
 var quizCmd = &cobra.Command{
 	Use:   "quiz",
 	Short: "Select a random problem to complete",
-	RunE:  QuizFunc,
+	RunE:  HandleErrors(QuizFunc),
 }
 
 var listCmd = &cobra.Command{
@@ -88,6 +88,9 @@ func init() {
 	testCmd.Flags().StringP("language", "l", "", "Programming language to use")
 	submitCmd.Flags().StringP("language", "l", "", "Programming language to use")
 	loginCmd.Flags().BoolP("force", "f", false, "Always refresh browser cookies")
+
+	quizCmd.Flags().BoolP("open", "o", false, "Open problem with $EDITOR")
+	quizCmd.Flags().StringP("language", "l", "", "Programming language to use")
 
 	rootCmd.AddCommand(downloadCmd)
 	rootCmd.AddCommand(quizCmd)
