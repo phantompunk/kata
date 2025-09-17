@@ -119,7 +119,7 @@ func HandleErrors(fn CommandFunc) CommandFunc {
 func userMessage(err error) string {
 	switch {
 	case errors.Is(err, leetcode.ErrQuestionNotFound):
-		return "No matching question found. Please check the problem slug."
+		return "No matching question found. Please check the problem slug"
 	case errors.Is(err, leetcode.ErrNotAuthenticated):
 		return "Not auth"
 	case errors.Is(err, app.ErrDuplicateProblem):
@@ -128,7 +128,9 @@ func userMessage(err error) string {
 		return "Session not found. Please sign in to https://leetcode.com then run 'kata login' again"
 	case errors.Is(err, app.ErrInvalidSession):
 		return "Session expired. Please sign in to https://leetcode.com then run 'kata login' again"
+	case errors.Is(err, app.ErrNoQuestions):
+		return "No questions found in the database. Please run `kata get` to fetch questions"
 	default:
-		return "An unexpected error occurred. Please try again."
+		return "An unexpected error occurred. Please try again"
 	}
 }

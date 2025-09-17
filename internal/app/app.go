@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -38,6 +39,7 @@ var (
 	ErrNotAuthenticated = errors.New("not authenticated")
 	ErrInvalidSession   = errors.New("session is not valid")
 	ErrDuplicateProblem = errors.New("question has already been downloaded")
+	ErrNoQuestions      = errors.New("no questions found in the database")
 )
 
 type AppOptions struct {
@@ -162,6 +164,9 @@ func (app *App) Quiz(opts AppOptions) error {
 
 	question, err := app.repo.GetRandom(context.Background())
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNoQuestions
+		}
 		return fmt.Errorf("failed to get random question: %w", err)
 	}
 
