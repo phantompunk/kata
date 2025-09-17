@@ -38,7 +38,7 @@ func ConfigFunc(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Println("Wrote config file to:", configPath)
+	fmt.Println("✓ Opening config file:", configPath)
 	return nil
 }
 

@@ -40,3 +40,9 @@ INSERT INTO submissions (
 ) VALUES (
   ?, ?, ?, ?, ?
 ) RETURNING *;
+
+-- name: GetStats :one
+SELECT
+    COUNT(DISTINCT s.question_id) AS attempted,
+    COUNT(DISTINCT CASE WHEN s.solved = 1 THEN s.question_id END) AS completed
+FROM submissions s;

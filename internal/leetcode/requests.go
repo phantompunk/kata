@@ -18,12 +18,18 @@ type Response struct {
 }
 
 type TestResponse struct {
-	InterpretID  string       `json:"interpret_id"`
-	SubmissionID SubmissionID `json:"submission_id"`
-	QuestionID   string       `json:"question_id"`
-	State        string       `json:"state"`
-	StatusMsg    string       `json:"status_msg"`
-	Correct      bool         `json:"correct_answer"`
+	InterpretID       string       `json:"interpret_id"`
+	SubmissionID      SubmissionID `json:"submission_id"`
+	QuestionID        string       `json:"question_id"`
+	State             string       `json:"state"`
+	StatusMsg         string       `json:"status_msg"`
+	Correct           bool         `json:"correct_answer"`
+	RuntimePercentile float64      `json:"runtime_percentile"`
+	StatusRuntime     string       `json:"status_runtime"`
+	MemoryPercentile  float64      `json:"memory_percentile"`
+	StatusMemory      string       `json:"status_memory"`
+	TotalCorrect      int          `json:"total_correct"`
+	TotalTestcases    int          `json:"total_testcases"`
 }
 
 type AuthResponse struct {

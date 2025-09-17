@@ -147,6 +147,25 @@ func (q *Queries) GetRandom(ctx context.Context) (GetRandomRow, error) {
 	return i, err
 }
 
+const getStats = `-- name: GetStats :one
+SELECT
+    COUNT(DISTINCT s.question_id) AS attempted,
+    COUNT(DISTINCT CASE WHEN s.solved = 1 THEN s.question_id END) AS completed
+FROM submissions s
+`
+
+type GetStatsRow struct {
+	Attempted int64
+	Completed int64
+}
+
+func (q *Queries) GetStats(ctx context.Context) (GetStatsRow, error) {
+	row := q.db.QueryRowContext(ctx, getStats)
+	var i GetStatsRow
+	err := row.Scan(&i.Attempted, &i.Completed)
+	return i, err
+}
+
 const listAll = `-- name: ListAll :many
 SELECT question_id, title, title_slug, difficulty, function_name, content, code_snippets, test_cases, created_at FROM questions
 ORDER BY question_id ASC

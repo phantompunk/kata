@@ -235,6 +235,7 @@ func (lc *Service) Test(problem *models.Problem, language, snippet string) (stri
 		"referer": fmt.Sprintf(problemURL, problem.TitleSlug),
 	}
 
+	fmt.Printf("Testing on server")
 	body, err := lc.doRequest(context.Background(), http.MethodPost, url, bytes.NewReader(data), headers)
 	if err != nil {
 		return "", fmt.Errorf("test submission failed: %w", err)
@@ -271,11 +272,11 @@ func (lc *Service) Submit(problem *models.Problem, language, snippet string) (st
 		"referer": fmt.Sprintf(problemURL, problem.TitleSlug),
 	}
 
+	fmt.Printf("✓ Submitting solution to Leetcode")
 	body, err := lc.doRequest(context.Background(), http.MethodPost, url, bytes.NewReader(data), headers)
 	if err != nil {
 		return "", fmt.Errorf("test submission failed: %w", err)
 	}
-	// fmt.Printf("Response body: %s\n", string(body))
 
 	var response TestResponse
 	if err := json.Unmarshal(body, &response); err != nil {

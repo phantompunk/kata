@@ -120,7 +120,7 @@ func (app *App) DownloadQuestion(opts AppOptions) error {
 		return fmt.Errorf("stubbing problem %q: %w", opts.Problem, err)
 	}
 
-	if err := app.Renderer.RenderOutput(os.Stdout, templates.GetDisplay, question); err != nil {
+	if err := app.Renderer.RenderOutput(os.Stdout, templates.CliGet, question); err != nil {
 		return fmt.Errorf("rendering next steps: %w", err)
 	}
 
@@ -142,7 +142,15 @@ func (app *App) ListQuestions() error {
 
 func (app *App) Login(opts AppOptions) error {
 	if app.Config.IsSessionValid() && !opts.Force {
+		res, err := app.repo.GetStats(context.Background())
+		if err != nil {
+			return fmt.Errorf("failed to get stats: %w", err)
+		}
+
 		fmt.Println("You are already logged in")
+		if err := app.Renderer.RenderOutput(os.Stdout, templates.CliLogin, res); err != nil {
+			return fmt.Errorf("failed to render login message: %w", err)
+		}
 		return nil
 	}
 
@@ -154,7 +162,16 @@ func (app *App) Login(opts AppOptions) error {
 		return fmt.Errorf("failed to check session: %w", err)
 	}
 
-	fmt.Println("Successfully logged in using browser session.")
+	res, err := app.repo.GetStats(context.Background())
+	if err != nil {
+		return fmt.Errorf("failed to get stats: %w", err)
+	}
+
+	fmt.Println("✔ Authentication successful")
+	if err := app.Renderer.RenderOutput(os.Stdout, templates.CliLogin, res); err != nil {
+		return fmt.Errorf("failed to render login message: %w", err)
+	}
+
 	return nil
 }
 
@@ -182,7 +199,7 @@ func (app *App) Quiz(opts AppOptions) error {
 		quiz.Status = "Completed"
 	}
 
-	if err := app.Renderer.RenderOutput(os.Stdout, templates.QuizDisplay, quiz); err != nil {
+	if err := app.Renderer.RenderOutput(os.Stdout, templates.CliQuiz, quiz); err != nil {
 		return fmt.Errorf("failed to render quiz: %w", err)
 	}
 
@@ -446,7 +463,6 @@ func (app *App) TestSolution(name, language string) error {
 	problem := repoQuestion.ToProblem(app.Config.Workspace, language)
 	snippet := app.extractSnippet(problem.SolutionPath)
 
-	fmt.Printf("Testing %s", problem.TitleSlug)
 	testStatusUrl, err := app.lcs.Test(problem, language, snippet)
 	if err != nil {
 		return fmt.Errorf("failed to submit solution for testing: %w", err)
@@ -462,11 +478,19 @@ func (app *App) TestSolution(name, language string) error {
 	}
 
 	if res.Correct {
-		fmt.Println("Passed")
+		fmt.Println()
+		fmt.Println("✓ All test cases passed")
+		if err := app.Renderer.RenderOutput(os.Stdout, templates.CliTest, problem); err != nil {
+			return fmt.Errorf("failed to render quiz: %w", err)
+		}
 		return nil
 	}
 
-	fmt.Println("Failed")
+	fmt.Println()
+	fmt.Println("✗ Some test cases failed")
+	if err := app.Renderer.RenderOutput(os.Stdout, templates.CliTest, problem); err != nil {
+		return fmt.Errorf("failed to render quiz: %w", err)
+	}
 	return nil
 }
 
@@ -489,7 +513,6 @@ func (app *App) SubmitSolution(name, language string) error {
 	problem := repoQuestion.ToProblem(app.Config.Workspace, language)
 	snippet := app.extractSnippet(problem.SolutionPath)
 
-	fmt.Printf("Submitting %s", problem.TitleSlug)
 	testStatusUrl, err := app.lcs.Submit(problem, language, snippet)
 	if err != nil {
 		return fmt.Errorf("failed to submit solution for testing: %w", err)
@@ -505,7 +528,13 @@ func (app *App) SubmitSolution(name, language string) error {
 	}
 
 	if res.Correct || res.StatusMsg == "Accepted" {
-		fmt.Println("Passed")
+		fmt.Println()
+		fmt.Println("✓ Submission accepted!")
+
+		if err := app.Renderer.RenderOutput(os.Stdout, templates.CliSubmit, res); err != nil {
+			return fmt.Errorf("failed to render quiz: %w", err)
+		}
+
 		app.repo.Submit(context.Background(), repository.SubmitParams{
 			QuestionID: repoQuestion.QuestionID,
 			LangSlug:   language,
