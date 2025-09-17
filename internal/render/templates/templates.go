@@ -23,7 +23,8 @@ const (
 	Solution            TemplateType = "solution"
 	Readme              TemplateType = "readme"
 	Test                TemplateType = "test"
-	TemplateTypeQuiz    TemplateType = "quiz"
+	QuizDisplay         TemplateType = "quiz"
+	GetDisplay          TemplateType = "get"
 )
 
 type Renderer struct {

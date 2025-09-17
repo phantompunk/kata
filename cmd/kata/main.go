@@ -28,10 +28,9 @@ var rootCmd = &cobra.Command{
 }
 
 var downloadCmd = &cobra.Command{
-	Use:     "download",
-	Short:   "Download and stub a Leetcode problem",
-	RunE:    HandleErrors(DownloadFunc),
-	Aliases: []string{"get"},
+	Use:   "get",
+	Short: "Download and stub a Leetcode problem",
+	RunE:  HandleErrors(DownloadFunc),
 }
 
 var quizCmd = &cobra.Command{

@@ -13,6 +13,7 @@ import (
 	"go/token"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -119,8 +120,8 @@ func (app *App) DownloadQuestion(opts AppOptions) error {
 		return fmt.Errorf("stubbing problem %q: %w", opts.Problem, err)
 	}
 
-	if opts.Open {
-		// :TODO: Open the solution file in the editor
+	if err := app.Renderer.RenderOutput(os.Stdout, templates.GetDisplay, question); err != nil {
+		return fmt.Errorf("rendering next steps: %w", err)
 	}
 
 	return nil
@@ -181,7 +182,7 @@ func (app *App) Quiz(opts AppOptions) error {
 		quiz.Status = "Completed"
 	}
 
-	if err := app.Renderer.RenderOutput(os.Stdout, templates.TemplateTypeQuiz, quiz); err != nil {
+	if err := app.Renderer.RenderOutput(os.Stdout, templates.QuizDisplay, quiz); err != nil {
 		return fmt.Errorf("failed to render quiz: %w", err)
 	}
 
@@ -364,6 +365,7 @@ func (app *App) GetQuestion(name, language string, force bool) (*models.Question
 			return nil, fmt.Errorf("failed to convert question: %w", err)
 		}
 
+		fmt.Printf("✔ Fetched problem: %s\n", repoQuestion.Title)
 		return modelQuestion, nil
 	}
 
@@ -379,6 +381,7 @@ func (app *App) GetQuestion(name, language string, force bool) (*models.Question
 	}
 
 	app.repo.Create(context.Background(), params)
+	fmt.Printf("✔ Fetched problem: %s\n", question.Title)
 	return question, nil
 }
 
@@ -387,7 +390,9 @@ func (app *App) Stub(question *models.Question, opts AppOptions) error {
 	if err := app.fs.MkdirAll(problem.DirPath, os.ModePerm); err != nil {
 		return fmt.Errorf("failed creating problem directory: %w", err)
 	}
+	fmt.Printf("✔ Created directory: %s\n", FormatPathForDisplay(problem.DirPath))
 
+	fmt.Println("✔ Generated files:")
 	file, err := app.fs.Create(problem.SolutionPath)
 	if err != nil {
 		return fmt.Errorf("failed creating problem solution file: %w", err)
@@ -406,15 +411,18 @@ func (app *App) Stub(question *models.Question, opts AppOptions) error {
 	if err := app.Renderer.RenderFile(file, templates.Solution, problem); err != nil {
 		return fmt.Errorf("failed to render solution file: %w", err)
 	}
-	fmt.Println("Problem stubbed at", problem.SolutionPath)
+	fmt.Printf(" • %s\n", filepath.Base(problem.SolutionPath))
 
 	if err := app.Renderer.RenderFile(test, templates.Test, problem); err != nil {
 		return fmt.Errorf("failed to render test file: %w", err)
 	}
+	fmt.Printf(" • %s\n", filepath.Base(problem.TestPath))
 
 	if err := app.Renderer.RenderFile(readme, templates.Readme, problem); err != nil {
 		return fmt.Errorf("failed to render readme file: %w", err)
 	}
+	fmt.Printf(" • %s\n", filepath.Base(problem.ReadmePath))
+	fmt.Println("Next steps:")
 
 	return nil
 }
@@ -631,4 +639,15 @@ func (app *App) RefreshCookies() error {
 
 	app.lcs.SetCookies(sessionCookie.Value, csrfCookie.Value)
 	return app.Config.UpdateSession(sessionCookie.Value, csrfCookie.Value, sessionCookie.Expires)
+}
+
+func FormatPathForDisplay(path string) string {
+	usr, _ := user.Current()
+	homeDir := usr.HomeDir
+
+	if strings.HasPrefix(path, homeDir) {
+		return "~" + path[len(homeDir):]
+	}
+
+	return path
 }
