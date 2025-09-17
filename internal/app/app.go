@@ -19,12 +19,12 @@ import (
 
 	"github.com/browserutils/kooky"
 	_ "github.com/browserutils/kooky/browser/all"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/phantompunk/kata/internal/config"
 	"github.com/phantompunk/kata/internal/db"
 	"github.com/phantompunk/kata/internal/leetcode"
 	"github.com/phantompunk/kata/internal/models"
-	"github.com/phantompunk/kata/internal/renderer"
+	"github.com/phantompunk/kata/internal/render/table"
+	"github.com/phantompunk/kata/internal/render/templates"
 	"github.com/phantompunk/kata/internal/repository"
 	"github.com/spf13/afero"
 )
@@ -51,7 +51,7 @@ type App struct {
 	Config   *config.Config
 	repo     *repository.Queries
 	lcs      *leetcode.Service
-	Renderer *renderer.Renderer
+	Renderer *templates.Renderer
 	fs       afero.Fs
 }
 
@@ -75,7 +75,7 @@ func New() (*App, error) {
 		return nil, fmt.Errorf("failed to create leetcode service: %w", err)
 	}
 
-	renderer, err := renderer.New()
+	renderer, err := templates.New()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create renderer: %w", err)
 	}
@@ -130,7 +130,7 @@ func (app *App) ListQuestions() error {
 		return fmt.Errorf("listing questions: %w", err)
 	}
 
-	if err := renderer.ProblemsTable(questions, app.Config.Tracks); err != nil {
+	if err := table.Render(questions, app.Config.Tracks); err != nil {
 		return fmt.Errorf("rendering questions as table: %w", err)
 	}
 
@@ -155,15 +155,6 @@ func (app *App) Login(opts AppOptions) error {
 	return nil
 }
 
-var quizTmpl = `✓ Selected a random problem from your history:
-
-  Title: %s
-  Difficulty: %s
-  Last Attempted: %s
-  Status: Solved
-
-To get started, run: kata solve %s`
-
 func (app *App) Quiz(opts AppOptions) error {
 	if opts.Language == "" {
 		opts.Language = app.Config.Language
@@ -174,13 +165,23 @@ func (app *App) Quiz(opts AppOptions) error {
 		return fmt.Errorf("failed to get random question: %w", err)
 	}
 
-	// TODO: Get submissions for question
+	quiz := &models.Quiz{
+		Title:         question.Title,
+		TitleSlug:     question.TitleSlug,
+		Difficulty:    question.Difficulty,
+		LastAttempted: question.LastAttempted,
+		Status:        "Attempted",
+	}
+	if question.Solved == 1 {
+		quiz.Status = "Completed"
+	}
 
-	// TODO: Create template -> use render
-	problem := question.ToProblem(app.Config.Workspace, opts.Language)
+	if err := app.Renderer.RenderOutput(os.Stdout, templates.TemplateTypeQuiz, quiz); err != nil {
+		return fmt.Errorf("failed to render quiz: %w", err)
+	}
 
-	fmt.Printf(quizTmpl, lipgloss.NewStyle().Foreground(lipgloss.Color("4")).Render(fmt.Sprintf("%d", question.QuestionID)), question.Difficulty, problem.LastAttempted, problem.SolutionPath)
 	if app.Config.OpenInEditor || opts.Open {
+		problem := question.ToProblem(app.Config.Workspace, opts.Language)
 		if err := openWithEditor(problem.SolutionPath); err != nil {
 			return fmt.Errorf("failed to open solution file in editor: %w", err)
 		}
@@ -397,16 +398,16 @@ func (app *App) Stub(question *models.Question, opts AppOptions) error {
 		return fmt.Errorf("failed creating readme file: %w", err)
 	}
 
-	if err := app.Renderer.Render(file, problem, "solution"); err != nil {
+	if err := app.Renderer.RenderFile(file, templates.Solution, problem); err != nil {
 		return fmt.Errorf("failed to render solution file: %w", err)
 	}
 	fmt.Println("Problem stubbed at", problem.SolutionPath)
 
-	if err := app.Renderer.Render(test, problem, "test"); err != nil {
+	if err := app.Renderer.RenderFile(test, templates.Test, problem); err != nil {
 		return fmt.Errorf("failed to render test file: %w", err)
 	}
 
-	if err := app.Renderer.Render(readme, problem, "readme"); err != nil {
+	if err := app.Renderer.RenderFile(readme, templates.Readme, problem); err != nil {
 		return fmt.Errorf("failed to render readme file: %w", err)
 	}
 
@@ -542,7 +543,7 @@ func (app *App) extractSnippet(path string) string {
 func (app *App) GetFunctionName(problem *models.Problem) string {
 	var buf bytes.Buffer
 
-	app.Renderer.Render(&buf, problem, "solution")
+	app.Renderer.RenderFile(&buf, templates.Solution, problem)
 	name, err := parseFunctionName(buf.String())
 	if err != nil {
 		fmt.Println("failed %w", err)

@@ -1,0 +1,12 @@
+{{define "quiz"}}✓ Selected a random problem from your history:
+
+Problem: {{.Title}}
+Difficulty: {{.Difficulty}}
+Last attempted: {{.LastAttempted}}
+Status: {{.Status}}
+
+Next steps:
+• Start solving: kata solve {{.TitleSlug}}
+• View details: kata show {{.TitleSlug}}
+• Submit later: kata submit {{.TitleSlug}}
+{{end}}
