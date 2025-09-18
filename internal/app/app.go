@@ -428,18 +428,17 @@ func (app *App) Stub(question *models.Question, opts AppOptions) error {
 	if err := app.Renderer.RenderFile(file, templates.Solution, problem); err != nil {
 		return fmt.Errorf("failed to render solution file: %w", err)
 	}
-	fmt.Printf(" • %s\n", filepath.Base(problem.SolutionPath))
+	fmt.Printf("  • %s\n", filepath.Base(problem.SolutionPath))
 
 	if err := app.Renderer.RenderFile(test, templates.Test, problem); err != nil {
 		return fmt.Errorf("failed to render test file: %w", err)
 	}
-	fmt.Printf(" • %s\n", filepath.Base(problem.TestPath))
+	fmt.Printf("  • %s\n", filepath.Base(problem.TestPath))
 
 	if err := app.Renderer.RenderFile(readme, templates.Readme, problem); err != nil {
 		return fmt.Errorf("failed to render readme file: %w", err)
 	}
-	fmt.Printf(" • %s\n", filepath.Base(problem.ReadmePath))
-	fmt.Println("Next steps:")
+	fmt.Printf("  • %s\n", filepath.Base(problem.ReadmePath))
 
 	return nil
 }

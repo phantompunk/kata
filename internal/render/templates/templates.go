@@ -10,7 +10,7 @@ import (
 	"github.com/phantompunk/kata/internal/models"
 )
 
-//go:embed *.gohtml  *.tmpl
+//go:embed *.gohtml  *.txt
 var Files embed.FS
 
 //go:embed config_template.yml

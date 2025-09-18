@@ -43,6 +43,7 @@ INSERT INTO submissions (
 
 -- name: GetStats :one
 SELECT
-    COUNT(DISTINCT s.question_id) AS attempted,
+    COUNT(DISTINCT q.question_id) AS attempted,
     COUNT(DISTINCT CASE WHEN s.solved = 1 THEN s.question_id END) AS completed
-FROM submissions s;
+FROM questions q
+LEFT JOIN submissions s on q.question_id = s.question_id;
