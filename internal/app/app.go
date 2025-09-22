@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,7 +11,6 @@ import (
 	"go/parser"
 	"go/token"
 	"os"
-	"os/exec"
 	"os/user"
 	"path/filepath"
 	"strconv"
@@ -51,11 +49,12 @@ type AppOptions struct {
 }
 
 type App struct {
-	Config   *config.Config
-	repo     *repository.Queries
-	lcs      *leetcode.Service
-	Renderer *templates.Renderer
-	fs       afero.Fs
+	Config        *config.Config
+	QuestionModel *repository.Queries
+	Repo          *repository.Queries
+	lcs           *leetcode.Service
+	Renderer      *templates.Renderer
+	fs            afero.Fs
 }
 
 func New() (*App, error) {
@@ -85,7 +84,7 @@ func New() (*App, error) {
 
 	return &App{
 		Config:   &cfg,
-		repo:     repo,
+		Repo:     repo,
 		lcs:      lcs,
 		Renderer: renderer,
 		fs:       afero.NewOsFs(),
@@ -128,7 +127,7 @@ func (app *App) DownloadQuestion(opts AppOptions) error {
 }
 
 func (app *App) ListQuestions() error {
-	questions, err := app.repo.GetAllWithStatus(context.Background(), app.Config.Tracks)
+	questions, err := app.Repo.GetAllWithStatus(context.Background(), app.Config.Tracks)
 	if err != nil {
 		return fmt.Errorf("listing questions: %w", err)
 	}
@@ -142,7 +141,7 @@ func (app *App) ListQuestions() error {
 
 func (app *App) Login(opts AppOptions) error {
 	if app.Config.IsSessionValid() && !opts.Force {
-		res, err := app.repo.GetStats(context.Background())
+		res, err := app.Repo.GetStats(context.Background())
 		if err != nil {
 			return fmt.Errorf("failed to get stats: %w", err)
 		}
@@ -162,7 +161,7 @@ func (app *App) Login(opts AppOptions) error {
 		return fmt.Errorf("failed to check session: %w", err)
 	}
 
-	res, err := app.repo.GetStats(context.Background())
+	res, err := app.Repo.GetStats(context.Background())
 	if err != nil {
 		return fmt.Errorf("failed to get stats: %w", err)
 	}
@@ -170,44 +169,6 @@ func (app *App) Login(opts AppOptions) error {
 	fmt.Println("✔ Authentication successful")
 	if err := app.Renderer.RenderOutput(os.Stdout, templates.CliLogin, res); err != nil {
 		return fmt.Errorf("failed to render login message: %w", err)
-	}
-
-	return nil
-}
-
-func (app *App) Quiz(opts AppOptions) error {
-	if opts.Language == "" {
-		opts.Language = app.Config.Language
-	}
-
-	question, err := app.repo.GetRandom(context.Background())
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return ErrNoQuestions
-		}
-		return fmt.Errorf("failed to get random question: %w", err)
-	}
-
-	quiz := &models.Quiz{
-		Title:         question.Title,
-		TitleSlug:     question.TitleSlug,
-		Difficulty:    question.Difficulty,
-		LastAttempted: question.LastAttempted,
-		Status:        "Attempted",
-	}
-	if question.Solved == 1 {
-		quiz.Status = "Completed"
-	}
-
-	if err := app.Renderer.RenderOutput(os.Stdout, templates.CliQuiz, quiz); err != nil {
-		return fmt.Errorf("failed to render quiz: %w", err)
-	}
-
-	if app.Config.OpenInEditor || opts.Open {
-		problem := question.ToProblem(app.Config.Workspace, opts.Language)
-		if err := openWithEditor(problem.SolutionPath); err != nil {
-			return fmt.Errorf("failed to open solution file in editor: %w", err)
-		}
 	}
 
 	return nil
@@ -239,43 +200,6 @@ func (app *App) Submit(opts AppOptions) error {
 	}
 
 	return app.SubmitSolution(opts.Problem, opts.Language)
-}
-
-func openWithEditor(pathToFile string) error {
-	textEditor := findTextEditor()
-
-	command := exec.Command(textEditor, pathToFile)
-	command.Stdout = os.Stdout
-	command.Stdin = os.Stdin
-	command.Stderr = os.Stderr
-	err := os.Chdir(filepath.Dir(pathToFile))
-	err = command.Run()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func findTextEditor() string {
-	if isCommandAvailable("nvim") {
-		return "nvim"
-	} else if isCommandAvailable("vim") {
-		return "vim"
-	} else if isCommandAvailable("nano") {
-		return "nano"
-	} else if isCommandAvailable("editor") {
-		return "editor"
-	} else {
-		return "vi"
-	}
-}
-
-func isCommandAvailable(name string) bool {
-	cmd := exec.Command("command", "-v", name)
-	if err := cmd.Run(); err != nil {
-		return false
-	}
-	return true
 }
 
 // CheckSession checks if the session is valid by pinging the leetcode service
@@ -362,7 +286,7 @@ func toRepoCreateParams(modelQuestion *models.Question) (repository.CreateParams
 }
 
 func (app *App) GetQuestion(name, language string, force bool) (*models.Question, error) {
-	exists, err := app.repo.Exists(context.Background(), name)
+	exists, err := app.Repo.Exists(context.Background(), name)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check question existence: %w", err)
 	}
@@ -372,7 +296,7 @@ func (app *App) GetQuestion(name, language string, force bool) (*models.Question
 			return nil, ErrDuplicateProblem
 		}
 
-		repoQuestion, err := app.repo.GetBySlug(context.Background(), name)
+		repoQuestion, err := app.Repo.GetBySlug(context.Background(), name)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get question details: %w", err)
 		}
@@ -397,7 +321,7 @@ func (app *App) GetQuestion(name, language string, force bool) (*models.Question
 		return nil, fmt.Errorf("failed to convert question to repository params: %w", err)
 	}
 
-	app.repo.Create(context.Background(), params)
+	app.Repo.Create(context.Background(), params)
 	fmt.Printf("✔ Fetched problem: %s\n", question.Title)
 	return question, nil
 }
@@ -445,7 +369,7 @@ func (app *App) Stub(question *models.Question, opts AppOptions) error {
 
 // TestSolution tests the solution for a given problem name and language.
 func (app *App) TestSolution(name, language string) error {
-	exists, err := app.repo.Exists(context.Background(), name)
+	exists, err := app.Repo.Exists(context.Background(), name)
 	if err != nil {
 		return fmt.Errorf("failed to check question existence: %w", err)
 	}
@@ -454,7 +378,7 @@ func (app *App) TestSolution(name, language string) error {
 		return fmt.Errorf("question %q not found", name)
 	}
 
-	repoQuestion, err := app.repo.GetBySlug(context.Background(), name)
+	repoQuestion, err := app.Repo.GetBySlug(context.Background(), name)
 	if err != nil {
 		return fmt.Errorf("failed to get question details: %w", err)
 	}
@@ -495,7 +419,7 @@ func (app *App) TestSolution(name, language string) error {
 
 // SubmitSolution tests the solution for a given problem name and language.
 func (app *App) SubmitSolution(name, language string) error {
-	exists, err := app.repo.Exists(context.Background(), name)
+	exists, err := app.Repo.Exists(context.Background(), name)
 	if err != nil {
 		return fmt.Errorf("failed to check question existence: %w", err)
 	}
@@ -504,7 +428,7 @@ func (app *App) SubmitSolution(name, language string) error {
 		return fmt.Errorf("question %q not found", name)
 	}
 
-	repoQuestion, err := app.repo.GetBySlug(context.Background(), name)
+	repoQuestion, err := app.Repo.GetBySlug(context.Background(), name)
 	if err != nil {
 		return fmt.Errorf("failed to get question details: %w", err)
 	}
@@ -534,7 +458,7 @@ func (app *App) SubmitSolution(name, language string) error {
 			return fmt.Errorf("failed to render quiz: %w", err)
 		}
 
-		app.repo.Submit(context.Background(), repository.SubmitParams{
+		app.Repo.Submit(context.Background(), repository.SubmitParams{
 			QuestionID: repoQuestion.QuestionID,
 			LangSlug:   language,
 			Solved:     1,
@@ -594,7 +518,7 @@ func (app *App) GetFunctionName(problem *models.Problem) string {
 }
 
 func (app *App) PrintQuestionStatus() ([]models.Question, error) {
-	repoQuestions, err := app.repo.ListAll(context.Background())
+	repoQuestions, err := app.Repo.ListAll(context.Background())
 	if err != nil {
 		return nil, err
 	}

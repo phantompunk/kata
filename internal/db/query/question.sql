@@ -18,14 +18,18 @@ INSERT INTO questions (
 ) RETURNING *;
 
 -- name: GetRandom :one
-SELECT q.question_id, q.title, q.title_slug, q.difficulty, COALESCE(s.solved, 0) AS solved,
-    COALESCE(s.last_attempted, q.created_at) AS last_attempted
+SELECT q.question_id, q.title, q.title_slug, q.difficulty,
+  CASE
+      WHEN s.solved = 1 THEN 'Completed'
+      ELSE 'Attempted'
+  END AS status,
+  COALESCE(s.last_attempted, q.created_at) AS last_attempted
 FROM questions q
 LEFT JOIN submissions s ON s.question_id = q.question_id
 WHERE q.question_id = (
-    SELECT question_id FROM questions
-    ORDER BY RANDOM()
-    LIMIT 1
+  SELECT question_id FROM questions
+  ORDER BY RANDOM()
+  LIMIT 1
 ) LIMIT 1;
 
 -- name: Exists :one

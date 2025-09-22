@@ -33,12 +33,6 @@ var downloadCmd = &cobra.Command{
 	RunE:  HandleErrors(DownloadFunc),
 }
 
-var quizCmd = &cobra.Command{
-	Use:   "quiz",
-	Short: "Select a random problem to complete",
-	RunE:  HandleErrors(QuizFunc),
-}
-
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "Show all completed Leetcode problems",
@@ -87,9 +81,6 @@ func init() {
 	testCmd.Flags().StringP("language", "l", "", "Programming language to use")
 	submitCmd.Flags().StringP("language", "l", "", "Programming language to use")
 	loginCmd.Flags().BoolP("force", "f", false, "Always refresh browser cookies")
-
-	quizCmd.Flags().BoolP("open", "o", false, "Open problem with $EDITOR")
-	quizCmd.Flags().StringP("language", "l", "", "Programming language to use")
 
 	rootCmd.AddCommand(downloadCmd)
 	rootCmd.AddCommand(quizCmd)
