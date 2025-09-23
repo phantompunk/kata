@@ -15,10 +15,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 
-	"github.com/browserutils/kooky"
-	_ "github.com/browserutils/kooky/browser/all"
+	"github.com/phantompunk/kata/internal/browser"
 	"github.com/phantompunk/kata/internal/config"
 	"github.com/phantompunk/kata/internal/db"
 	"github.com/phantompunk/kata/internal/leetcode"
@@ -139,41 +137,6 @@ func (app *App) ListQuestions() error {
 	return nil
 }
 
-func (app *App) Login(opts AppOptions) error {
-	if app.Config.IsSessionValid() && !opts.Force {
-		res, err := app.Repo.GetStats(context.Background())
-		if err != nil {
-			return fmt.Errorf("failed to get stats: %w", err)
-		}
-
-		fmt.Println("You are already logged in")
-		if err := app.Renderer.RenderOutput(os.Stdout, templates.CliLogin, res); err != nil {
-			return fmt.Errorf("failed to render login message: %w", err)
-		}
-		return nil
-	}
-
-	if err := app.RefreshCookies(); err != nil {
-		return fmt.Errorf("%w: %w", ErrCookiesNotFound, err)
-	}
-
-	if err := app.CheckSession(); err != nil {
-		return fmt.Errorf("failed to check session: %w", err)
-	}
-
-	res, err := app.Repo.GetStats(context.Background())
-	if err != nil {
-		return fmt.Errorf("failed to get stats: %w", err)
-	}
-
-	fmt.Println("✔ Authentication successful")
-	if err := app.Renderer.RenderOutput(os.Stdout, templates.CliLogin, res); err != nil {
-		return fmt.Errorf("failed to render login message: %w", err)
-	}
-
-	return nil
-}
-
 func (app *App) Test(opts AppOptions) error {
 	if opts.Language == "" {
 		opts.Language = app.Config.Language
@@ -219,6 +182,20 @@ func (app *App) CheckSession() error {
 		return ErrInvalidSession
 	}
 	return nil
+}
+
+func (app *App) ValidateSession() error {
+	username, err := app.lcs.GetUsername()
+	if err != nil {
+		return fmt.Errorf("failed to ping leetcode service: %w", err)
+	}
+
+	if username == "" {
+		app.Config.ClearSession()
+		return ErrInvalidSession
+	}
+
+	return app.Config.SaveUsername(username)
 }
 
 // :TODO: Move this to a separate package
@@ -561,36 +538,20 @@ func parseFunctionName(snippet string) (string, error) {
 
 // RefreshCookies fetches the session and csrf cookies from the browser and updates the app's config.
 func (app *App) RefreshCookies() error {
-	var sessionCookie *kooky.Cookie
-	var csrfCookie *kooky.Cookie
-
-	cookiesSeq := kooky.TraverseCookies(context.TODO(), kooky.Valid, kooky.DomainHasSuffix(`leetcode.com`)).OnlyCookies()
-	for cookie := range cookiesSeq {
-		if cookie.Name == "LEETCODE_SESSION" {
-			sessionCookie = cookie
-			continue
-		}
-
-		if cookie.Name == "csrftoken" {
-			csrfCookie = cookie
-			continue
-		}
-
-		if sessionCookie != nil && csrfCookie != nil {
-			break
-		}
+	cookies, err := browser.GetCookies()
+	if err != nil {
+		return fmt.Errorf("failed to get browser cookies: %v", err)
 	}
 
-	if sessionCookie == nil || sessionCookie.Expires.Before(time.Now()) {
-		return fmt.Errorf("LEETCODE_SESSION missing or expired")
+	sessionID, hasSession := cookies["LEETCODE_SESSION"]
+	csrfToken, hasCSRF := cookies["csrftoken"]
+
+	if !hasSession || !hasCSRF {
+		return fmt.Errorf("required leetcode cookies not found in browser")
 	}
 
-	if csrfCookie == nil {
-		return fmt.Errorf("csrftoken missing or expired")
-	}
-
-	app.lcs.SetCookies(sessionCookie.Value, csrfCookie.Value)
-	return app.Config.UpdateSession(sessionCookie.Value, csrfCookie.Value, sessionCookie.Expires)
+	app.lcs.SetCookies(sessionID, csrfToken)
+	return app.Config.UpdateSession(sessionID, csrfToken)
 }
 
 func FormatPathForDisplay(path string) string {

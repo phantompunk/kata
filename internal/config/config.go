@@ -5,13 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"text/template"
-	"time"
 
 	"github.com/adrg/xdg"
 	"github.com/go-yaml/yaml"
+	"github.com/phantompunk/kata/internal/editor"
 	"github.com/spf13/cobra"
 )
 
@@ -20,15 +19,15 @@ var configTemplate string
 var cfg Config
 
 type Config struct {
-	Workspace      string    `yaml:"workspace"`
-	Language       string    `yaml:"language"`
-	OpenInEditor   bool      `yaml:"openInEditor"`
-	Verbose        bool      `yaml:"verbose"`
-	SessionExpires time.Time `yaml:"sessionExpires"`
-	SessionToken   string    `yaml:"sessionToken"`
-	CsrfToken      string    `yaml:"csrfToken"`
-	Tracks         []string  `yaml:"tracks"`
-	configPath     string
+	Workspace    string   `yaml:"workspace"`
+	Language     string   `yaml:"language"`
+	OpenInEditor bool     `yaml:"openInEditor"`
+	Verbose      bool     `yaml:"verbose"`
+	SessionToken string   `yaml:"sessionToken"`
+	CsrfToken    string   `yaml:"csrfToken"`
+	Username     string   `yaml:"username"`
+	Tracks       []string `yaml:"tracks"`
+	configPath   string
 }
 
 func ConfigFunc(cmd *cobra.Command, args []string) error {
@@ -95,80 +94,51 @@ func defaultConfig() Config {
 	}
 }
 
-func findEditor() string {
-	term, found := os.LookupEnv("EDITOR")
-	if found && isCmdAvailable(term) {
-		return term
-	} else if isCmdAvailable("nvim") {
-		return "nvim"
-	} else if isCmdAvailable("vim") {
-		return "vim"
-	} else if isCmdAvailable("vi") {
-		return "vi"
-	} else {
-		return "nano"
-	}
-}
-
-func isCmdAvailable(name string) bool {
-	cmd := exec.Command("command", "-v", name)
-	if err := cmd.Run(); err != nil {
-		return false
-	}
-	return true
-}
-
 func OpenConfig() (string, error) {
 	cfp, err := xdg.ConfigFile(filepath.Join("kata", "kata.yml"))
 	if err != nil {
 		return "", err
 	}
 
-	editor := findEditor()
-	command := exec.Command(editor, cfp)
-	command.Stdout = os.Stdout
-	command.Stdin = os.Stdin
-	command.Stderr = os.Stderr
-	err = command.Run()
-	if err != nil {
-		return "", err
+	err = editor.OpenWithEditor(cfp)
+	if err == nil {
+		return cfp, err
 	}
+
 	return cfp, nil
 }
 
 func (c *Config) Update() error {
+	configPath, err := getConfigPath()
+	if err != nil {
+		return fmt.Errorf("failed to get config path: %w", err)
+	}
+
 	data, err := yaml.Marshal(c)
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
 
-	cfgPath, _ := getConfigPath()
-	err = os.WriteFile(cfgPath, data, os.ModePerm)
-	if err != nil {
-		return fmt.Errorf("failed to write config file: %w", err)
-	}
-
-	return nil
+	return os.WriteFile(configPath, data, os.ModePerm)
 }
 
-func (c *Config) UpdateSession(sessionToken, csrfToken string, expires time.Time) error {
+func (c *Config) UpdateSession(sessionToken, csrfToken string) error {
 	c.SessionToken = sessionToken
 	c.CsrfToken = csrfToken
-	c.SessionExpires = expires
+	return c.Update()
+}
+
+func (c *Config) SaveUsername(username string) error {
+	c.Username = username
 	return c.Update()
 }
 
 func (c *Config) IsSessionValid() bool {
-	return c.CsrfToken != "" &&
-		c.SessionToken != "" &&
-		!c.SessionExpires.IsZero() &&
-		time.Now().Before(c.SessionExpires)
+	return c.CsrfToken != "" && c.SessionToken != ""
 }
 
 func (c *Config) ClearSession() error {
 	c.SessionToken = ""
 	c.CsrfToken = ""
-	c.SessionExpires = time.Time{}
-	fmt.Println("Cleared cookies from config")
 	return c.Update()
 }

@@ -39,12 +39,6 @@ var listCmd = &cobra.Command{
 	RunE:  HandleErrors(ListFunc),
 }
 
-var loginCmd = &cobra.Command{
-	Use:   "login",
-	Short: "Accept session and token, attempt to get user info",
-	RunE:  HandleErrors(LoginFunc),
-}
-
 var testCmd = &cobra.Command{
 	Use:   "test",
 	Short: "Runs problem solution against leetcode test cases",
@@ -65,7 +59,7 @@ var settingsCmd = &cobra.Command{
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
 }
@@ -76,11 +70,9 @@ func init() {
 	downloadCmd.Flags().StringP("language", "l", "", "Programming language to use")
 	downloadCmd.Flags().BoolP("open", "o", false, "Open problem with $EDITOR")
 	downloadCmd.Flags().BoolP("force", "f", false, "Force download even if problem already exists")
-	// downloadCmd.MarkFlagRequired("problem")
 
 	testCmd.Flags().StringP("language", "l", "", "Programming language to use")
 	submitCmd.Flags().StringP("language", "l", "", "Programming language to use")
-	loginCmd.Flags().BoolP("force", "f", false, "Always refresh browser cookies")
 
 	rootCmd.AddCommand(downloadCmd)
 	rootCmd.AddCommand(quizCmd)
@@ -101,7 +93,6 @@ func HandleErrors(fn CommandFunc) CommandFunc {
 		if v, _ := cmd.Flags().GetBool("verbose"); v || kata.Config.Verbose {
 			return fmt.Errorf("Error %+v", err)
 		}
-
 		return fmt.Errorf("%s", userMessage(err))
 	}
 }

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/phantompunk/kata/internal/app"
 	"github.com/phantompunk/kata/internal/editor"
 	"github.com/phantompunk/kata/internal/ui"
 	"github.com/spf13/cobra"
@@ -40,7 +39,9 @@ func QuizFunc(cmd *cobra.Command, args []string) error {
 	question, err := kata.Repo.GetRandom(ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return app.ErrNoQuestions
+			fmt.Println("✗ No eligible problems to quiz on")
+			fmt.Println("ℹ You need at least one attempted solution\n\tTo get started, run: 'kata get two-sum'")
+			return fmt.Errorf("no attempted problems found")
 		}
 		return fmt.Errorf("failed to get random question: %w", err)
 	}

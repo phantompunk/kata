@@ -190,6 +190,26 @@ func (lc *Service) Ping() (bool, error) {
 	return response.Data.UserStatus.IsSignedIn, nil
 }
 
+func (lc *Service) GetUsername() (string, error) {
+	data, err := json.Marshal(Request{Query: queryUserAuth})
+	if err != nil {
+		return "", err
+	}
+
+	body, err := lc.doRequest(context.Background(), "POST", lc.baseUrl, bytes.NewBuffer(data), nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to do request: %w", err)
+	}
+
+	var response AuthResponse
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		return "", fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	return response.Data.UserStatus.Username, nil
+}
+
 func (lc *Service) Fetch(name string) (*models.Question, error) {
 	variables := map[string]any{"titleSlug": name}
 	data, err := json.Marshal(Request{Query: queryQuestionDetails, Variables: variables})
