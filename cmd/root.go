@@ -1,9 +1,8 @@
-package main
+package cmd
 
 import (
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/phantompunk/kata/internal/app"
 	"github.com/phantompunk/kata/internal/config"
@@ -57,11 +56,8 @@ var settingsCmd = &cobra.Command{
 	RunE:  config.ConfigFunc,
 }
 
-func main() {
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
+func Execute() error {
+	return rootCmd.Execute()
 }
 
 func init() {

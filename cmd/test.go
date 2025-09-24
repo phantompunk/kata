@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func SubmitFunc(cmd *cobra.Command, args []string) error {
+func TestFunc(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		return fmt.Errorf(`missing problem, try "kata get two-sum" or "kata get 1"`)
 	}
@@ -19,9 +19,8 @@ func SubmitFunc(cmd *cobra.Command, args []string) error {
 	}
 
 	opts := app.AppOptions{
-		Problem:  name,
 		Language: language,
+		Problem:  name,
 	}
-
-	return kata.Submit(opts)
+	return kata.Test(opts)
 }
