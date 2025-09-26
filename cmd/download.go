@@ -2,38 +2,53 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/phantompunk/kata/internal/app"
+	"github.com/phantompunk/kata/internal/render/templates"
+	"github.com/phantompunk/kata/internal/ui"
 	"github.com/spf13/cobra"
 )
 
+var downloadCmd = &cobra.Command{
+	Use:   "get",
+	Short: "Download and stub a Leetcode problem",
+	RunE:  HandleErrors(DownloadFunc),
+}
+
+func init() {
+	downloadCmd.Flags().StringVarP(&language, "language", "l", "", "Programming language to use")
+	downloadCmd.Flags().BoolVarP(&open, "open", "o", false, "Open problem with $EDITOR")
+	downloadCmd.Flags().BoolVarP(&force, "force", "f", false, "Force download even if problem already exists")
+}
+
 func DownloadFunc(cmd *cobra.Command, args []string) error {
-	if len(args) == 0 {
-		return fmt.Errorf(`missing problem, try "kata get two-sum" or "kata get 1"`)
-	}
-	name := args[0]
+	problem := args[0]
 
-	language, err := cmd.Flags().GetString("language")
-	if err != nil {
-		return fmt.Errorf("could not read --language flag: %w", err)
-	}
-
-	open, err := cmd.Flags().GetBool("open")
-	if err != nil {
-		return fmt.Errorf("could not read --open flag: %w", err)
-	}
-
-	force, err := cmd.Flags().GetBool("force")
-	if err != nil {
-		return fmt.Errorf("could not read --force flag: %w", err)
+	if language == "" {
+		language = kata.Config.Language
 	}
 
 	opts := app.AppOptions{
-		Problem:  name,
+		Problem:  app.ConvertToSlug(problem),
 		Language: language,
 		Open:     open,
 		Force:    force,
 	}
 
-	return kata.DownloadQuestion(opts)
+	question, err := kata.GetQuestion(opts.Problem, opts.Language, opts.Force)
+	if err != nil {
+		return fmt.Errorf("fetching question %q: %w", opts.Problem, err)
+	}
+	ui.PrintSuccess(fmt.Sprintf("Fetched problem %s", question.Title))
+
+	if err := kata.Stub(question, opts); err != nil {
+		return fmt.Errorf("stubbing problem %q: %w", opts.Problem, err)
+	}
+
+	if err := kata.Renderer.RenderOutput(os.Stdout, templates.CliGet, question); err != nil {
+		return fmt.Errorf("rendering next steps: %w", err)
+	}
+
+	return nil
 }

@@ -21,7 +21,6 @@ import (
 	"github.com/phantompunk/kata/internal/db"
 	"github.com/phantompunk/kata/internal/leetcode"
 	"github.com/phantompunk/kata/internal/models"
-	"github.com/phantompunk/kata/internal/render/table"
 	"github.com/phantompunk/kata/internal/render/templates"
 	"github.com/phantompunk/kata/internal/repository"
 	"github.com/spf13/afero"
@@ -89,7 +88,7 @@ func New() (*App, error) {
 	}, nil
 }
 
-func convertToSlug(name string) string {
+func ConvertToSlug(name string) string {
 	if id, err := strconv.Atoi(name); err == nil {
 		return MapIDtoSlug[id]
 	}
@@ -97,52 +96,12 @@ func convertToSlug(name string) string {
 	return name
 }
 
-func (app *App) DownloadQuestion(opts AppOptions) error {
-	if opts.Language == "" {
-		opts.Language = app.Config.Language
-	}
-
-	if !opts.Open && app.Config.OpenInEditor {
-		opts.Open = true
-	}
-
-	opts.Problem = convertToSlug(opts.Problem)
-
-	question, err := app.GetQuestion(opts.Problem, opts.Language, opts.Force)
-	if err != nil {
-		return fmt.Errorf("fetching question %q: %w", opts.Problem, err)
-	}
-
-	if err := app.Stub(question, opts); err != nil {
-		return fmt.Errorf("stubbing problem %q: %w", opts.Problem, err)
-	}
-
-	if err := app.Renderer.RenderOutput(os.Stdout, templates.CliGet, question); err != nil {
-		return fmt.Errorf("rendering next steps: %w", err)
-	}
-
-	return nil
-}
-
-func (app *App) ListQuestions() error {
-	questions, err := app.Repo.GetAllWithStatus(context.Background(), app.Config.Tracks)
-	if err != nil {
-		return fmt.Errorf("listing questions: %w", err)
-	}
-
-	if err := table.Render(questions, app.Config.Tracks); err != nil {
-		return fmt.Errorf("rendering questions as table: %w", err)
-	}
-
-	return nil
-}
-
 func (app *App) Test(opts AppOptions) error {
 	if opts.Language == "" {
 		opts.Language = app.Config.Language
 	}
 
-	opts.Problem = convertToSlug(opts.Problem)
+	opts.Problem = ConvertToSlug(opts.Problem)
 
 	if err := app.CheckSession(); err != nil {
 		return fmt.Errorf("failed to check session: %w", err)
@@ -156,7 +115,7 @@ func (app *App) Submit(opts AppOptions) error {
 		opts.Language = app.Config.Language
 	}
 
-	opts.Problem = convertToSlug(opts.Problem)
+	opts.Problem = ConvertToSlug(opts.Problem)
 
 	if err := app.CheckSession(); err != nil {
 		return fmt.Errorf("failed to check session: %w", err)

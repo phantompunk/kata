@@ -26,29 +26,6 @@ var rootCmd = &cobra.Command{
 	},
 }
 
-var downloadCmd = &cobra.Command{
-	Use:   "get",
-	Short: "Download and stub a Leetcode problem",
-	RunE:  HandleErrors(DownloadFunc),
-}
-
-var listCmd = &cobra.Command{
-	Use:   "list",
-	Short: "Show all completed Leetcode problems",
-	RunE:  HandleErrors(ListFunc),
-}
-
-var testCmd = &cobra.Command{
-	Use:   "test",
-	Short: "Runs problem solution against leetcode test cases",
-	RunE:  HandleErrors(TestFunc),
-}
-
-var submitCmd = &cobra.Command{
-	Use:   "submit",
-	Short: "Submit solutions against leetcode servers",
-	RunE:  HandleErrors(SubmitFunc),
-}
 
 var settingsCmd = &cobra.Command{
 	Use:   "settings",
@@ -63,12 +40,6 @@ func Execute() error {
 func init() {
 	// Define flags
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Enable verbose output")
-	downloadCmd.Flags().StringP("language", "l", "", "Programming language to use")
-	downloadCmd.Flags().BoolP("open", "o", false, "Open problem with $EDITOR")
-	downloadCmd.Flags().BoolP("force", "f", false, "Force download even if problem already exists")
-
-	testCmd.Flags().StringP("language", "l", "", "Programming language to use")
-	submitCmd.Flags().StringP("language", "l", "", "Programming language to use")
 
 	rootCmd.AddCommand(downloadCmd)
 	rootCmd.AddCommand(quizCmd)
