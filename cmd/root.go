@@ -1,8 +1,12 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/phantompunk/kata/internal/app"
 	"github.com/phantompunk/kata/internal/config"
@@ -12,6 +16,11 @@ import (
 
 var kata *app.App
 var kataErr error
+
+var (
+	open     bool
+	language string
+)
 
 type CommandFunc func(cmd *cobra.Command, args []string) error
 
@@ -26,7 +35,6 @@ var rootCmd = &cobra.Command{
 	},
 }
 
-
 var settingsCmd = &cobra.Command{
 	Use:   "settings",
 	Short: "Configure the client",
@@ -34,12 +42,28 @@ var settingsCmd = &cobra.Command{
 }
 
 func Execute() error {
-	return rootCmd.Execute()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		sig := <-sigCh
+		fmt.Println("Received signal", sig)
+
+		cancel()
+	}()
+
+	return rootCmd.ExecuteContext(ctx)
 }
 
 func init() {
 	// Define flags
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Enable verbose output")
+
+	quizCmd.Flags().BoolVarP(&open, "open", "o", false, "Open problem with $EDITOR")
+	quizCmd.Flags().StringVarP(&language, "language", "l", "", "Programming language to use")
 
 	rootCmd.AddCommand(downloadCmd)
 	rootCmd.AddCommand(quizCmd)

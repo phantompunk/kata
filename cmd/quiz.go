@@ -1,20 +1,13 @@
 package cmd
 
 import (
-	"context"
 	"database/sql"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/phantompunk/kata/internal/editor"
 	"github.com/phantompunk/kata/internal/ui"
 	"github.com/spf13/cobra"
-)
-
-var (
-	open     bool
-	language string
 )
 
 var quizCmd = &cobra.Command{
@@ -23,20 +16,17 @@ var quizCmd = &cobra.Command{
 	RunE:  HandleErrors(QuizFunc),
 }
 
-func init() {
-	quizCmd.Flags().BoolVarP(&open, "open", "o", false, "Open problem with $EDITOR")
-	quizCmd.Flags().StringVarP(&language, "language", "l", "", "Programming language to use")
-}
-
 func QuizFunc(cmd *cobra.Command, args []string) error {
 	if language == "" {
 		language = kata.Config.Language
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
+	// Get random quiz question from DB
+	// If no problems are found return error and let user know
+	// Otherwise log the action
+	// Then render the result
 
-	question, err := kata.Repo.GetRandom(ctx)
+	question, err := kata.Repo.GetRandom(cmd.Context())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			fmt.Println("✗ No eligible problems to quiz on")

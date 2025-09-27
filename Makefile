@@ -18,7 +18,7 @@ build:
 
 ## install: Install the kata binary
 install:
-	go install ./cmd/kata
+	go install ./cmd . 
 
 ## test: Run tests
 test:
