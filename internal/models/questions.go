@@ -23,6 +23,13 @@ type Question struct {
 	CreatedAt    string
 }
 
+type QuestionStat struct {
+	ID         string
+	Title      string
+	Difficulty string
+	LangStatus map[string]bool
+}
+
 type CodeSnippet struct {
 	Code     string `json:"code"`
 	LangSlug string `json:"langSlug"`
@@ -77,11 +84,10 @@ func (p *Problem) Extension() string {
 }
 
 func (p *Problem) SetPaths(workspace string) {
-	title := formatTitleSlug(p.TitleSlug)
-	p.DirPath = filepath.Join(workspace, p.LangSlug, title)
-	p.SolutionPath = filepath.Join(workspace, p.LangSlug, title, fmt.Sprintf("%s%s", title, p.Extension()))
-	p.TestPath = filepath.Join(workspace, p.LangSlug, title, fmt.Sprintf("%s_test%s", title, p.Extension()))
-	p.ReadmePath = filepath.Join(workspace, p.LangSlug, title, "readme.md")
+	p.DirPath = filepath.Join(workspace, p.LangSlug, p.Slug)
+	p.SolutionPath = filepath.Join(workspace, p.LangSlug, p.Slug, fmt.Sprintf("%s%s", p.Slug, p.Extension()))
+	p.TestPath = filepath.Join(workspace, p.LangSlug, p.Slug, fmt.Sprintf("%s_test%s", p.Slug, p.Extension()))
+	p.ReadmePath = filepath.Join(workspace, p.LangSlug, p.Slug, "readme.md")
 }
 
 var numberToString = map[string]string{"1": "one", "2": "two", "3": "three", "4": "four", "5": "five", "6": "six", "7": "seven", "8": "eight", "9": "nine", "0": "zero"}

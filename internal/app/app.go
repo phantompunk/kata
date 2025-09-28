@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,6 +20,7 @@ import (
 	"github.com/phantompunk/kata/internal/browser"
 	"github.com/phantompunk/kata/internal/config"
 	"github.com/phantompunk/kata/internal/db"
+	"github.com/phantompunk/kata/internal/editor"
 	"github.com/phantompunk/kata/internal/leetcode"
 	"github.com/phantompunk/kata/internal/models"
 	"github.com/phantompunk/kata/internal/render/templates"
@@ -242,7 +244,6 @@ func (app *App) GetQuestion(name, language string, force bool) (*models.Question
 			return nil, fmt.Errorf("failed to convert question: %w", err)
 		}
 
-		fmt.Printf("✔ Fetched problem: %s\n", repoQuestion.Title)
 		return modelQuestion, nil
 	}
 
@@ -453,26 +454,6 @@ func (app *App) GetFunctionName(problem *models.Problem) string {
 	return name
 }
 
-func (app *App) PrintQuestionStatus() ([]models.Question, error) {
-	repoQuestions, err := app.Repo.ListAll(context.Background())
-	if err != nil {
-		return nil, err
-	}
-
-	var modelQuestions []models.Question
-	for _, repoQ := range repoQuestions {
-		modelQ, err := toModelQuestion(repoQ)
-		if err != nil {
-			return nil, err
-		}
-		modelQuestions = append(modelQuestions, *modelQ)
-	}
-
-	// app.Renderer.AsMarkdown()
-	// app.Renderer.QuestionsAsTable()
-	return modelQuestions, nil
-}
-
 func parseFunctionName(snippet string) (string, error) {
 	fset := token.NewFileSet()
 	node, err := parser.ParseFile(fset, "src.go", snippet, 0)
@@ -522,4 +503,33 @@ func FormatPathForDisplay(path string) string {
 	}
 
 	return path
+}
+
+func (app *App) GetAllQuestionsWithStatus(ctx context.Context) ([]models.QuestionStat, error) {
+	stats, err := app.Repo.GetAllWithStatus(ctx, app.Config.Tracks)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(stats) == 0 {
+		return nil, ErrNoQuestions
+	}
+
+	return stats, nil
+}
+
+func (app *App) GetRandomQuestion(ctx context.Context) (*repository.GetRandomRow, error) {
+	question, err := app.Repo.GetRandom(ctx)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("no attempted problems found")
+		}
+		return nil, fmt.Errorf("failed to get random question: %w", err)
+	}
+
+	return &question, nil
+}
+
+func (app *App) OpenQuestionInEditor(problem Problem) error {
+	return editor.OpenWithEditor(problem.GetSolutionPath(app.Config.Workspace, app.Config.Language))
 }

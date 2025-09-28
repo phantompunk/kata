@@ -40,7 +40,7 @@ func DownloadFunc(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("fetching question %q: %w", opts.Problem, err)
 	}
-	ui.PrintSuccess(fmt.Sprintf("Fetched problem %s", question.Title))
+	ui.PrintSuccess(fmt.Sprintf("Fetched problem: %s", question.Title))
 
 	if err := kata.Stub(question, opts); err != nil {
 		return fmt.Errorf("stubbing problem %q: %w", opts.Problem, err)

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/phantompunk/kata/internal/render/table"
@@ -15,7 +14,7 @@ var listCmd = &cobra.Command{
 }
 
 func ListFunc(cmd *cobra.Command, args []string) error {
-	questions, err := kata.Repo.GetAllWithStatus(context.Background(), kata.Config.Tracks)
+	questions, err := kata.GetAllQuestionsWithStatus(cmd.Context())
 	if err != nil {
 		return fmt.Errorf("listing questions: %w", err)
 	}

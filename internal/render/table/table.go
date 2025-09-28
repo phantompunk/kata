@@ -1,8 +1,8 @@
 package table
 
 import (
+	"errors"
 	"fmt"
-	"os"
 
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
@@ -10,11 +10,63 @@ import (
 	"github.com/phantompunk/kata/internal/models"
 )
 
-var (
-	base   = lipgloss.NewStyle().BorderStyle(lipgloss.DoubleBorder()).BorderForeground(lipgloss.Color("240"))
-	center = lipgloss.NewStyle().Align(lipgloss.Center)
-	bold   = lipgloss.NewStyle().Bold(true)
+// Constants for default values
+const (
+	DefaultMaxHeight   = 10
+	DefaultIDWidth     = 4
+	DefaultNameWidth   = 30
+	DefaultDiffWidth   = 14
+	DefaultLangPadding = 2
+	MinTableHeight     = 3
 )
+
+// TableConfig holds table configuration options
+type TableConfig struct {
+	MaxHeight   int
+	IDWidth     int
+	NameWidth   int
+	DiffWidth   int
+	LangPadding int
+	Styles      *StyleConfig
+}
+
+// StyleConfig centralizes all table styling
+type StyleConfig struct {
+	Base       lipgloss.Style
+	Center     lipgloss.Style
+	Bold       lipgloss.Style
+	Difficulty map[string]lipgloss.Style
+}
+
+// DefaultConfig returns a configuration with sensible defaults
+func DefaultConfig() *TableConfig {
+	return &TableConfig{
+		MaxHeight:   DefaultMaxHeight,
+		IDWidth:     DefaultIDWidth,
+		NameWidth:   DefaultNameWidth,
+		DiffWidth:   DefaultDiffWidth,
+		LangPadding: DefaultLangPadding,
+		Styles:      DefaultStyles(),
+	}
+}
+
+// DefaultStyles returns the default style configuration
+func DefaultStyles() *StyleConfig {
+	base := lipgloss.NewStyle().BorderStyle(lipgloss.DoubleBorder()).BorderForeground(lipgloss.Color("240"))
+	center := lipgloss.NewStyle().Align(lipgloss.Center)
+	bold := lipgloss.NewStyle().Bold(true)
+
+	return &StyleConfig{
+		Base:   base,
+		Center: center,
+		Bold:   bold,
+		Difficulty: map[string]lipgloss.Style{
+			"Easy":   center.PaddingLeft(2).Foreground(lipgloss.Color("2")), // Green
+			"Medium": center.PaddingLeft(1).Foreground(lipgloss.Color("3")), // Yellow
+			"Hard":   center.PaddingLeft(2).Foreground(lipgloss.Color("1")), // Red
+		},
+	}
+}
 
 type model struct {
 	table table.Model
@@ -36,33 +88,83 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	return base.Render(m.table.View()) + "\n"
+	// Note: We use default styles here since the model doesn't have access to config
+	// In a future refactor, we could pass config to the model
+	baseStyle := lipgloss.NewStyle().BorderStyle(lipgloss.DoubleBorder()).BorderForeground(lipgloss.Color("240"))
+	return baseStyle.Render(m.table.View()) + "\n"
 }
 
-func Render(questions []models.Question, languages []string) error {
-	columns := createColumns(languages)
-	rows := createRows(questions, languages)
+// Render creates and displays an interactive table with the given questions and languages
+// Uses default configuration
+func Render(questions []models.QuestionStat, languages []string) error {
+	return RenderWithConfig(questions, languages, DefaultConfig())
+}
 
-	table := createTable(columns, rows)
-	m := model{table}
+// RenderWithConfig creates and displays an interactive table with custom configuration
+func RenderWithConfig(questions []models.QuestionStat, languages []string, config *TableConfig) error {
+	tableModel, err := NewTable(questions, languages, config)
+	if err != nil {
+		return fmt.Errorf("creating table: %w", err)
+	}
+
+	return RunInteractiveTable(tableModel)
+}
+
+// NewTable creates a new table model without running the interactive program
+func NewTable(questions []models.QuestionStat, languages []string, config *TableConfig) (table.Model, error) {
+	if err := validateInputs(questions, languages, config); err != nil {
+		return table.Model{}, err
+	}
+
+	columns := createColumns(languages, config)
+	rows := createRows(questions, languages, config)
+
+	return createTable(columns, rows, config), nil
+}
+
+// RunInteractiveTable runs the TUI program with the given table model
+func RunInteractiveTable(tableModel table.Model) error {
+	m := model{table: tableModel}
 
 	if _, err := tea.NewProgram(m).Run(); err != nil {
-		fmt.Println("Error running program:", err)
-		os.Exit(1)
+		return fmt.Errorf("running interactive table: %w", err)
 	}
+
 	return nil
 }
 
-func createTable(columns []table.Column, rows []table.Row) table.Model {
-	height := min(len(rows)+1, 10)
+// validateInputs checks if the provided inputs are valid
+func validateInputs(questions []models.QuestionStat, languages []string, config *TableConfig) error {
+	if config == nil {
+		return errors.New("config cannot be nil")
+	}
+
+	if len(questions) == 0 {
+		return errors.New("questions slice cannot be empty")
+	}
+
+	if len(languages) == 0 {
+		return errors.New("languages slice cannot be empty")
+	}
+
+	if config.MaxHeight < MinTableHeight {
+		return fmt.Errorf("max height must be at least %d, got %d", MinTableHeight, config.MaxHeight)
+	}
+
+	return nil
+}
+
+func createTable(columns []table.Column, rows []table.Row, config *TableConfig) table.Model {
+	height := calculateTableHeight(len(rows), config.MaxHeight)
 	t := table.New(
 		table.WithColumns(columns),
 		table.WithRows(rows),
 		table.WithFocused(true),
 		table.WithHeight(height),
 	)
+
 	s := table.DefaultStyles()
-	s.Selected = bold
+	s.Selected = config.Styles.Bold
 	s.Header = s.Header.
 		BorderStyle(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color("240")).
@@ -73,13 +175,26 @@ func createTable(columns []table.Column, rows []table.Row) table.Model {
 	return t
 }
 
-func createRows(questions []models.Question, tracks []string) []table.Row {
+// calculateTableHeight determines the appropriate height for the table
+func calculateTableHeight(rowCount, maxHeight int) int {
+	// Add 1 for header row
+	height := rowCount + 1
+	if height > maxHeight {
+		return maxHeight
+	}
+	if height < MinTableHeight {
+		return MinTableHeight
+	}
+	return height
+}
+
+func createRows(questions []models.QuestionStat, tracks []string, config *TableConfig) []table.Row {
 	var rows []table.Row
 	for _, question := range questions {
 		row := []string{
 			fmt.Sprint(question.ID),
-			question.Title,
-			colorize(question.Difficulty),
+			truncateText(question.Title, config.NameWidth),
+			colorize(question.Difficulty, config.Styles),
 		}
 
 		for _, lang := range tracks {
@@ -87,38 +202,51 @@ func createRows(questions []models.Question, tracks []string) []table.Row {
 			if question.LangStatus[lang] {
 				status = "✅"
 			}
-			row = append(row, center.Width(len(lang)).Render(status))
+			row = append(row, config.Styles.Center.Width(len(lang)).Render(status))
 		}
 		rows = append(rows, row)
 	}
 	return rows
 }
 
-func createColumns(languages []string) []table.Column {
+// truncateText truncates text to fit within the specified width
+func truncateText(text string, maxWidth int) string {
+	if len(text) <= maxWidth {
+		return text
+	}
+	if maxWidth <= 3 {
+		return text[:maxWidth]
+	}
+	return text[:maxWidth-3] + "..."
+}
+
+// calculateLangWidth calculates the width needed for a language column
+func calculateLangWidth(lang string, padding int) int {
+	return len(lang) + padding
+}
+
+func createColumns(languages []string, config *TableConfig) []table.Column {
 	columns := []table.Column{
-		{Title: center.Render("ID"), Width: 4},
-		{Title: "Name", Width: 30},
-		{Title: "Difficulty", Width: 14},
+		{Title: config.Styles.Center.Render("ID"), Width: config.IDWidth},
+		{Title: "Name", Width: config.NameWidth},
+		{Title: "Difficulty", Width: config.DiffWidth},
 	}
 
 	for _, lang := range languages {
+		langWidth := calculateLangWidth(lang, config.LangPadding)
 		columns = append(columns, table.Column{
-			Title: center.Render(lang),
-			Width: len(lang) + 2,
+			Title: config.Styles.Center.Render(lang),
+			Width: langWidth,
 		})
 	}
 	return columns
 }
 
-var difficultyStyles = map[string]lipgloss.Style{
-	"Easy":   center.PaddingLeft(2).Foreground(lipgloss.Color("2")), // Green
-	"Medium": center.PaddingLeft(1).Foreground(lipgloss.Color("3")), // Yellow
-	"Hard":   center.PaddingLeft(2).Foreground(lipgloss.Color("1")), // Red
-}
-
-func colorize(difficulty string) string {
-	if style, exists := difficultyStyles[difficulty]; exists {
+// colorize applies styling to difficulty text based on its value
+func colorize(difficulty string, styles *StyleConfig) string {
+	if style, exists := styles.Difficulty[difficulty]; exists {
 		return style.Render(difficulty)
 	}
-	return difficulty
+	// Return with center alignment for unknown difficulties
+	return styles.Center.Render(difficulty)
 }

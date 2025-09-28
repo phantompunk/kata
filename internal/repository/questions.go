@@ -9,7 +9,7 @@ import (
 	"github.com/phantompunk/kata/internal/models"
 )
 
-func (q *Queries) GetAllWithStatus(ctx context.Context, languages []string) ([]models.Question, error) {
+func (q *Queries) GetAllWithStatus(ctx context.Context, languages []string) ([]models.QuestionStat, error) {
 	listAllWithStatuses := buildSelectClause(languages) + buildFromClause(languages)
 	rows, err := q.db.QueryContext(ctx, listAllWithStatuses)
 	if err != nil {
@@ -17,12 +17,12 @@ func (q *Queries) GetAllWithStatus(ctx context.Context, languages []string) ([]m
 	}
 	defer rows.Close()
 
-	var questions []models.Question
+	var items []models.QuestionStat
 	for rows.Next() {
-		var q models.Question
-		q.LangStatus = make(map[string]bool)
+		var i models.QuestionStat
+		i.LangStatus = make(map[string]bool)
 		solvedValues := make([]int, len(languages))
-		scanArgs := []any{&q.ID, &q.Title, &q.Difficulty}
+		scanArgs := []any{&i.ID, &i.Title, &i.Difficulty}
 
 		for i := range languages {
 			scanArgs = append(scanArgs, &solvedValues[i])
@@ -32,17 +32,21 @@ func (q *Queries) GetAllWithStatus(ctx context.Context, languages []string) ([]m
 			return nil, err
 		}
 
-		for i, lang := range languages {
-			q.LangStatus[lang] = solvedValues[i] == 1
+		for idx, lang := range languages {
+			i.LangStatus[lang] = solvedValues[idx] == 1
 		}
-		questions = append(questions, q)
+		items = append(items, i)
+	}
+
+	if err := rows.Close(); err != nil {
+		return nil, err
 	}
 
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
 
-	return questions, nil
+	return items, nil
 }
 
 func (q *Question) ToModelQuestion() (*models.Question, error) {
@@ -146,4 +150,13 @@ func (q *GetRandomRow) ToProblem(workspace, language string) *models.Problem {
 	problem.LangSlug = models.LangName[language]
 	problem.SetPaths(workspace)
 	return &problem
+}
+
+func (q *GetRandomRow) GetSolutionPath(workspace, language string) string {
+	var problem models.Problem
+	problem.TitleSlug = q.TitleSlug
+	problem.Slug = formatTitleSlug(q.TitleSlug)
+	problem.LangSlug = models.LangName[language]
+	problem.SetPaths(workspace)
+	return problem.SolutionPath
 }
