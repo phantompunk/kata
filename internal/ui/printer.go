@@ -5,3 +5,21 @@ import "fmt"
 func PrintSuccess(message string) {
 	fmt.Println("✔", message)
 }
+
+func PrintInfo(message string) {
+	fmt.Println(message)
+}
+
+func PrintWarning(message string) {
+	fmt.Println("⚠", message)
+}
+
+func PrintNextSteps(slug string) {
+	tmpl := `
+Next steps:
+  • Start solving: kata solve %s
+  • View details: kata show %s
+  • Submit later: kata submit %s
+`
+	fmt.Printf(tmpl, slug, slug, slug)
+}

@@ -2,7 +2,6 @@ package leetcode
 
 import (
 	"encoding/json"
-	"fmt"
 )
 
 type Question struct {
@@ -60,7 +59,6 @@ func (q *Question) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal([]byte(tmp.RawMetadata), &q.Metadata); err != nil {
 		return err
 	}
-	fmt.Println("Metadata Name:", q.Metadata.Name)
 
 	return nil
 }

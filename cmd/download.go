@@ -2,10 +2,9 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/phantompunk/kata/internal/app"
-	templates "github.com/phantompunk/kata/internal/render"
+	"github.com/phantompunk/kata/internal/render"
 	"github.com/phantompunk/kata/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -43,13 +42,28 @@ func DownloadFunc(cmd *cobra.Command, args []string) error {
 	}
 	ui.PrintSuccess(fmt.Sprintf("Fetched problem: %s", question.Title))
 
-	if err := kata.Stub(question, opts); err != nil {
-		return fmt.Errorf("stubbing problem %q: %w", opts.Problem, err)
-	}
-
-	if err := kata.Renderer.RenderOutput(os.Stdout, templates.CliGet, question); err != nil {
-		return fmt.Errorf("rendering next steps: %w", err)
-	}
-
+	result, err := kata.Download.Stub(cmd.Context(), question, opts, kata.Config.Workspace)
+	printResults(result)
+	ui.PrintNextSteps(question.TitleSlug)
 	return nil
+}
+
+func printResults(result *render.RenderResult) {
+	if result.DirectoryCreated != "" {
+		ui.PrintSuccess(fmt.Sprintf("Created directory: %s", result.DirectoryCreated))
+	}
+
+	if len(result.FilesCreated) > 0 {
+		ui.PrintSuccess("Generated files:")
+		for _, file := range result.FilesCreated {
+			ui.PrintInfo(fmt.Sprintf("  • %s", file))
+		}
+	}
+
+	if len(result.FilesUpdated) > 0 {
+		ui.PrintWarning("Updated files:")
+		for _, file := range result.FilesUpdated {
+			ui.PrintInfo(fmt.Sprintf("  • %s", file))
+		}
+	}
 }

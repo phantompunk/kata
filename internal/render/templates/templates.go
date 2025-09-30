@@ -10,20 +10,17 @@ import (
 	"github.com/phantompunk/kata/internal/models"
 )
 
-//go:embed templates/*.gohtml templates/*.txt
+//go:embed *.gohtml *.txt
 var Files embed.FS
 
-//go:embed templates/config_template.yml
+//go:embed config_template.yml
 var ConfigTemplate embed.FS
 
 type TemplateType string
 
-type Renderer interface {
-	RenderFile(w io.Writer, templateType TemplateType, problem *models.Problem) error
-}
-
 const (
 	TemplateTypeProblem TemplateType = "problem"
+	Directory           TemplateType = "directory"
 	Solution            TemplateType = "solution"
 	Readme              TemplateType = "readme"
 	Test                TemplateType = "test"

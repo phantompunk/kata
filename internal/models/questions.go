@@ -90,6 +90,15 @@ func (p *Problem) SetPaths(workspace string) {
 	p.ReadmePath = filepath.Join(workspace, p.LangSlug, p.Slug, "readme.md")
 }
 
+func (p *Problem) GetPaths() map[string]string {
+	return map[string]string{
+		"directory": p.DirPath,
+		"solution":  p.SolutionPath,
+		"test":      p.TestPath,
+		"readme":    p.ReadmePath,
+	}
+}
+
 var numberToString = map[string]string{"1": "one", "2": "two", "3": "three", "4": "four", "5": "five", "6": "six", "7": "seven", "8": "eight", "9": "nine", "0": "zero"}
 
 func convertNumberToWritten(name string) string {

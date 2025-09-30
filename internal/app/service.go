@@ -8,17 +8,18 @@ import (
 	"os"
 
 	"github.com/phantompunk/kata/internal/leetcode"
-	templates "github.com/phantompunk/kata/internal/render"
+	"github.com/phantompunk/kata/internal/render"
+	"github.com/phantompunk/kata/internal/render/templates"
 	"github.com/phantompunk/kata/internal/repository"
 )
 
 type DownloadService struct {
 	repo     *repository.Queries
 	client   leetcode.Client
-	renderer templates.Renderer
+	renderer render.Renderer
 }
 
-func NewDownloadService(repo *repository.Queries, client leetcode.Client, renderer templates.Renderer) *DownloadService {
+func NewDownloadService(repo *repository.Queries, client leetcode.Client, renderer render.Renderer) *DownloadService {
 	return &DownloadService{
 		repo:     repo,
 		client:   client,
@@ -49,9 +50,9 @@ func (s *DownloadService) GetQuestion(ctx context.Context, opts AppOptions) (*re
 	return &createdQuestion, nil
 }
 
-func (s *DownloadService) Stub(question *repository.Question, opts AppOptions) error {
-
-	return nil
+func (s *DownloadService) Stub(ctx context.Context, question *repository.Question, opts AppOptions, workspace string) (*render.RenderResult, error) {
+	problem := question.ToProblem(workspace, opts.Language)
+	return s.renderer.RenderQuestion(ctx, problem)
 }
 
 func (s *DownloadService) GetQuizQuestion(ctx context.Context) string {

@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"go/ast"
@@ -23,7 +22,8 @@ import (
 	"github.com/phantompunk/kata/internal/editor"
 	"github.com/phantompunk/kata/internal/leetcode"
 	"github.com/phantompunk/kata/internal/models"
-	templates "github.com/phantompunk/kata/internal/render"
+	"github.com/phantompunk/kata/internal/render"
+	"github.com/phantompunk/kata/internal/render/templates"
 	"github.com/phantompunk/kata/internal/repository"
 	"github.com/spf13/afero"
 )
@@ -83,7 +83,11 @@ func New() (*App, error) {
 	}
 
 	client := leetcode.NewLC(leetcode.WithCookies(cfg.SessionToken, cfg.CsrfToken))
-	download := NewDownloadService(repo, client, renderer)
+	frenderer, err := render.New()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create file renderer: %w", err)
+	}
+	download := NewDownloadService(repo, client, frenderer)
 
 	return &App{
 		Config:   &cfg,
@@ -164,99 +168,96 @@ func (app *App) ValidateSession() error {
 	return app.Config.SaveUsername(username)
 }
 
-// :TODO: Move this to a separate package
-func toModelQuestion(repoQuestion repository.Question) (*models.Question, error) {
-	var modelQuestion models.Question
-	modelQuestion.ID = fmt.Sprintf("%d", repoQuestion.QuestionID)
-	modelQuestion.Title = repoQuestion.Title
-	modelQuestion.TitleSlug = repoQuestion.TitleSlug
-	modelQuestion.Difficulty = repoQuestion.Difficulty
-	modelQuestion.FunctionName = repoQuestion.FunctionName
-	modelQuestion.Content = repoQuestion.Content
+// func toModelQuestion(repoQuestion repository.Question) (*models.Question, error) {
+// 	var modelQuestion models.Question
+// 	modelQuestion.ID = fmt.Sprintf("%d", repoQuestion.QuestionID)
+// 	modelQuestion.Title = repoQuestion.Title
+// 	modelQuestion.TitleSlug = repoQuestion.TitleSlug
+// 	modelQuestion.Difficulty = repoQuestion.Difficulty
+// 	modelQuestion.FunctionName = repoQuestion.FunctionName
+// 	modelQuestion.Content = repoQuestion.Content
+//
+// 	if err := json.Unmarshal([]byte(repoQuestion.CodeSnippets), &modelQuestion.CodeSnippets); err != nil {
+// 		return nil, err
+// 	}
+// 	modelQuestion.Testcases = repoQuestion.TestCases
+// 	return &modelQuestion, nil
+// }
 
-	if err := json.Unmarshal([]byte(repoQuestion.CodeSnippets), &modelQuestion.CodeSnippets); err != nil {
-		return nil, err
-	}
-	modelQuestion.Testcases = repoQuestion.TestCases
-	return &modelQuestion, nil
-}
+// func ToProblem(repoQuestion repository.Question, workspace, language string) *models.Problem {
+// 	var problem models.Problem
+// 	problem.QuestionID = fmt.Sprintf("%d", repoQuestion.QuestionID)
+// 	problem.TitleSlug = repoQuestion.TitleSlug
+// 	problem.FunctionName = repoQuestion.FunctionName
+// 	problem.Content = repoQuestion.Content
+//
+// 	var codeSnippets []models.CodeSnippet
+// 	if err := json.Unmarshal([]byte(repoQuestion.CodeSnippets), &codeSnippets); err != nil {
+// 		fmt.Println("Failed to unmarshal code snippets:", err)
+// 		return nil
+// 	}
+// 	problem.Code = ""
+// 	for _, snippet := range codeSnippets {
+// 		if snippet.LangSlug == language {
+// 			problem.Code = snippet.Code
+// 			break
+// 		}
+// 	}
+// 	problem.LangSlug = models.LangName[language]
+// 	problem.SetPaths(workspace)
+// 	return &problem
+// }
 
-func ToProblem(repoQuestion repository.Question, workspace, language string) *models.Problem {
-	var problem models.Problem
-	problem.QuestionID = fmt.Sprintf("%d", repoQuestion.QuestionID)
-	problem.TitleSlug = repoQuestion.TitleSlug
-	problem.FunctionName = repoQuestion.FunctionName
-	problem.Content = repoQuestion.Content
+// func toRepoCreateParams(modelQuestion *models.Question) (repository.CreateParams, error) {
+// 	var params repository.CreateParams
+// 	qId, _ := strconv.ParseInt(modelQuestion.ID, 10, 64)
+// 	params.QuestionID = qId
+// 	params.Title = modelQuestion.Title
+// 	params.TitleSlug = modelQuestion.TitleSlug
+// 	params.Difficulty = modelQuestion.Difficulty
+// 	params.FunctionName = modelQuestion.FunctionName
+// 	params.Content = modelQuestion.Content
+//
+// 	codeSnippets, err := json.Marshal(modelQuestion.CodeSnippets)
+// 	if err != nil {
+// 		return params, err
+// 	}
+// 	params.CodeSnippets = string(codeSnippets)
+//
+// 	testCases := strings.Join(modelQuestion.TestCaseList, "\n")
+// 	params.TestCases = string(testCases)
+//
+// 	return params, nil
+// }
 
-	var codeSnippets []models.CodeSnippet
-	if err := json.Unmarshal([]byte(repoQuestion.CodeSnippets), &codeSnippets); err != nil {
-		fmt.Println("Failed to unmarshal code snippets:", err)
-		return nil
-	}
-	problem.Code = ""
-	for _, snippet := range codeSnippets {
-		if snippet.LangSlug == language {
-			problem.Code = snippet.Code
-			break
-		}
-	}
-	problem.LangSlug = models.LangName[language]
-	problem.SetPaths(workspace)
-	return &problem
-}
-
-// TODO: Move this to a separate package
-func toRepoCreateParams(modelQuestion *models.Question) (repository.CreateParams, error) {
-	var params repository.CreateParams
-	qId, _ := strconv.ParseInt(modelQuestion.ID, 10, 64)
-	params.QuestionID = qId
-	params.Title = modelQuestion.Title
-	params.TitleSlug = modelQuestion.TitleSlug
-	params.Difficulty = modelQuestion.Difficulty
-	params.FunctionName = modelQuestion.FunctionName
-	params.Content = modelQuestion.Content
-
-	codeSnippets, err := json.Marshal(modelQuestion.CodeSnippets)
-	if err != nil {
-		return params, err
-	}
-	params.CodeSnippets = string(codeSnippets)
-
-	testCases := strings.Join(modelQuestion.TestCaseList, "\n")
-	params.TestCases = string(testCases)
-
-	return params, nil
-}
-
-func (app *App) GetQuestion(ctx context.Context, name, language string, force bool) (*repository.Question, error) {
-	repoQuestion, err := app.Repo.GetBySlug(context.Background(), name)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, fmt.Errorf("failed to get question details: %w", err)
-	}
-
-	if repoQuestion.QuestionID != 0 && !force {
-		return &repoQuestion, nil
-	}
-
-	question, err := app.lcs.Fetch(name)
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO: Review
-	question.FunctionName = app.GetFunctionName(question.ToProblem(app.Config.Workspace, language))
-	params, err := toRepoCreateParams(question)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert question to repository params: %w", err)
-	}
-
-	createdQuestion, err := app.Repo.Create(context.Background(), params)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create question in repository: %w", err)
-	}
-
-	return &createdQuestion, nil
-}
+// func (app *App) GetQuestion(ctx context.Context, name, language string, force bool) (*repository.Question, error) {
+// 	repoQuestion, err := app.Repo.GetBySlug(context.Background(), name)
+// 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+// 		return nil, fmt.Errorf("failed to get question details: %w", err)
+// 	}
+//
+// 	if repoQuestion.QuestionID != 0 && !force {
+// 		return &repoQuestion, nil
+// 	}
+//
+// 	question, err := app.lcs.Fetch(name)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+//
+// 	question.FunctionName = app.GetFunctionName(question.ToProblem(app.Config.Workspace, language))
+// 	params, err := toRepoCreateParams(question)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to convert question to repository params: %w", err)
+// 	}
+//
+// 	createdQuestion, err := app.Repo.Create(context.Background(), params)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("failed to create question in repository: %w", err)
+// 	}
+//
+// 	return &createdQuestion, nil
+// }
 
 func (app *App) Stub(question *repository.Question, opts AppOptions) error {
 	problem := question.ToProblem(app.Config.Workspace, opts.Language)
