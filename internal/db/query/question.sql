@@ -15,7 +15,12 @@ INSERT INTO questions (
   question_id, title, title_slug, difficulty, function_name, content, code_snippets, test_cases, created_at
 ) VALUES (
   ?, ?, ?, ?, ?, ?, ?, ?, DATE('now')
-) RETURNING *;
+) ON CONFLICT(question_id) DO UPDATE SET
+    title       = excluded.title,
+    title_slug  = excluded.title_slug,
+    difficulty  = excluded.difficulty,
+    created_at  = excluded.created_at
+RETURNING *;
 
 -- name: GetRandom :one
 SELECT q.question_id, q.title, q.title_slug, q.difficulty,

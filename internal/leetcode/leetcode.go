@@ -74,15 +74,15 @@ type Service struct {
 // Option is a functional option type for configuring the Service.
 type Option func(*Service)
 
-// WithHTTPClient sets the HTTP client for the Service.
-func WithHTTPClient(client *http.Client) Option {
+// WithHTTPClient2 sets the HTTP client for the Service.
+func WithHTTPClient2(client *http.Client) Option {
 	return func(s *Service) {
 		s.client = client
 	}
 }
 
-// WithCookies sets the session and csrf cookies for the Service.
-func WithCookies(session, csrf string) Option {
+// WithCookies2 sets the session and csrf cookies for the Service.
+func WithCookies2(session, csrf string) Option {
 	return func(s *Service) {
 		s.session = session
 		s.token = csrf

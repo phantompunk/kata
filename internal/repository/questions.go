@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 
+	"github.com/phantompunk/kata/internal/leetcode"
 	"github.com/phantompunk/kata/internal/models"
 )
 
@@ -159,4 +161,26 @@ func (q *GetRandomRow) GetSolutionPath(workspace, language string) string {
 	problem.LangSlug = models.LangName[language]
 	problem.SetPaths(workspace)
 	return problem.SolutionPath
+}
+
+func ToRepoCreateParams(question *leetcode.Question) CreateParams {
+	var params CreateParams
+	qId, _ := strconv.ParseInt(question.ID, 10, 64)
+	params.QuestionID = qId
+	params.Title = question.Title
+	params.TitleSlug = question.TitleSlug
+	params.Difficulty = question.Difficulty
+	params.FunctionName = question.Metadata.Name
+	params.Content = question.Content
+
+	codeSnippets, err := json.Marshal(question.CodeSnippets)
+	if err != nil {
+		return params
+	}
+	params.CodeSnippets = string(codeSnippets)
+
+	testCases := strings.Join(question.TestCaseList, "\n")
+	params.TestCases = string(testCases)
+
+	return params
 }

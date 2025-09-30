@@ -10,13 +10,17 @@ import (
 	"github.com/phantompunk/kata/internal/models"
 )
 
-//go:embed *.gohtml  *.txt
+//go:embed templates/*.gohtml templates/*.txt
 var Files embed.FS
 
-//go:embed config_template.yml
+//go:embed templates/config_template.yml
 var ConfigTemplate embed.FS
 
 type TemplateType string
+
+type Renderer interface {
+	RenderFile(w io.Writer, templateType TemplateType, problem *models.Problem) error
+}
 
 const (
 	TemplateTypeProblem TemplateType = "problem"
@@ -30,11 +34,11 @@ const (
 	CliLogin            TemplateType = "cliLogin"
 )
 
-type Renderer struct {
+type FileRenderer struct {
 	templ *template.Template
 }
 
-func New() (*Renderer, error) {
+func New() (*FileRenderer, error) {
 	funcMap := template.FuncMap{
 		"pascalCase": pascalCase,
 	}
@@ -43,10 +47,10 @@ func New() (*Renderer, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Renderer{templ: templ}, nil
+	return &FileRenderer{templ: templ}, nil
 }
 
-func (r *Renderer) RenderFile(w io.Writer, templateType TemplateType, problem *models.Problem) error {
+func (r *FileRenderer) RenderFile(w io.Writer, templateType TemplateType, problem *models.Problem) error {
 	switch templateType {
 	case Solution:
 		sol, _ := langTemplates(problem.LangSlug)
@@ -65,7 +69,7 @@ func (r *Renderer) RenderFile(w io.Writer, templateType TemplateType, problem *m
 	}
 }
 
-func (r *Renderer) RenderOutput(w io.Writer, templateType TemplateType, data any) error {
+func (r *FileRenderer) RenderOutput(w io.Writer, templateType TemplateType, data any) error {
 	return r.templ.ExecuteTemplate(w, string(templateType), data)
 }
 

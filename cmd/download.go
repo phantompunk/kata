@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/phantompunk/kata/internal/app"
-	"github.com/phantompunk/kata/internal/render/templates"
+	templates "github.com/phantompunk/kata/internal/render"
 	"github.com/phantompunk/kata/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -14,6 +14,7 @@ var downloadCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Download and stub a Leetcode problem",
 	RunE:  HandleErrors(DownloadFunc),
+	Args:  cobra.ExactArgs(1),
 }
 
 func init() {
@@ -36,7 +37,7 @@ func DownloadFunc(cmd *cobra.Command, args []string) error {
 		Force:    force,
 	}
 
-	question, err := kata.GetQuestion(opts.Problem, opts.Language, opts.Force)
+	question, err := kata.Download.GetQuestion(cmd.Context(), opts)
 	if err != nil {
 		return fmt.Errorf("fetching question %q: %w", opts.Problem, err)
 	}

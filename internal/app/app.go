@@ -23,7 +23,7 @@ import (
 	"github.com/phantompunk/kata/internal/editor"
 	"github.com/phantompunk/kata/internal/leetcode"
 	"github.com/phantompunk/kata/internal/models"
-	"github.com/phantompunk/kata/internal/render/templates"
+	templates "github.com/phantompunk/kata/internal/render"
 	"github.com/phantompunk/kata/internal/repository"
 	"github.com/spf13/afero"
 )
@@ -52,8 +52,9 @@ type App struct {
 	QuestionModel *repository.Queries
 	Repo          *repository.Queries
 	lcs           *leetcode.Service
-	Renderer      *templates.Renderer
+	Renderer      *templates.FileRenderer
 	fs            afero.Fs
+	Download      *DownloadService
 }
 
 func New() (*App, error) {
@@ -71,7 +72,7 @@ func New() (*App, error) {
 
 	repo := repository.New(db)
 
-	lcs, err := leetcode.New(leetcode.WithCookies(cfg.SessionToken, cfg.CsrfToken))
+	lcs, err := leetcode.New(leetcode.WithCookies2(cfg.SessionToken, cfg.CsrfToken))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create leetcode service: %w", err)
 	}
@@ -81,12 +82,16 @@ func New() (*App, error) {
 		return nil, fmt.Errorf("failed to create renderer: %w", err)
 	}
 
+	client := leetcode.NewLC(leetcode.WithCookies(cfg.SessionToken, cfg.CsrfToken))
+	download := NewDownloadService(repo, client, renderer)
+
 	return &App{
 		Config:   &cfg,
 		Repo:     repo,
 		lcs:      lcs,
 		Renderer: renderer,
 		fs:       afero.NewOsFs(),
+		Download: download,
 	}, nil
 }
 
@@ -223,28 +228,14 @@ func toRepoCreateParams(modelQuestion *models.Question) (repository.CreateParams
 	return params, nil
 }
 
-func (app *App) GetQuestion(name, language string, force bool) (*models.Question, error) {
-	exists, err := app.Repo.Exists(context.Background(), name)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check question existence: %w", err)
+func (app *App) GetQuestion(ctx context.Context, name, language string, force bool) (*repository.Question, error) {
+	repoQuestion, err := app.Repo.GetBySlug(context.Background(), name)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("failed to get question details: %w", err)
 	}
 
-	if exists == 1 {
-		if !force {
-			return nil, ErrDuplicateProblem
-		}
-
-		repoQuestion, err := app.Repo.GetBySlug(context.Background(), name)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get question details: %w", err)
-		}
-
-		modelQuestion, err := toModelQuestion(repoQuestion)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert question: %w", err)
-		}
-
-		return modelQuestion, nil
+	if repoQuestion.QuestionID != 0 && !force {
+		return &repoQuestion, nil
 	}
 
 	question, err := app.lcs.Fetch(name)
@@ -252,18 +243,22 @@ func (app *App) GetQuestion(name, language string, force bool) (*models.Question
 		return nil, err
 	}
 
+	// TODO: Review
 	question.FunctionName = app.GetFunctionName(question.ToProblem(app.Config.Workspace, language))
 	params, err := toRepoCreateParams(question)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert question to repository params: %w", err)
 	}
 
-	app.Repo.Create(context.Background(), params)
-	fmt.Printf("✔ Fetched problem: %s\n", question.Title)
-	return question, nil
+	createdQuestion, err := app.Repo.Create(context.Background(), params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create question in repository: %w", err)
+	}
+
+	return &createdQuestion, nil
 }
 
-func (app *App) Stub(question *models.Question, opts AppOptions) error {
+func (app *App) Stub(question *repository.Question, opts AppOptions) error {
 	problem := question.ToProblem(app.Config.Workspace, opts.Language)
 	if err := app.fs.MkdirAll(problem.DirPath, os.ModePerm); err != nil {
 		return fmt.Errorf("failed creating problem directory: %w", err)
