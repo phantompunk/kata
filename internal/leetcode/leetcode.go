@@ -311,12 +311,10 @@ func (lc *Service) Submit(problem *models.Problem, language, snippet string) (st
 }
 
 func (lc *Service) CheckTestStatus(callbackUrl string) (*TestResponse, error) {
-	// fmt.Printf("Checking test status at %s\n", callbackUrl)
 	body, err := lc.doRequest(context.Background(), "GET", callbackUrl, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check test status: %w", err)
 	}
-	// fmt.Printf("Response check body: %s\n", string(body))
 
 	var response TestResponse
 	err = json.Unmarshal(body, &response)
@@ -333,7 +331,6 @@ func (lc *Service) PollTestStatus(testStatusUrl string) (*TestResponse, error) {
 		if err != nil {
 			return nil, fmt.Errorf("checking test status attempt %d failed: %w", i+1, err)
 		}
-		// fmt.Println("Test status:", res.State)
 
 		if res.State == "SUCCESS" || res.State == "FAILED" {
 			return res, nil
