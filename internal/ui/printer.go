@@ -7,6 +7,15 @@ func PrintSuccess(message string) {
 }
 
 func PrintInfo(message string) {
+	fmt.Println("ℹ", message)
+}
+
+func PrintError(format string, a ...any) {
+	msg := fmt.Sprintf(format, a...)
+	fmt.Println("✘", msg)
+}
+
+func Print(message string) {
 	fmt.Println(message)
 }
 

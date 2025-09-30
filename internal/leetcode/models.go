@@ -48,6 +48,11 @@ func (q *Question) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
+	if tmp.RawMetadata == "" {
+		*q = Question{}
+		return ErrQuestionNotFound
+	}
+
 	q.ID = tmp.ID
 	q.Title = tmp.Title
 	q.TitleSlug = tmp.TitleSlug

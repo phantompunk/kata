@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/phantompunk/kata/internal/app"
@@ -38,17 +39,22 @@ func DownloadFunc(cmd *cobra.Command, args []string) error {
 
 	question, err := kata.Download.GetQuestion(cmd.Context(), opts)
 	if err != nil {
+		if errors.Is(err, app.ErrQuestionNotFound) {
+			ui.PrintError("Problem %q not found", problem)
+			ui.Print("Check the problem slug here: https://leetcode.com/problemset/all/")
+			return nil
+		}
 		return fmt.Errorf("fetching question %q: %w", opts.Problem, err)
 	}
 	ui.PrintSuccess(fmt.Sprintf("Fetched problem: %s", question.Title))
 
 	result, err := kata.Download.Stub(cmd.Context(), question, opts, kata.Config.Workspace)
-	printResults(result)
-	ui.PrintNextSteps(question.TitleSlug)
+	displayRenderResults(result, question.TitleSlug, opts.Force)
+
 	return nil
 }
 
-func printResults(result *render.RenderResult) {
+func displayRenderResults(result *render.RenderResult, slug string, force bool) {
 	if result.DirectoryCreated != "" {
 		ui.PrintSuccess(fmt.Sprintf("Created directory: %s", result.DirectoryCreated))
 	}
@@ -56,14 +62,34 @@ func printResults(result *render.RenderResult) {
 	if len(result.FilesCreated) > 0 {
 		ui.PrintSuccess("Generated files:")
 		for _, file := range result.FilesCreated {
-			ui.PrintInfo(fmt.Sprintf("  • %s", file))
+			ui.Print(fmt.Sprintf("  • %s", file))
 		}
 	}
 
 	if len(result.FilesUpdated) > 0 {
 		ui.PrintWarning("Updated files:")
 		for _, file := range result.FilesUpdated {
-			ui.PrintInfo(fmt.Sprintf("  • %s", file))
+			ui.Print(fmt.Sprintf("  • %s", file))
 		}
 	}
+
+	if len(result.FilesSkipped) == 1 && result.FilesSkipped[0] == "All files" {
+		ui.PrintInfo(fmt.Sprintf("Problem %s already exists\n", slug))
+		if !force {
+			fmt.Printf("To refresh files, run:\n  kata get %s --force\n", slug)
+		}
+		return
+	}
+
+	if len(result.FilesSkipped) > 0 {
+		ui.PrintWarning("Skipped files:")
+		for _, file := range result.FilesSkipped {
+			ui.PrintInfo(fmt.Sprintf("  • %s", file))
+		}
+		if !force {
+			ui.PrintInfo("Use --force to overwrite existing files")
+		}
+	}
+
+	ui.PrintNextSteps(slug)
 }

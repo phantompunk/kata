@@ -39,7 +39,7 @@ func (s *DownloadService) GetQuestion(ctx context.Context, opts AppOptions) (*re
 
 	apiQuestion, err := s.client.FetchQuestion(ctx, opts.Problem)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch question %q: %w", opts.Problem, err)
+		return nil, fmt.Errorf("failed to fetch question %q: %w", opts.Problem, ErrQuestionNotFound)
 	}
 
 	createdQuestion, err := s.repo.Create(ctx, repository.ToRepoCreateParams(apiQuestion))
@@ -52,7 +52,7 @@ func (s *DownloadService) GetQuestion(ctx context.Context, opts AppOptions) (*re
 
 func (s *DownloadService) Stub(ctx context.Context, question *repository.Question, opts AppOptions, workspace string) (*render.RenderResult, error) {
 	problem := question.ToProblem(workspace, opts.Language)
-	return s.renderer.RenderQuestion(ctx, problem)
+	return s.renderer.RenderQuestion(ctx, problem, opts.Force)
 }
 
 func (s *DownloadService) GetQuizQuestion(ctx context.Context) string {

@@ -84,9 +84,8 @@ func (q *Question) ToProblem(workspace, language string) *models.Problem {
 		return nil
 	}
 
-	problem.Code = ""
 	for _, snippet := range codeSnippets {
-		if snippet.LangSlug == language {
+		if snippet.LangSlug == models.LangName[language] {
 			problem.Code = snippet.Code
 			break
 		}

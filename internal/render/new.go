@@ -11,19 +11,21 @@ import (
 	"text/template"
 	"unicode"
 
+	htmltomarkdown "github.com/JohannesKaufmann/html-to-markdown/v2"
 	"github.com/phantompunk/kata/internal/models"
 	"github.com/phantompunk/kata/internal/render/templates"
 	"github.com/spf13/afero"
 )
 
 type Renderer interface {
-	RenderQuestion(ctx context.Context, problem *models.Problem) (*RenderResult, error)
+	RenderQuestion(ctx context.Context, problem *models.Problem, force bool) (*RenderResult, error)
 }
 
 type RenderResult struct {
 	DirectoryCreated string
 	FilesCreated     []string
 	FilesUpdated     []string
+	FilesSkipped     []string
 }
 
 type QuestionRenderer struct {
@@ -43,15 +45,21 @@ func New() (*QuestionRenderer, error) {
 	return &QuestionRenderer{fs: afero.NewOsFs(), templ: templ}, nil
 }
 
-func (r *QuestionRenderer) RenderQuestion(ctx context.Context, problem *models.Problem) (*RenderResult, error) {
+func (r *QuestionRenderer) RenderQuestion(ctx context.Context, problem *models.Problem, force bool) (*RenderResult, error) {
 	result := &RenderResult{
 		FilesCreated: []string{},
 		FilesUpdated: []string{},
+		FilesSkipped: []string{},
 	}
 
 	dirExists := pathExists(problem.DirPath)
 	if err := r.fs.MkdirAll(problem.DirPath, os.ModePerm); err != nil {
 		return nil, fmt.Errorf("failed creating dirctory: %w", err)
+	}
+
+	if dirExists && !force {
+		result.FilesSkipped = append(result.FilesSkipped, "All files")
+		return result, nil
 	}
 
 	if !dirExists {
@@ -61,6 +69,12 @@ func (r *QuestionRenderer) RenderQuestion(ctx context.Context, problem *models.P
 	typeMapping := templateTypeMapping(problem)
 	for fileType, filePath := range typeMapping {
 		fileExists := pathExists(filePath)
+
+		if fileExists && !force {
+			result.FilesSkipped = append(result.FilesSkipped, filepath.Base(filePath))
+			continue
+		}
+
 		file, err := r.fs.Create(filePath)
 		if err != nil {
 			return nil, fmt.Errorf("failed creating file %q: %w", file.Name(), err)
@@ -96,6 +110,13 @@ func (r *QuestionRenderer) renderFile(w io.Writer, templateType templates.Templa
 			return r.templ.ExecuteTemplate(w, test, problem)
 		}
 		return nil
+	case templates.Readme:
+		markdown, err := htmltomarkdown.ConvertString(problem.Content)
+		if err != nil {
+			return fmt.Errorf("failed converting HTML to Markdown: %w", err)
+		}
+		problem.Content = markdown
+		return r.templ.ExecuteTemplate(w, "readme", problem)
 	default:
 		return r.templ.ExecuteTemplate(w, string(templateType), problem)
 	}
@@ -110,7 +131,7 @@ func langTemplates(lang string) (string, string) {
 	switch lang {
 	case "go", "golang":
 		return "golang", "gotest"
-	case "python", "python4":
+	case "python", "python3":
 		return "python", "pytest"
 	default:
 		return lang, lang
