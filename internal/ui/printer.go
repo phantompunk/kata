@@ -2,8 +2,9 @@ package ui
 
 import "fmt"
 
-func PrintSuccess(message string) {
-	fmt.Println("✔", message)
+func PrintSuccess(format string, a ...any) {
+	msg := fmt.Sprintf(format, a...)
+	fmt.Println("✔", msg)
 }
 
 func PrintInfo(message string) {

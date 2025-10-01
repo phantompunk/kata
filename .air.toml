@@ -1,0 +1,22 @@
+# The working directory for your project
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  # The command to build your binary
+  cmd = "go build -o ./tmp/main ."
+  # The binary that will be run after build
+  bin = "./tmp/done.sh"
+  # Delay in ms before rebuild after file change
+  delay = 100
+  # Exclude these folders from watching
+  exclude_dir = ["tmp", "vendor"]
+  # Only watch these file extensions
+  include_ext = ["go", "tpl", "tmpl", "html"]
+[log]
+  # Colorized log output
+  color = true
+  time = false
+
+[misc]
+  clean_on_exit = false

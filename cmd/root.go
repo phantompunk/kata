@@ -9,7 +9,6 @@ import (
 	"syscall"
 
 	"github.com/phantompunk/kata/internal/app"
-	"github.com/phantompunk/kata/internal/config"
 	"github.com/phantompunk/kata/internal/leetcode"
 	"github.com/spf13/cobra"
 )
@@ -33,12 +32,6 @@ var rootCmd = &cobra.Command{
 		kata, kataErr = app.New()
 		return kataErr
 	},
-}
-
-var settingsCmd = &cobra.Command{
-	Use:   "settings",
-	Short: "Configure the client",
-	RunE:  config.ConfigFunc,
 }
 
 func Execute() error {

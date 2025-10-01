@@ -16,10 +16,6 @@ var quizCmd = &cobra.Command{
 }
 
 func QuizFunc(cmd *cobra.Command, args []string) error {
-	if language == "" {
-		language = kata.Config.Language
-	}
-
 	question, err := kata.GetRandomQuestion(cmd.Context())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

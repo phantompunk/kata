@@ -2,17 +2,11 @@ package app
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"database/sql"
 	"errors"
 	"fmt"
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"os"
-	"os/user"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -39,7 +33,7 @@ var (
 	ErrDuplicateProblem = errors.New("question has already been downloaded")
 	ErrNoQuestions      = errors.New("no questions found in the database")
 	ErrQuestionExists   = errors.New("question already exists in the database")
-	ErrQuestionNotFound  = errors.New("question not found")
+	ErrQuestionNotFound = errors.New("question not found")
 )
 
 type AppOptions struct {
@@ -57,12 +51,14 @@ type App struct {
 	Renderer      *templates.FileRenderer
 	fs            afero.Fs
 	Download      *DownloadService
+	Settings      *config.ConfigService
 }
 
 func New() (*App, error) {
-	cfg, err := config.EnsureConfig()
+	cfgSerice, _ := config.New()
+
+	cfg, err := cfgSerice.EnsureConfig()
 	if err != nil {
-		fmt.Println("Failed cfg")
 		return nil, err
 	}
 
@@ -74,7 +70,7 @@ func New() (*App, error) {
 
 	repo := repository.New(db)
 
-	lcs, err := leetcode.New(leetcode.WithCookies2(cfg.SessionToken, cfg.CsrfToken))
+	lcs, err := leetcode.New(leetcode.WithSession2(cfg.Session))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create leetcode service: %w", err)
 	}
@@ -84,7 +80,7 @@ func New() (*App, error) {
 		return nil, fmt.Errorf("failed to create renderer: %w", err)
 	}
 
-	client := leetcode.NewLC(leetcode.WithCookies(cfg.SessionToken, cfg.CsrfToken))
+	client := leetcode.NewLC(leetcode.WithSession(cfg.Session))
 	frenderer, err := render.New()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create file renderer: %w", err)
@@ -92,12 +88,13 @@ func New() (*App, error) {
 	download := NewDownloadService(repo, client, frenderer)
 
 	return &App{
-		Config:   &cfg,
+		Config:   cfg,
 		Repo:     repo,
 		lcs:      lcs,
 		Renderer: renderer,
 		fs:       afero.NewOsFs(),
 		Download: download,
+		Settings: cfgSerice,
 	}, nil
 }
 
@@ -111,7 +108,7 @@ func ConvertToSlug(name string) string {
 
 func (app *App) Test(opts AppOptions) error {
 	if opts.Language == "" {
-		opts.Language = app.Config.Language
+		opts.Language = app.Config.LanguageName()
 	}
 
 	opts.Problem = ConvertToSlug(opts.Problem)
@@ -125,7 +122,7 @@ func (app *App) Test(opts AppOptions) error {
 
 func (app *App) Submit(opts AppOptions) error {
 	if opts.Language == "" {
-		opts.Language = app.Config.Language
+		opts.Language = app.Config.LanguageName()
 	}
 
 	opts.Problem = ConvertToSlug(opts.Problem)
@@ -139,8 +136,8 @@ func (app *App) Submit(opts AppOptions) error {
 
 // CheckSession checks if the session is valid by pinging the leetcode service
 func (app *App) CheckSession() error {
-	if !app.Config.IsSessionValid() {
-		app.Config.ClearSession()
+	if !app.Config.HasValidSession() {
+		app.Settings.ClearSession()
 		return ErrInvalidSession
 	}
 
@@ -150,7 +147,7 @@ func (app *App) CheckSession() error {
 	}
 
 	if !valid {
-		app.Config.ClearSession()
+		app.Settings.ClearSession()
 		return ErrInvalidSession
 	}
 	return nil
@@ -163,52 +160,11 @@ func (app *App) ValidateSession() error {
 	}
 
 	if username == "" {
-		app.Config.ClearSession()
+		app.Settings.ClearSession()
 		return ErrInvalidSession
 	}
 
-	return app.Config.SaveUsername(username)
-}
-
-func (app *App) Stub(question *repository.Question, opts AppOptions) error {
-	problem := question.ToProblem(app.Config.Workspace, opts.Language)
-	if err := app.fs.MkdirAll(problem.DirPath, os.ModePerm); err != nil {
-		return fmt.Errorf("failed creating problem directory: %w", err)
-	}
-	fmt.Printf("✔ Created directory: %s\n", FormatPathForDisplay(problem.DirPath))
-
-	fmt.Println("✔ Generated files:")
-	file, err := app.fs.Create(problem.SolutionPath)
-	if err != nil {
-		return fmt.Errorf("failed creating problem solution file: %w", err)
-	}
-
-	test, err := app.fs.Create(problem.TestPath)
-	if err != nil {
-		return fmt.Errorf("failed create problem test file: %w", err)
-	}
-
-	readme, err := app.fs.Create(problem.ReadmePath)
-	if err != nil {
-		return fmt.Errorf("failed creating readme file: %w", err)
-	}
-
-	if err := app.Renderer.RenderFile(file, templates.Solution, problem); err != nil {
-		return fmt.Errorf("failed to render solution file: %w", err)
-	}
-	fmt.Printf("  • %s\n", filepath.Base(problem.SolutionPath))
-
-	if err := app.Renderer.RenderFile(test, templates.Test, problem); err != nil {
-		return fmt.Errorf("failed to render test file: %w", err)
-	}
-	fmt.Printf("  • %s\n", filepath.Base(problem.TestPath))
-
-	if err := app.Renderer.RenderFile(readme, templates.Readme, problem); err != nil {
-		return fmt.Errorf("failed to render readme file: %w", err)
-	}
-	fmt.Printf("  • %s\n", filepath.Base(problem.ReadmePath))
-
-	return nil
+	return app.Settings.SaveUsername(username)
 }
 
 // TestSolution tests the solution for a given problem name and language.
@@ -227,7 +183,7 @@ func (app *App) TestSolution(name, language string) error {
 		return fmt.Errorf("failed to get question details: %w", err)
 	}
 
-	problem := repoQuestion.ToProblem(app.Config.Workspace, language)
+	problem := repoQuestion.ToProblem(app.Config.WorkspacePath(), language)
 	snippet := app.extractSnippet(problem.SolutionPath)
 
 	testStatusUrl, err := app.lcs.Test(problem, language, snippet)
@@ -277,7 +233,7 @@ func (app *App) SubmitSolution(name, language string) error {
 		return fmt.Errorf("failed to get question details: %w", err)
 	}
 
-	problem := repoQuestion.ToProblem(app.Config.Workspace, language)
+	problem := repoQuestion.ToProblem(app.Config.WorkspacePath(), language)
 	snippet := app.extractSnippet(problem.SolutionPath)
 
 	testStatusUrl, err := app.lcs.Submit(problem, language, snippet)
@@ -349,40 +305,6 @@ func (app *App) extractSnippet(path string) string {
 	return strings.TrimSpace(builder.String())
 }
 
-func (app *App) GetFunctionName(problem *models.Problem) string {
-	var buf bytes.Buffer
-
-	app.Renderer.RenderFile(&buf, templates.Solution, problem)
-	name, err := parseFunctionName(buf.String())
-	if err != nil {
-		fmt.Println("failed %w", err)
-		return ""
-	}
-	return name
-}
-
-func parseFunctionName(snippet string) (string, error) {
-	fset := token.NewFileSet()
-	node, err := parser.ParseFile(fset, "src.go", snippet, 0)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse go snippet: %w", err)
-	}
-
-	var functionNames []string
-	ast.Inspect(node, func(n ast.Node) bool {
-		if fn, ok := n.(*ast.FuncDecl); ok {
-			functionNames = append(functionNames, fn.Name.Name)
-		}
-		return true
-	})
-
-	if len(functionNames) == 0 {
-		return "", fmt.Errorf("no functions found in go snippet")
-	}
-
-	return functionNames[0], nil
-}
-
 // RefreshCookies fetches the session and csrf cookies from the browser and updates the app's config.
 func (app *App) RefreshCookies() error {
 	cookies, err := browser.GetCookies()
@@ -398,18 +320,7 @@ func (app *App) RefreshCookies() error {
 	}
 
 	app.lcs.SetCookies(sessionID, csrfToken)
-	return app.Config.UpdateSession(sessionID, csrfToken)
-}
-
-func FormatPathForDisplay(path string) string {
-	usr, _ := user.Current()
-	homeDir := usr.HomeDir
-
-	if strings.HasPrefix(path, homeDir) {
-		return "~" + path[len(homeDir):]
-	}
-
-	return path
+	return app.Settings.UpdateSession(sessionID, csrfToken)
 }
 
 func (app *App) GetAllQuestionsWithStatus(ctx context.Context) ([]models.QuestionStat, error) {
@@ -438,5 +349,46 @@ func (app *App) GetRandomQuestion(ctx context.Context) (*repository.GetRandomRow
 }
 
 func (app *App) OpenQuestionInEditor(problem Problem) error {
-	return editor.OpenWithEditor(problem.GetSolutionPath(app.Config.Workspace, app.Config.Language))
+	return editor.Open(problem.GetSolutionPath(app.Config.WorkspacePath(), app.Config.LanguageName()))
 }
+
+// func (app *App) Stub(question *repository.Question, opts AppOptions) error {
+// 	problem := question.ToProblem(app.Config.Workspace, opts.Language)
+// 	if err := app.fs.MkdirAll(problem.DirPath, os.ModePerm); err != nil {
+// 		return fmt.Errorf("failed creating problem directory: %w", err)
+// 	}
+// 	fmt.Printf("✔ Created directory: %s\n", FormatPathForDisplay(problem.DirPath))
+//
+// 	fmt.Println("✔ Generated files:")
+// 	file, err := app.fs.Create(problem.SolutionPath)
+// 	if err != nil {
+// 		return fmt.Errorf("failed creating problem solution file: %w", err)
+// 	}
+//
+// 	test, err := app.fs.Create(problem.TestPath)
+// 	if err != nil {
+// 		return fmt.Errorf("failed create problem test file: %w", err)
+// 	}
+//
+// 	readme, err := app.fs.Create(problem.ReadmePath)
+// 	if err != nil {
+// 		return fmt.Errorf("failed creating readme file: %w", err)
+// 	}
+//
+// 	if err := app.Renderer.RenderFile(file, templates.Solution, problem); err != nil {
+// 		return fmt.Errorf("failed to render solution file: %w", err)
+// 	}
+// 	fmt.Printf("  • %s\n", filepath.Base(problem.SolutionPath))
+//
+// 	if err := app.Renderer.RenderFile(test, templates.Test, problem); err != nil {
+// 		return fmt.Errorf("failed to render test file: %w", err)
+// 	}
+// 	fmt.Printf("  • %s\n", filepath.Base(problem.TestPath))
+//
+// 	if err := app.Renderer.RenderFile(readme, templates.Readme, problem); err != nil {
+// 		return fmt.Errorf("failed to render readme file: %w", err)
+// 	}
+// 	fmt.Printf("  • %s\n", filepath.Base(problem.ReadmePath))
+//
+// 	return nil
+// }

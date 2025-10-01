@@ -20,7 +20,7 @@ func TestFunc(cmd *cobra.Command, args []string) error {
 	problem := args[0]
 
 	if language == "" {
-		language = kata.Config.Language
+		language = kata.Config.LanguageName()
 	}
 
 	opts := app.AppOptions{

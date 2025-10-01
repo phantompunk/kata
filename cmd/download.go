@@ -27,7 +27,13 @@ func DownloadFunc(cmd *cobra.Command, args []string) error {
 	problem := args[0]
 
 	if language == "" {
-		language = kata.Config.Language
+		language = kata.Config.LanguageName()
+	}
+
+	if language != "" {
+		if err := ValidateLanguage(language); err != nil {
+			return err
+		}
 	}
 
 	opts := app.AppOptions{
@@ -35,6 +41,10 @@ func DownloadFunc(cmd *cobra.Command, args []string) error {
 		Language: language,
 		Open:     open,
 		Force:    force,
+	}
+
+	if !opts.Force {
+		// isQuestionStubbed()
 	}
 
 	question, err := kata.Download.GetQuestion(cmd.Context(), opts)
@@ -48,7 +58,10 @@ func DownloadFunc(cmd *cobra.Command, args []string) error {
 	}
 	ui.PrintSuccess(fmt.Sprintf("Fetched problem: %s", question.Title))
 
-	result, err := kata.Download.Stub(cmd.Context(), question, opts, kata.Config.Workspace)
+	result, err := kata.Download.Stub(cmd.Context(), question, opts, kata.Config.WorkspacePath())
+	if err != nil {
+		return fmt.Errorf("stubbing question %q: %w", opts.Problem, err)
+	}
 	displayRenderResults(result, question.TitleSlug, opts.Force)
 
 	return nil

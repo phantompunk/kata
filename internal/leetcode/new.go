@@ -8,6 +8,8 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	"github.com/phantompunk/kata/internal/config"
 )
 
 const (
@@ -58,6 +60,13 @@ func WithCookies(sessionID, csrfToken string) Options {
 	return func(lc *LeetCodeClient) {
 		lc.sessionID = sessionID
 		lc.csrfToken = csrfToken
+	}
+}
+
+func WithSession(session config.Session) Options {
+	return func(lc *LeetCodeClient) {
+		lc.sessionID = session.SessionToken
+		lc.csrfToken = session.CsrfToken
 	}
 }
 

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	_ "github.com/browserutils/kooky/browser/all"
+	"github.com/phantompunk/kata/internal/config"
 	"github.com/phantompunk/kata/internal/models"
 )
 
@@ -86,6 +87,13 @@ func WithCookies2(session, csrf string) Option {
 	return func(s *Service) {
 		s.session = session
 		s.token = csrf
+	}
+}
+
+func WithSession2(session config.Session) Option {
+	return func(s *Service) {
+		s.session = session.SessionToken
+		s.token = session.CsrfToken
 	}
 }
 

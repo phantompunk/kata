@@ -22,7 +22,7 @@ func init() {
 }
 
 func LoginFunc(cmd *cobra.Command, args []string) error {
-	if !kata.Config.IsSessionValid() {
+	if !kata.Config.HasValidSession() {
 		if err := kata.RefreshCookies(); err != nil {
 			return fmt.Errorf("%w: %w", app.ErrCookiesNotFound, err)
 		}

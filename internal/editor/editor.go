@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 )
 
-func OpenWithEditor(pathToFile string) error {
+func Open(pathToFile string) error {
 	textEditor := findTextEditor()
 
 	command := exec.Command(textEditor, pathToFile)

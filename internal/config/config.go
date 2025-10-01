@@ -1,144 +1,304 @@
 package config
 
 import (
-	_ "embed"
 	"errors"
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
+	"strings"
 	"text/template"
 
 	"github.com/adrg/xdg"
 	"github.com/go-yaml/yaml"
 	"github.com/phantompunk/kata/internal/editor"
-	"github.com/spf13/cobra"
 )
 
-var configTemplate string
+var (
+	ErrUnsupportedLanguage = errors.New("language not supported")
+)
 
-var cfg Config
-
-type Config struct {
-	Workspace    string   `yaml:"workspace"`
-	Language     string   `yaml:"language"`
-	OpenInEditor bool     `yaml:"openInEditor"`
-	Verbose      bool     `yaml:"verbose"`
-	SessionToken string   `yaml:"sessionToken"`
-	CsrfToken    string   `yaml:"csrfToken"`
-	Username     string   `yaml:"username"`
-	Tracks       []string `yaml:"tracks"`
-	configPath   string
+type ConfigService struct {
+	repository ConfigRepository
+	validator  ConfigValidator
 }
 
-func ConfigFunc(cmd *cobra.Command, args []string) error {
-	EnsureConfig()
-	configPath, err := OpenConfig()
+func New() (*ConfigService, error) {
+	repo, err := NewConfigRepository()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	fmt.Println("✓ Opening config file:", configPath)
-	return nil
+	return NewConfigService(*repo, *NewConfigValidator()), nil
 }
 
-func getConfigPath() (string, error) {
-	return xdg.ConfigFile(filepath.Join("kata", "kata.yml"))
+func NewConfigService(repo ConfigRepository, validator ConfigValidator) *ConfigService {
+	return &ConfigService{
+		repository: repo,
+		validator:  validator,
+	}
 }
 
-func EnsureConfig() (Config, error) {
-	cfgPath, err := getConfigPath()
+func (s *ConfigService) EnsureConfig() (*Config, error) {
+	exists, err := s.repository.Exists()
 	if err != nil {
-		return cfg, fmt.Errorf("Config error")
+		return nil, err
 	}
 
-	if dirErr := os.MkdirAll(filepath.Dir(cfgPath), os.ModePerm); dirErr != nil {
-		return cfg, fmt.Errorf("Could not create config directory")
-	}
-
-	if _, err := os.Stat(cfgPath); errors.Is(err, os.ErrNotExist) {
-		err = createConfigFile(cfgPath, defaultConfig())
-		if err != nil {
-			return cfg, fmt.Errorf("Error creating a default config")
+	if !exists {
+		defaultCfg := s.createDefault()
+		if err := s.repository.Save(defaultCfg); err != nil {
+			return nil, fmt.Errorf("failed to save default config: %w", err)
 		}
+		return defaultCfg, nil
 	}
 
-	data, err := os.ReadFile(cfgPath)
+	cfg, err := s.repository.Load()
 	if err != nil {
-		return cfg, fmt.Errorf("Error reading config file: %w", err)
+		return nil, err
 	}
 
-	err = yaml.Unmarshal(data, &cfg)
-	if err != nil {
-		return cfg, fmt.Errorf("Could not parse config file: %w", err)
+	if err := s.validator.Validate(cfg); err != nil {
+		if errors.Is(err, ErrUnsupportedLanguage) {
+			cfg.language = "python3"
+			return cfg, err
+		}
+		return nil, fmt.Errorf("config validation failed: %w", err)
 	}
 
 	return cfg, nil
 }
 
-func createConfigFile(path string, cfg Config) error {
-	tmpl := template.Must(template.New("config").Parse(configTemplate))
-	file, err := os.Create(path)
+func (s *ConfigService) EditConfig() error {
+	cfg, err := s.EnsureConfig()
 	if err != nil {
 		return err
 	}
-	defer file.Close()
-	return tmpl.Execute(file, cfg)
+
+	backup := NewConfigBackup(cfg)
+	configPath := s.repository.GetPath()
+	if err := editor.Open(configPath); err != nil {
+		return fmt.Errorf("failed to open config in editor: %w", err)
+	}
+
+	editedCfg, err := s.repository.Load()
+	if err != nil {
+		return fmt.Errorf("failed to reload config after editing: %w", err)
+	}
+
+	if err := s.validator.Validate(editedCfg); err != nil {
+		return s.handleEditFailure(backup, err)
+	}
+
+	return nil
 }
 
-func defaultConfig() Config {
-	return Config{
-		Workspace:    "/Users/rigo/Workspace/katas",
-		Language:     "python",
+func (s *ConfigService) UpdateSession(sessionToken, csrfToken string) error {
+	cgf, err := s.repository.Load()
+	if err != nil {
+		return err
+	}
+
+	cgf.Session = NewSession(sessionToken, csrfToken)
+	return s.repository.Save(cgf)
+}
+
+func (s *ConfigService) SaveUsername(username string) error {
+	cfg, err := s.repository.Load()
+	if err != nil {
+		return err
+	}
+
+	cfg.Username = username
+	return s.repository.Save(cfg)
+}
+
+func (s *ConfigService) ClearSession() error {
+	cfg, err := s.repository.Load()
+	if err != nil {
+		return err
+	}
+
+	cfg.Session = cfg.Session.Clear()
+	return s.repository.Save(cfg)
+}
+
+func (s *ConfigService) GetPath() string {
+	return s.repository.path
+}
+
+func (s *ConfigService) handleEditFailure(backup *ConfigBackup, validationErr error) error {
+	if err := s.repository.Restore(backup); err != nil {
+		return fmt.Errorf("failed to restore config after validation error: %v; original validation error: %w", err, validationErr)
+	}
+	return fmt.Errorf("config validation failed: %w; changes have been reverted", validationErr)
+}
+
+func (s *ConfigService) createDefault() *Config {
+	usr, _ := user.Current()
+	homeDir := usr.HomeDir
+
+	workspace, _ := NewWorkspace(filepath.Join(homeDir, "katas"))
+	language, _ := NewLanguage("python3")
+
+	return &Config{
+		workspace:    workspace,
+		language:     language,
 		OpenInEditor: false,
 		Verbose:      false,
+		Session:      Session{},
+		Username:     "",
+		Tracks:       []string{},
 	}
 }
 
-func OpenConfig() (string, error) {
-	cfp, err := xdg.ConfigFile(filepath.Join("kata", "kata.yml"))
-	if err != nil {
-		return "", err
-	}
+type ConfigRepository struct {
+	path string
+}
 
-	err = editor.OpenWithEditor(cfp)
+func NewConfigRepository() (*ConfigRepository, error) {
+	path, err := xdg.ConfigFile(filepath.Join("kata", "kata.yml"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get config path: %w", err)
+	}
+	return &ConfigRepository{path: path}, nil
+}
+
+func (r *ConfigRepository) GetPath() string {
+	return r.path
+}
+
+func (r *ConfigRepository) Exists() (bool, error) {
+	_, err := os.Stat(r.path)
 	if err == nil {
-		return cfp, err
+		return true, nil
 	}
-
-	return cfp, nil
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	return false, nil
 }
 
-func (c *Config) Update() error {
-	configPath, err := getConfigPath()
+func (r *ConfigRepository) Load() (*Config, error) {
+	data, err := os.ReadFile(r.path)
 	if err != nil {
-		return fmt.Errorf("failed to get config path: %w", err)
+		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 
-	data, err := yaml.Marshal(c)
+	var cfg Config
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return nil, fmt.Errorf("failed to parse config file: %w", err)
+	}
+
+	return &cfg, nil
+}
+
+func (r *ConfigRepository) Save(cfg *Config) error {
+	if err := os.MkdirAll(filepath.Dir(r.path), os.ModePerm); err != nil {
+		return fmt.Errorf("failed to create config directory: %w", err)
+	}
+
+	data, err := yaml.Marshal(cfg)
 	if err != nil {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
 
-	return os.WriteFile(configPath, data, os.ModePerm)
+	if err := os.WriteFile(r.path, data, 0644); err != nil {
+		return fmt.Errorf("failed to write config file: %w", err)
+	}
+
+	return nil
 }
 
-func (c *Config) UpdateSession(sessionToken, csrfToken string) error {
-	c.SessionToken = sessionToken
-	c.CsrfToken = csrfToken
-	return c.Update()
+func (r *ConfigRepository) Restore(backup *ConfigBackup) error {
+	return r.Save(backup.Config)
 }
 
-func (c *Config) SaveUsername(username string) error {
-	c.Username = username
-	return c.Update()
+func (r *ConfigRepository) SaveWithTemplate(cfg *Config) error {
+	if err := os.MkdirAll(filepath.Dir(r.path), os.ModePerm); err != nil {
+		return fmt.Errorf("failed to create config directory: %w", err)
+	}
+
+	tmpl := template.Must(template.New("config").Parse(configTemplate))
+	file, err := os.Create(r.path)
+	if err != nil {
+		return fmt.Errorf("failed to create config file: %w", err)
+	}
+	defer file.Close()
+
+	return tmpl.Execute(file, cfg)
 }
 
-func (c *Config) IsSessionValid() bool {
-	return c.CsrfToken != "" && c.SessionToken != ""
+type ConfigValidator struct{}
+
+func NewConfigValidator() *ConfigValidator {
+	return &ConfigValidator{}
 }
 
-func (c *Config) ClearSession() error {
-	c.SessionToken = ""
-	c.CsrfToken = ""
-	return c.Update()
+func (v *ConfigValidator) Validate(c *Config) error {
+	fmt.Println("validating")
+	if c.workspace == "" {
+		fmt.Printf("Workspace: %s", c.workspace)
+		return errors.New("workspace is not set")
+	}
+
+	if c.language == "" {
+		return errors.New("language is not set")
+	}
+
+	fmt.Printf("Language %s", c.LanguageName())
+	if !v.IsSupportedLanguage(c.LanguageName()) {
+		return fmt.Errorf("language %q is not supported: %w", c.LanguageName(), ErrUnsupportedLanguage)
+	}
+
+	session := c.Session
+	if (session.SessionToken == "") != (session.CsrfToken == "") {
+		return errors.New("both sessionToken and csrfToken must be set or unset")
+	}
+
+	return nil
+}
+
+func (v *ConfigValidator) IsSupportedLanguage(lang string) bool {
+	normalized := normalizeLanguage(lang)
+	return normalized != ""
+}
+
+var supportedLanguages = map[string]string{
+	"cpp":        "cpp",
+	"c++":        "cpp",
+	"java":       "java",
+	"python":     "python3",
+	"python3":    "python3",
+	"py":         "python3",
+	"javascript": "javascript",
+	"js":         "javascript",
+	"typescript": "typescript",
+	"ts":         "typescript",
+	"go":         "golang",
+	"golang":     "golang",
+	"rust":       "rust",
+	"c":          "c",
+	"csharp":     "csharp",
+	"c#":         "csharp",
+	"ruby":       "ruby",
+	"swift":      "swift",
+	"kotlin":     "kotlin",
+	"scala":      "scala",
+	"php":        "php",
+	"mysql":      "mysql",
+	"mssql":      "mssql",
+	"oraclesql":  "oraclesql",
+}
+
+func normalizeLanguage(lang string) string {
+	normalized, ok := supportedLanguages[strings.ToLower(lang)]
+	if !ok {
+		return ""
+	}
+	return normalized
+}
+
+func GetSupportedLanguages() map[string]string {
+	return supportedLanguages
 }
