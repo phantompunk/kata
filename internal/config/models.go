@@ -58,13 +58,8 @@ func (c *Config) UnmarshalYAML(unmarshal func(any) error) error {
 		return err
 	}
 
-	lang, err := NewLanguageWithFallback(raw.Language)
-	if err != nil {
-		return err
-	}
-
 	c.workspace = ws
-	c.language = lang
+	c.language = Language(raw.Language)
 	c.OpenInEditor = raw.OpenInEditor
 	c.Verbose = raw.Verbose
 	c.Session = NewSession(raw.SessionToken, raw.CsrfToken)
@@ -92,7 +87,12 @@ func (w Workspace) String() string {
 
 type Language string
 
-const DefaultLanguage = "python3"
+const DefaultLanguage = "go"
+
+type LanguageResult struct {
+	Language Language
+	Warning  string
+}
 
 func NewLanguage(lang string) (Language, error) {
 	if lang == "" {
@@ -107,19 +107,26 @@ func NewLanguage(lang string) (Language, error) {
 	return Language(normalized), nil
 }
 
-func NewLanguageWithFallback(lang string) (Language, error) {
+func NewLanguageWithFallback(lang string) LanguageResult {
 	if lang == "" {
-		return DefaultLanguage, nil
-		// return DefaultLanguage, errors.New("language cannot be empty")
+		return LanguageResult{
+			Language: DefaultLanguage,
+			Warning:  fmt.Sprintf("language was empty, using default: %s", DefaultLanguage),
+		}
 	}
 
 	normalized := normalizeLanguage(lang)
 	if normalized == "" {
-		return DefaultLanguage, nil
-		// return DefaultLanguage, fmt.Errorf("unsupported language: %q", lang)
+		return LanguageResult{
+			Language: DefaultLanguage,
+			Warning:  fmt.Sprintf("language %q is not supported, using default: %s", lang, DefaultLanguage),
+		}
 	}
 
-	return Language(normalized), nil
+	return LanguageResult{
+		Language: Language(normalized),
+		Warning:  "",
+	}
 }
 
 func (l Language) String() string {

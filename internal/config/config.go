@@ -58,12 +58,8 @@ func (s *ConfigService) EnsureConfig() (*Config, error) {
 		return nil, err
 	}
 
-	if err := s.validator.Validate(cfg); err != nil {
-		if errors.Is(err, ErrUnsupportedLanguage) {
-			cfg.language = "python3"
-			return cfg, err
-		}
-		return nil, fmt.Errorf("config validation failed: %w", err)
+	if err := s.validator.ValidateWithFallback(cfg); err != nil {
+		return nil, err
 	}
 
 	return cfg, nil
@@ -83,10 +79,10 @@ func (s *ConfigService) EditConfig() error {
 
 	editedCfg, err := s.repository.Load()
 	if err != nil {
-		return fmt.Errorf("failed to reload config after editing: %w", err)
+		return s.handleEditFailure(backup, err)
 	}
 
-	if err := s.validator.Validate(editedCfg); err != nil {
+	if err := s.validator.ValidateWithFallback(editedCfg); err != nil {
 		return s.handleEditFailure(backup, err)
 	}
 
@@ -125,6 +121,10 @@ func (s *ConfigService) ClearSession() error {
 
 func (s *ConfigService) GetPath() string {
 	return s.repository.path
+}
+
+func (s *ConfigService) GetWarnings() []string {
+	return s.validator.warnings
 }
 
 func (s *ConfigService) handleEditFailure(backup *ConfigBackup, validationErr error) error {
@@ -229,14 +229,15 @@ func (r *ConfigRepository) SaveWithTemplate(cfg *Config) error {
 	return tmpl.Execute(file, cfg)
 }
 
-type ConfigValidator struct{}
+type ConfigValidator struct {
+	warnings []string
+}
 
 func NewConfigValidator() *ConfigValidator {
-	return &ConfigValidator{}
+	return &ConfigValidator{warnings: []string{}}
 }
 
 func (v *ConfigValidator) Validate(c *Config) error {
-	fmt.Println("validating")
 	if c.workspace == "" {
 		fmt.Printf("Workspace: %s", c.workspace)
 		return errors.New("workspace is not set")
@@ -246,9 +247,32 @@ func (v *ConfigValidator) Validate(c *Config) error {
 		return errors.New("language is not set")
 	}
 
-	fmt.Printf("Language %s", c.LanguageName())
 	if !v.IsSupportedLanguage(c.LanguageName()) {
 		return fmt.Errorf("language %q is not supported: %w", c.LanguageName(), ErrUnsupportedLanguage)
+	}
+
+	session := c.Session
+	if (session.SessionToken == "") != (session.CsrfToken == "") {
+		return errors.New("both sessionToken and csrfToken must be set or unset")
+	}
+
+	return nil
+}
+
+func (v *ConfigValidator) ValidateWithFallback(c *Config) error {
+	if c.workspace == "" {
+		return errors.New("workspace is not set")
+	}
+
+	if c.language == "" {
+		result := NewLanguageWithFallback("")
+		c.language = result.Language
+		v.warnings = append(v.warnings, result.Warning)
+	}
+
+	if !v.IsSupportedLanguage(c.LanguageName()) {
+		result := NewLanguageWithFallback(c.LanguageName())
+		v.warnings = append(v.warnings, result.Warning)
 	}
 
 	session := c.Session

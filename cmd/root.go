@@ -10,6 +10,7 @@ import (
 
 	"github.com/phantompunk/kata/internal/app"
 	"github.com/phantompunk/kata/internal/leetcode"
+	"github.com/phantompunk/kata/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -30,6 +31,7 @@ var rootCmd = &cobra.Command{
 	SilenceErrors: true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		kata, kataErr = app.New()
+		displayWarnings(kata.Settings.GetWarnings())
 		return kataErr
 	},
 }
@@ -97,5 +99,11 @@ func userMessage(err error) string {
 		return "No questions found in the database. Please run `kata get` to fetch questions"
 	default:
 		return "An unexpected error occurred. Please try again"
+	}
+}
+
+func displayWarnings(warnings []string) {
+	for warning := range warnings {
+		ui.PrintError(warnings[warning])
 	}
 }
