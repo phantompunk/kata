@@ -3,8 +3,10 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/phantompunk/kata/internal/app"
+	"github.com/phantompunk/kata/internal/models"
 	"github.com/phantompunk/kata/internal/render"
 	"github.com/phantompunk/kata/internal/ui"
 	"github.com/spf13/cobra"
@@ -18,47 +20,45 @@ var downloadCmd = &cobra.Command{
 }
 
 func init() {
-	downloadCmd.Flags().StringVarP(&language, "language", "l", "", "Programming language to use")
 	downloadCmd.Flags().BoolVarP(&open, "open", "o", false, "Open problem with $EDITOR")
 	downloadCmd.Flags().BoolVarP(&force, "force", "f", false, "Force download even if problem already exists")
+	downloadCmd.Flags().StringVarP(&language, "language", "l", "", "Programming language to use")
 }
 
 func DownloadFunc(cmd *cobra.Command, args []string) error {
-	problem := args[0]
+	problemName := app.ConvertToSlug(args[0])
 
-	if language == "" {
-		language = kata.Config.LanguageName()
-	}
-
-	if language != "" {
-		if err := ValidateLanguage(language); err != nil {
-			return err
-		}
+	language, err := validateLanguage()
+	if err != nil {
+		return nil
 	}
 
 	opts := app.AppOptions{
-		Problem:  app.ConvertToSlug(problem),
+		Problem:  problemName,
 		Language: language,
 		Open:     open,
 		Force:    force,
 	}
 
-	if !opts.Force {
-		// isQuestionStubbed()
-	}
-
 	question, err := kata.Download.GetQuestion(cmd.Context(), opts)
 	if err != nil {
 		if errors.Is(err, app.ErrQuestionNotFound) {
-			ui.PrintError("Problem %q not found", problem)
-			ui.Print("Check the problem slug here: https://leetcode.com/problemset/all/")
+			ui.PrintError("Problem %q not found", problemName)
 			return nil
 		}
+
 		return fmt.Errorf("fetching question %q: %w", opts.Problem, err)
 	}
+
 	ui.PrintSuccess(fmt.Sprintf("Fetched problem: %s", question.Title))
 
-	result, err := kata.Download.Stub(cmd.Context(), question, opts, kata.Config.WorkspacePath())
+	problem := question.ToProblem(kata.Config.WorkspacePath(), language)
+	if isQuestionStubbed(problem) && !force {
+		ui.PrintError("Problem %s already exists at:\n  %s", problem.TitleSlug, problem.DirPath)
+		return nil
+	}
+
+	result, err := kata.Download.Stub(cmd.Context(), problem, opts)
 	if err != nil {
 		return fmt.Errorf("stubbing question %q: %w", opts.Problem, err)
 	}
@@ -105,4 +105,23 @@ func displayRenderResults(result *render.RenderResult, slug string, force bool) 
 	}
 
 	ui.PrintNextSteps(slug)
+}
+
+func isQuestionStubbed(problem *models.Problem) bool {
+	exists, _ := PathExists(problem.DirPath)
+	return exists
+}
+
+func PathExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+
+	if err == nil {
+		return true, nil
+	}
+
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+
+	return false, err
 }

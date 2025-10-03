@@ -79,7 +79,7 @@ func HandleErrors(fn CommandFunc) CommandFunc {
 		if v, _ := cmd.Flags().GetBool("verbose"); v || kata.Config.Verbose {
 			return fmt.Errorf("Error %+v", err)
 		}
-		return fmt.Errorf("%s", userMessage(err))
+		return fmt.Errorf("✘ %s", userMessage(err))
 	}
 }
 

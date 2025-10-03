@@ -127,6 +127,10 @@ func (s *ConfigService) GetWarnings() []string {
 	return s.validator.warnings
 }
 
+func (s *ConfigService) IsSupportedLanguage(language string) bool {
+	return s.validator.IsSupportedLanguage(language)
+}
+
 func (s *ConfigService) handleEditFailure(backup *ConfigBackup, validationErr error) error {
 	if err := s.repository.Restore(backup); err != nil {
 		return fmt.Errorf("failed to restore config after validation error: %v; original validation error: %w", err, validationErr)
@@ -292,9 +296,9 @@ var supportedLanguages = map[string]string{
 	"cpp":        "cpp",
 	"c++":        "cpp",
 	"java":       "java",
-	"python":     "python3",
-	"python3":    "python3",
-	"py":         "python3",
+	"python":     "python",
+	"python3":    "python",
+	"py":         "python",
 	"javascript": "javascript",
 	"js":         "javascript",
 	"typescript": "typescript",

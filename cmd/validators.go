@@ -2,14 +2,23 @@ package cmd
 
 import (
 	"fmt"
+	"regexp"
+	"strings"
 
-	"github.com/phantompunk/kata/internal/config"
+	"github.com/phantompunk/kata/internal/ui"
 )
 
-func ValidateLanguage(language string) error {
-	validator := config.NewConfigValidator()
-	if !validator.IsSupportedLanguage(language) {
-		return fmt.Errorf("language %q is not supported", language)
+func validateLanguage() (string, error) {
+	if language == "" {
+		language = kata.Config.LanguageName()
 	}
-	return nil
+
+	if !kata.Settings.IsSupportedLanguage(language) {
+		ui.PrintError("language %q not supported", language)
+		return language, fmt.Errorf("language %q is not supported", language)
+	}
+
+	return language, nil
 }
+
+var nonAlphanumSeparator = regexp.MustCompile(`[ -.]+|\s+`)

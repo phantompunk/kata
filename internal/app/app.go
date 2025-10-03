@@ -26,16 +26,6 @@ const (
 	LoginUrl = "https://leetcode.com/accounts/login/"
 )
 
-var (
-	ErrCookiesNotFound  = errors.New("session cookies not found")
-	ErrNotAuthenticated = errors.New("not authenticated")
-	ErrInvalidSession   = errors.New("session is not valid")
-	ErrDuplicateProblem = errors.New("question has already been downloaded")
-	ErrNoQuestions      = errors.New("no questions found in the database")
-	ErrQuestionExists   = errors.New("question already exists in the database")
-	ErrQuestionNotFound = errors.New("question not found")
-)
-
 type AppOptions struct {
 	Problem  string
 	Language string
@@ -351,44 +341,3 @@ func (app *App) GetRandomQuestion(ctx context.Context) (*repository.GetRandomRow
 func (app *App) OpenQuestionInEditor(problem Problem) error {
 	return editor.Open(problem.GetSolutionPath(app.Config.WorkspacePath(), app.Config.LanguageName()))
 }
-
-// func (app *App) Stub(question *repository.Question, opts AppOptions) error {
-// 	problem := question.ToProblem(app.Config.Workspace, opts.Language)
-// 	if err := app.fs.MkdirAll(problem.DirPath, os.ModePerm); err != nil {
-// 		return fmt.Errorf("failed creating problem directory: %w", err)
-// 	}
-// 	fmt.Printf("✔ Created directory: %s\n", FormatPathForDisplay(problem.DirPath))
-//
-// 	fmt.Println("✔ Generated files:")
-// 	file, err := app.fs.Create(problem.SolutionPath)
-// 	if err != nil {
-// 		return fmt.Errorf("failed creating problem solution file: %w", err)
-// 	}
-//
-// 	test, err := app.fs.Create(problem.TestPath)
-// 	if err != nil {
-// 		return fmt.Errorf("failed create problem test file: %w", err)
-// 	}
-//
-// 	readme, err := app.fs.Create(problem.ReadmePath)
-// 	if err != nil {
-// 		return fmt.Errorf("failed creating readme file: %w", err)
-// 	}
-//
-// 	if err := app.Renderer.RenderFile(file, templates.Solution, problem); err != nil {
-// 		return fmt.Errorf("failed to render solution file: %w", err)
-// 	}
-// 	fmt.Printf("  • %s\n", filepath.Base(problem.SolutionPath))
-//
-// 	if err := app.Renderer.RenderFile(test, templates.Test, problem); err != nil {
-// 		return fmt.Errorf("failed to render test file: %w", err)
-// 	}
-// 	fmt.Printf("  • %s\n", filepath.Base(problem.TestPath))
-//
-// 	if err := app.Renderer.RenderFile(readme, templates.Readme, problem); err != nil {
-// 		return fmt.Errorf("failed to render readme file: %w", err)
-// 	}
-// 	fmt.Printf("  • %s\n", filepath.Base(problem.ReadmePath))
-//
-// 	return nil
-// }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/phantompunk/kata/internal/leetcode"
+	"github.com/phantompunk/kata/internal/models"
 	"github.com/phantompunk/kata/internal/render"
 	"github.com/phantompunk/kata/internal/repository"
 )
@@ -51,7 +52,6 @@ func (s *DownloadService) GetQuestion(ctx context.Context, opts AppOptions) (*re
 	return &createdQuestion, nil
 }
 
-func (s *DownloadService) Stub(ctx context.Context, question *repository.Question, opts AppOptions, workspace string) (*render.RenderResult, error) {
-	problem := question.ToProblem(workspace, opts.Language)
+func (s *DownloadService) Stub(ctx context.Context, problem *models.Problem, opts AppOptions) (*render.RenderResult, error) {
 	return s.renderer.RenderQuestion(ctx, problem, opts.Force)
 }
