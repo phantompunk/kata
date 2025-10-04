@@ -96,6 +96,7 @@ func (q *Question) ToDProblem(workspace, language string) *domain.Problem {
 		Slug:          slug,
 		Content:       q.Content,
 		Code:          code,
+		Difficulty:    q.Difficulty,
 		FunctionName:  q.FunctionName,
 		DirectoryPath: directory,
 		Language:      lang,
@@ -175,16 +176,22 @@ func hasNumber(name string) bool {
 	return false
 }
 
-func (q *GetRandomRow) ToProblem(workspace, language string) *models.Problem {
-	var problem models.Problem
-	problem.QuestionID = fmt.Sprintf("%d", q.QuestionID)
+func (q *GetRandomRow) ToProblem(workspace, language string) *domain.Problem {
+	slug := formatTitleSlug(q.TitleSlug)
+	lang := domain.NewProgrammingLanguage(language)
+	directory := domain.Path(filepath.Join(workspace, lang.Slug(), slug))
+	fileSet := domain.NewProblemFileSet(slug, lang, directory)
 
-	problem.TitleSlug = q.TitleSlug
-	problem.Slug = formatTitleSlug(q.TitleSlug)
-	problem.LastAttempted = q.LastAttempted
-	problem.LangSlug = models.LangName[language]
-	problem.SetPaths(workspace)
-	return &problem
+	return &domain.Problem{
+		Title:         q.Title,
+		Slug:          slug,
+		Difficulty:    q.Difficulty,
+		Status:        q.Status,
+		LastAttempted: q.LastAttempted,
+		DirectoryPath: directory,
+		Language:      lang,
+		FileSet:       fileSet,
+	}
 }
 
 func (q *GetRandomRow) GetSolutionPath(workspace, language string) string {

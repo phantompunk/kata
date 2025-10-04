@@ -13,7 +13,10 @@ type Problem struct {
 	Slug          string
 	Content       string
 	Code          string
+	Difficulty    string
 	FunctionName  string
+	Status        string
+	LastAttempted string
 	Language      Language
 	DirectoryPath Path
 	FileSet       []ProblemFile // Solution, Test, Readme

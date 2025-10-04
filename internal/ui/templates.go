@@ -3,8 +3,10 @@ package ui
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"text/template"
 
+	"github.com/phantompunk/kata/internal/domain"
 	"github.com/phantompunk/kata/internal/repository"
 )
 
@@ -15,20 +17,17 @@ Last attempted: {{.LastAttempted}}
 Status: {{.Status}}
 
 Next steps:
-  • Start solving: kata solve {{.TitleSlug}}
-  • View details: kata show {{.TitleSlug}}
-  • Submit later: kata submit {{.TitleSlug}}
+  • Start solving: kata solve {{.Slug}}
+  • View details: kata show {{.Slug}}
+  • Submit later: kata submit {{.Slug}}
 `
 
-func RenderQuizResult(question *repository.GetRandomRow) string {
-	var buf bytes.Buffer
+func RenderQuizResult(problem *domain.Problem) error {
 	t := template.Must(template.New("Quiz").Parse(quizTmpl))
-	err := t.Execute(&buf, question)
-	if err != nil {
-		return ""
+	if err := t.Execute(os.Stdout, problem); err != nil {
+		return err
 	}
-
-	return buf.String()
+	return nil
 }
 
 var loginTmpl = `

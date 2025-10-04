@@ -57,9 +57,6 @@ func init() {
 	// Define flags
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Enable verbose output")
 
-	quizCmd.Flags().BoolVarP(&open, "open", "o", false, "Open problem with $EDITOR")
-	quizCmd.Flags().StringVarP(&language, "language", "l", "", "Programming language to use")
-
 	rootCmd.AddCommand(downloadCmd)
 	rootCmd.AddCommand(quizCmd)
 	rootCmd.AddCommand(listCmd)

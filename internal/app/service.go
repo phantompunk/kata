@@ -57,6 +57,18 @@ func (s *DownloadService) Stub(ctx context.Context, problem *domain.Problem, opt
 	return s.renderer.RenderProblem(ctx, problem, opts.Force)
 }
 
+func (s *DownloadService) GetRandomQuestion(ctx context.Context, opts AppOptions) (*domain.Problem, error) {
+	question, err := s.repo.GetRandom(ctx)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNoQuestions
+		}
+		return nil, fmt.Errorf("failed to get random question: %w", err)
+	}
+
+	return question.ToProblem(opts.Workspace, opts.Language), nil
+}
+
 func toProblem(question repository.Question, opts AppOptions) *domain.Problem {
 	return question.ToDProblem(opts.Workspace, opts.Language)
 }

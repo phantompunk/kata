@@ -340,6 +340,6 @@ func (app *App) GetRandomQuestion(ctx context.Context) (*repository.GetRandomRow
 	return &question, nil
 }
 
-func (app *App) OpenQuestionInEditor(problem domain.Problem) error {
+func (app *App) OpenQuestionInEditor(problem *domain.Problem) error {
 	return editor.Open(problem.SolutionPath())
 }
