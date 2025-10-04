@@ -293,9 +293,6 @@ func (v *ConfigValidator) IsSupportedLanguage(lang string) bool {
 }
 
 var supportedLanguages = map[string]string{
-	"cpp":        "cpp",
-	"c++":        "cpp",
-	"java":       "java",
 	"python":     "python",
 	"python3":    "python",
 	"py":         "python",
@@ -305,18 +302,18 @@ var supportedLanguages = map[string]string{
 	"ts":         "typescript",
 	"go":         "golang",
 	"golang":     "golang",
-	"rust":       "rust",
-	"c":          "c",
-	"csharp":     "csharp",
-	"c#":         "csharp",
-	"ruby":       "ruby",
-	"swift":      "swift",
-	"kotlin":     "kotlin",
-	"scala":      "scala",
-	"php":        "php",
-	"mysql":      "mysql",
-	"mssql":      "mssql",
-	"oraclesql":  "oraclesql",
+	// "c":          "c",
+	// "csharp":     "csharp",
+	// "c#":         "csharp",
+	// "cpp":        "cpp",
+	// "c++":        "cpp",
+	// "java":       "java",
+	// "rust":       "rust",
+	// "ruby":       "ruby",
+	// "swift":      "swift",
+	// "kotlin":     "kotlin",
+	// "scala":      "scala",
+	// "php":        "php",
 }
 
 func normalizeLanguage(lang string) string {

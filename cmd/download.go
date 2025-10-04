@@ -34,13 +34,14 @@ func DownloadFunc(cmd *cobra.Command, args []string) error {
 	}
 
 	opts := app.AppOptions{
-		Problem:  problemName,
-		Language: language,
-		Open:     open,
-		Force:    force,
+		Problem:   problemName,
+		Language:  language,
+		Workspace: kata.Config.WorkspacePath(),
+		Open:      open,
+		Force:     force,
 	}
 
-	question, err := kata.Download.GetQuestion(cmd.Context(), opts)
+	problem, err := kata.Download.GetQuestion(cmd.Context(), opts)
 	if err != nil {
 		if errors.Is(err, app.ErrQuestionNotFound) {
 			ui.PrintError("Problem %q not found", problemName)
@@ -50,11 +51,10 @@ func DownloadFunc(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("fetching question %q: %w", opts.Problem, err)
 	}
 
-	ui.PrintSuccess(fmt.Sprintf("Fetched problem: %s", question.Title))
+	ui.PrintSuccess(fmt.Sprintf("Fetched problem: %s", problem.Title))
 
-	problem := question.ToProblem(kata.Config.WorkspacePath(), language)
-	if isQuestionStubbed(problem) && !force {
-		ui.PrintError("Problem %s already exists at:\n  %s", problem.TitleSlug, problem.DirPath)
+	if problem.DirectoryPath.Exists() && !force {
+		ui.PrintError("Problem %s already exists at:\n  %s", problem.Title, problem.DirectoryPath.DisplayPath())
 		return nil
 	}
 
@@ -62,7 +62,7 @@ func DownloadFunc(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("stubbing question %q: %w", opts.Problem, err)
 	}
-	displayRenderResults(result, question.TitleSlug, opts.Force)
+	displayRenderResults(result, problem.Slug, opts.Force)
 
 	return nil
 }

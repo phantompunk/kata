@@ -30,11 +30,12 @@ func QuizFunc(cmd *cobra.Command, args []string) error {
 
 	fmt.Print(ui.RenderQuizResult(question))
 
-	if open || kata.Config.OpenInEditor {
-		if err := kata.OpenQuestionInEditor(question); err != nil {
-			return fmt.Errorf("failed to open solution file in editor: %w", err)
-		}
-	}
+	// problem := question.ToProblem(kata.Config.WorkspacePath(), kata.Config.LanguageName())
+	// if open || kata.Config.OpenInEditor {
+	// 	if err := kata.OpenQuestionInEditor(problem); err != nil {
+	// 		return fmt.Errorf("failed to open solution file in editor: %w", err)
+	// 	}
+	// }
 
 	return nil
 }

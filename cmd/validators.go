@@ -2,8 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"regexp"
-	"strings"
 
 	"github.com/phantompunk/kata/internal/ui"
 )
@@ -20,5 +18,3 @@ func validateLanguage() (string, error) {
 
 	return language, nil
 }
-
-var nonAlphanumSeparator = regexp.MustCompile(`[ -.]+|\s+`)

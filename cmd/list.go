@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/phantompunk/kata/internal/render/table"
+	"github.com/phantompunk/kata/internal/table"
 	"github.com/spf13/cobra"
 )
 

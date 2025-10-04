@@ -13,6 +13,7 @@ import (
 	"github.com/phantompunk/kata/internal/browser"
 	"github.com/phantompunk/kata/internal/config"
 	"github.com/phantompunk/kata/internal/db"
+	"github.com/phantompunk/kata/internal/domain"
 	"github.com/phantompunk/kata/internal/editor"
 	"github.com/phantompunk/kata/internal/leetcode"
 	"github.com/phantompunk/kata/internal/models"
@@ -27,10 +28,11 @@ const (
 )
 
 type AppOptions struct {
-	Problem  string
-	Language string
-	Open     bool
-	Force    bool
+	Problem   string
+	Language  string
+	Workspace string
+	Open      bool
+	Force     bool
 }
 
 type App struct {
@@ -338,6 +340,6 @@ func (app *App) GetRandomQuestion(ctx context.Context) (*repository.GetRandomRow
 	return &question, nil
 }
 
-func (app *App) OpenQuestionInEditor(problem Problem) error {
-	return editor.Open(problem.GetSolutionPath(app.Config.WorkspacePath(), app.Config.LanguageName()))
+func (app *App) OpenQuestionInEditor(problem domain.Problem) error {
+	return editor.Open(problem.SolutionPath())
 }

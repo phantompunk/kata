@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
 
+	"github.com/phantompunk/kata/internal/domain"
 	"github.com/phantompunk/kata/internal/leetcode"
 	"github.com/phantompunk/kata/internal/models"
 )
@@ -67,6 +69,38 @@ func (q *Question) ToModelQuestion() (*models.Question, error) {
 		return nil, err
 	}
 	return &modelQuestion, nil
+}
+
+func (q *Question) ToDProblem(workspace, language string) *domain.Problem {
+	slug := formatTitleSlug(q.TitleSlug)
+	lang := domain.NewProgrammingLanguage(language)
+	directory := domain.Path(filepath.Join(workspace, lang.Slug(), slug))
+	fileSet := domain.NewProblemFileSet(slug, lang, directory)
+
+	var code string
+	var codeSnippets []models.CodeSnippet
+	if err := json.Unmarshal([]byte(q.CodeSnippets), &codeSnippets); err != nil {
+		fmt.Println("Failed to unmarshal code snippets:", err)
+		return nil
+	}
+
+	for _, snippet := range codeSnippets {
+		if snippet.LangSlug == lang.TemplateName() {
+			code = snippet.Code
+			break
+		}
+	}
+
+	return &domain.Problem{
+		Title:         q.Title,
+		Slug:          slug,
+		Content:       q.Content,
+		Code:          code,
+		FunctionName:  q.FunctionName,
+		DirectoryPath: directory,
+		Language:      lang,
+		FileSet:       fileSet,
+	}
 }
 
 func (q *Question) ToProblem(workspace, language string) *models.Problem {

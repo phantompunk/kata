@@ -5,27 +5,18 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/user"
-	"path/filepath"
 	"strings"
 	"text/template"
 	"unicode"
 
 	htmltomarkdown "github.com/JohannesKaufmann/html-to-markdown/v2"
-	"github.com/phantompunk/kata/internal/models"
+	"github.com/phantompunk/kata/internal/domain"
 	"github.com/phantompunk/kata/internal/render/templates"
 	"github.com/spf13/afero"
 )
 
 type Renderer interface {
-	RenderQuestion(ctx context.Context, problem *models.Problem, force bool) (*RenderResult, error)
-}
-
-type RenderResult struct {
-	DirectoryCreated string
-	FilesCreated     []string
-	FilesUpdated     []string
-	FilesSkipped     []string
+	RenderProblem(ctx context.Context, problem *domain.Problem, force bool) (*RenderResult, error)
 }
 
 type QuestionRenderer struct {
@@ -45,105 +36,86 @@ func New() (*QuestionRenderer, error) {
 	return &QuestionRenderer{fs: afero.NewOsFs(), templ: templ}, nil
 }
 
-func (r *QuestionRenderer) RenderQuestion(ctx context.Context, problem *models.Problem, force bool) (*RenderResult, error) {
-	result := &RenderResult{
-		FilesCreated: []string{},
-		FilesUpdated: []string{},
-		FilesSkipped: []string{},
+func (r *QuestionRenderer) RenderProblem(ctx context.Context, problem *domain.Problem, force bool) (*RenderResult, error) {
+	result := NewRenderResult()
+
+	directoryCreated, err := r.ensureDirectory(problem.DirectoryPath)
+	if err != nil {
+		return result, err
 	}
 
-	dirExists := pathExists(problem.DirPath)
-	if err := r.fs.MkdirAll(problem.DirPath, os.ModePerm); err != nil {
-		return nil, fmt.Errorf("failed creating dirctory: %w", err)
+	if directoryCreated {
+		result.RecordDirectoryCreated(problem.DirectoryPath)
 	}
 
-	if dirExists && !force {
-		result.FilesSkipped = append(result.FilesSkipped, "All files")
+	if !directoryCreated && !force {
+		result.RecordAllSkipped()
 		return result, nil
 	}
 
-	if !dirExists {
-		result.DirectoryCreated = formatPathForDisplay(problem.DirPath)
-	}
-
-	typeMapping := templateTypeMapping(problem)
-	for fileType, filePath := range typeMapping {
-		fileExists := pathExists(filePath)
-
-		if fileExists && !force {
-			result.FilesSkipped = append(result.FilesSkipped, filepath.Base(filePath))
-			continue
+	for _, file := range problem.FileSet {
+		if err := r.renderProblemFile(ctx, problem, file, force, result); err != nil {
+			return result, err
 		}
-
-		file, err := r.fs.Create(filePath)
-		if err != nil {
-			return nil, fmt.Errorf("failed creating file %q: %w", file.Name(), err)
-		}
-		defer file.Close()
-
-		if err := r.renderFile(file, fileType, problem); err != nil {
-			return nil, fmt.Errorf("failed rendering file %q: %w", file.Name(), err)
-		}
-
-		if fileExists {
-			result.FilesUpdated = append(result.FilesUpdated, filepath.Base(file.Name()))
-		} else {
-			result.FilesCreated = append(result.FilesCreated, filepath.Base(file.Name()))
-		}
-
 	}
 
 	return result, nil
 }
 
-func (r *QuestionRenderer) renderFile(w io.Writer, templateType templates.TemplateType, problem *models.Problem) error {
-	switch templateType {
-	case templates.Solution:
-		sol, _ := langTemplates(problem.LangSlug)
-		if sol != "" {
-			return r.templ.ExecuteTemplate(w, sol, problem)
-		}
+func (r *QuestionRenderer) renderProblemFile(ctx context.Context, problem *domain.Problem, problemFile domain.ProblemFile, force bool, result *RenderResult) error {
+	fileExists := problemFile.Path.Exists()
+
+	if fileExists && !force {
+		result.RecordFileSkipped(problemFile.Path)
 		return nil
-	case templates.Test:
-		_, test := langTemplates(problem.LangSlug)
-		if test != "" {
-			return r.templ.ExecuteTemplate(w, test, problem)
-		}
-		return nil
-	case templates.Readme:
+	}
+
+	file, err := r.fs.Create(problemFile.Path.String())
+	if err != nil {
+		return fmt.Errorf("failed creating file %q: %w", file.Name(), err)
+	}
+	defer file.Close()
+
+	if err := r.renderFileContent(file, problem, problemFile); err != nil {
+		return err
+	}
+
+	if fileExists {
+		result.RecordFileUpdated(problemFile.Path)
+	} else {
+		result.RecordFileCreated(problemFile.Path)
+	}
+
+	return nil
+}
+
+func (r *QuestionRenderer) renderFileContent(w io.Writer, problem *domain.Problem, fileInfo domain.ProblemFile) error {
+	switch fileInfo.Type {
+	case domain.SolutionFile:
+		return r.templ.ExecuteTemplate(w, problem.Language.TemplateName(), problem)
+
+	case domain.TestFile:
+		return r.templ.ExecuteTemplate(w, problem.Language.TestTemplate(), problem)
+
+	case domain.ReadmeFile:
 		markdown, err := htmltomarkdown.ConvertString(problem.Content)
 		if err != nil {
-			return fmt.Errorf("failed converting HTML to Markdown: %w", err)
+			return fmt.Errorf("failed converting to markdown: %w", err)
 		}
-		problem.Content = markdown
-		return r.templ.ExecuteTemplate(w, "readme", problem)
-	default:
-		return r.templ.ExecuteTemplate(w, string(templateType), problem)
+
+		mdProblem := *problem
+		mdProblem.Content = markdown
+		return r.templ.ExecuteTemplate(w, string(fileInfo.Type), mdProblem)
 	}
+	return nil
 }
 
-func pathExists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
-}
-
-func langTemplates(lang string) (string, string) {
-	switch lang {
-	case "go", "golang":
-		return "golang", "gotest"
-	case "python", "python3":
-		return "python", "pytest"
-	default:
-		return lang, lang
+func (r *QuestionRenderer) ensureDirectory(problemDirectory domain.Path) (bool, error) {
+	exists := problemDirectory.Exists()
+	if err := r.fs.MkdirAll(problemDirectory.String(), os.ModePerm); err != nil {
+		return false, fmt.Errorf("failed creating directory: %w", err)
 	}
-}
-
-func templateTypeMapping(problem *models.Problem) map[templates.TemplateType]string {
-	return map[templates.TemplateType]string{
-		templates.Solution: problem.SolutionPath,
-		templates.Test:     problem.TestPath,
-		templates.Readme:   problem.ReadmePath,
-	}
+	return !exists, nil
 }
 
 func pascalCase(s string) string {
@@ -163,15 +135,4 @@ func pascalCase(s string) string {
 	}
 
 	return result.String()
-}
-
-func formatPathForDisplay(path string) string {
-	usr, _ := user.Current()
-	homeDir := usr.HomeDir
-
-	if strings.HasPrefix(path, homeDir) {
-		return "~" + path[len(homeDir):]
-	}
-
-	return path
 }
