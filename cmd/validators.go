@@ -6,7 +6,7 @@ import (
 	"github.com/phantompunk/kata/internal/ui"
 )
 
-func validateLanguage() (string, error) {
+func validateL() (string, error) {
 	if language == "" {
 		language = kata.Config.LanguageName()
 	}
@@ -17,4 +17,16 @@ func validateLanguage() (string, error) {
 	}
 
 	return language, nil
+}
+
+func validateLanguage() error {
+	if language == "" {
+		language = kata.Config.LanguageName()
+	}
+
+	if !kata.Settings.IsSupportedLanguage(language) {
+		return fmt.Errorf("language %q is not supported", language)
+	}
+
+	return nil
 }

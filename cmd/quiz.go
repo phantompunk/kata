@@ -21,6 +21,11 @@ func init() {
 }
 
 func QuizFunc(cmd *cobra.Command, args []string) error {
+	if err := validateLanguage(); err != nil {
+		ui.PrintError("language %q not supported", language)
+		return nil
+	}
+
 	opts := app.AppOptions{
 		Workspace: kata.Config.WorkspacePath(),
 		Language:  language,

@@ -1,7 +1,11 @@
 package cmd
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/phantompunk/kata/internal/app"
+	"github.com/phantompunk/kata/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -17,16 +21,35 @@ func init() {
 }
 
 func SubmitFunc(cmd *cobra.Command, args []string) error {
-	name := args[0]
+	problemName := app.ConvertToSlug(args[0])
 
-	if language == "" {
-		language = kata.Config.LanguageName()
+	if err := validateLanguage(); err != nil {
+		ui.PrintError("language %q not supported", language)
+		return nil
 	}
 
 	opts := app.AppOptions{
-		Problem:  name,
-		Language: language,
+		Problem:   problemName,
+		Language:  language,
+		Workspace: kata.Config.WorkspacePath(),
 	}
+
+	problem, err := kata.Download.GetBySlug(cmd.Context(), opts)
+	if err != nil {
+		if errors.Is(err, app.ErrQuestionNotFound) {
+			ui.PrintError("Problem %s not found", problemName)
+			return nil
+		}
+		return err
+	}
+	ui.PrintSuccess(fmt.Sprintf("Fetched problem: %s", problem.Title))
+
+	if !problem.SolutionExists() {
+		ui.PrintError("Solution to %q not found using %q", problem.Title, problem.Language.DisplayName())
+		return nil
+	}
+
+	kata.Download.SubmitQuestion(cmd.Context(), problem, opts)
 
 	return kata.Submit(opts)
 }

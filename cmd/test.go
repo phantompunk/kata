@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/phantompunk/kata/internal/app"
+	"github.com/phantompunk/kata/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -19,8 +20,9 @@ func init() {
 func TestFunc(cmd *cobra.Command, args []string) error {
 	problem := args[0]
 
-	if language == "" {
-		language = kata.Config.LanguageName()
+	if err := validateLanguage(); err != nil {
+		ui.PrintError("language %q not supported", language)
+		return nil
 	}
 
 	opts := app.AppOptions{

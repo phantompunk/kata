@@ -1,14 +1,12 @@
 package app
 
 import (
-	"bufio"
 	"context"
 	"database/sql"
 	"errors"
 	"fmt"
 	"os"
 	"strconv"
-	"strings"
 
 	"github.com/phantompunk/kata/internal/browser"
 	"github.com/phantompunk/kata/internal/config"
@@ -20,7 +18,6 @@ import (
 	"github.com/phantompunk/kata/internal/render"
 	"github.com/phantompunk/kata/internal/render/templates"
 	"github.com/phantompunk/kata/internal/repository"
-	"github.com/spf13/afero"
 )
 
 const (
@@ -36,14 +33,12 @@ type AppOptions struct {
 }
 
 type App struct {
-	Config        *config.Config
-	QuestionModel *repository.Queries
-	Repo          *repository.Queries
-	lcs           *leetcode.Service
-	Renderer      *templates.FileRenderer
-	fs            afero.Fs
-	Download      *DownloadService
-	Settings      *config.ConfigService
+	Config   *config.Config
+	Repo     *repository.Queries
+	lcs      *leetcode.Service
+	Renderer *templates.FileRenderer
+	Download *DownloadService
+	Settings *config.ConfigService
 }
 
 func New() (*App, error) {
@@ -84,7 +79,6 @@ func New() (*App, error) {
 		Repo:     repo,
 		lcs:      lcs,
 		Renderer: renderer,
-		fs:       afero.NewOsFs(),
 		Download: download,
 		Settings: cfgSerice,
 	}, nil
@@ -176,7 +170,7 @@ func (app *App) TestSolution(name, language string) error {
 	}
 
 	problem := repoQuestion.ToProblem(app.Config.WorkspacePath(), language)
-	snippet := app.extractSnippet(problem.SolutionPath)
+	snippet := "" //app.extractSnippet(problem.SolutionPath)
 
 	testStatusUrl, err := app.lcs.Test(problem, language, snippet)
 	if err != nil {
@@ -226,7 +220,7 @@ func (app *App) SubmitSolution(name, language string) error {
 	}
 
 	problem := repoQuestion.ToProblem(app.Config.WorkspacePath(), language)
-	snippet := app.extractSnippet(problem.SolutionPath)
+	snippet := "" // app.extractSnippet(problem.SolutionPath)
 
 	testStatusUrl, err := app.lcs.Submit(problem, language, snippet)
 	if err != nil {
@@ -260,41 +254,6 @@ func (app *App) SubmitSolution(name, language string) error {
 
 	fmt.Println("Failed")
 	return fmt.Errorf("Failed: %s.", res.StatusMsg)
-}
-
-// TODO: Move this to a separate package
-func (app *App) extractSnippet(path string) string {
-	file, _ := os.Open(path)
-	defer file.Close()
-
-	startMarker := fmt.Sprint("// ::KATA START::")
-	endMarker := fmt.Sprint("// ::KATA END::")
-
-	var builder strings.Builder
-	scanner := bufio.NewScanner(file)
-
-	inSnippet := false
-	for scanner.Scan() {
-		line := scanner.Text()
-
-		if strings.TrimSpace(line) == startMarker {
-			inSnippet = true
-			continue
-		}
-
-		if strings.TrimSpace(line) == endMarker {
-			break
-		}
-
-		if inSnippet {
-			builder.WriteString(line + "\n")
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		// todo return error
-		return ""
-	}
-	return strings.TrimSpace(builder.String())
 }
 
 // RefreshCookies fetches the session and csrf cookies from the browser and updates the app's config.

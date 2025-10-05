@@ -5,16 +5,20 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/phantompunk/kata/internal/config"
+	"github.com/phantompunk/kata/internal/domain"
 )
 
 const (
 	baseUrl         = "https://leetcode.com"
 	graphQLEndpoint = baseUrl + "/graphql"
+	submitEndpoint  = baseURL + "/problems/%s/submit"
 )
 
 var (
@@ -25,7 +29,7 @@ type Client interface {
 	// FetchQuestion fetches a question by its slug.
 	FetchQuestion(ctx context.Context, slug string) (*Question, error)
 
-	// SubmitTest(ctx context.Context, problem Problem) (string, error)
+	SubmitTest(ctx context.Context, problem *domain.Problem, snippet string) (string, error)
 	//
 	// SubmitSolution(ctx context.Context, problem Problem) (string, error)
 	//
@@ -131,6 +135,45 @@ func (lc *LeetCodeClient) FetchQuestion(ctx context.Context, slug string) (*Ques
 	return &response.Data.Question, nil
 }
 
+func (lc *LeetCodeClient) SubmitTest(ctx context.Context, problem *domain.Problem, snippet string) (string, error) {
+	reqBody := map[string]any{
+		"lang":        problem.Language.TemplateName(),
+		"question_id": problem.ID,
+		"typed_code":  strings.ReplaceAll(snippet, "\t", "    "), // Consistent 4 spaces
+	}
+
+	data, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", err
+	}
+
+	url := fmt.Sprintf(submitEndpoint, problem.Slug)
+	resp, err := lc.makeRequest(ctx, http.MethodPost, url, bytes.NewBuffer(data))
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var response TestResponse
+	if err := json.Unmarshal(body, &response); err != nil {
+		return "", fmt.Errorf("failed to unmarshal test response: %w", err)
+	}
+
+	if response.SubmissionID == "" {
+		return "", errors.New("submission_id not found in test response")
+	}
+
+	return fmt.Sprintf(checkURL, response.SubmissionID), nil
+}
+
 func (lc *LeetCodeClient) graphQLRequest(ctx context.Context, query string, variables map[string]any) ([]byte, error) {
 	reqBody := map[string]any{
 		"query":     query,
@@ -156,7 +199,7 @@ func (lc *LeetCodeClient) graphQLRequest(ctx context.Context, query string, vari
 }
 
 func (lc *LeetCodeClient) makeRequest(ctx context.Context, method, url string, body io.Reader) (*http.Response, error) {
-	req, err := http.NewRequestWithContext(ctx, "POST", url, body)
+	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
 		return nil, err
 	}

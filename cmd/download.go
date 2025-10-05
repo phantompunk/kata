@@ -28,8 +28,8 @@ func init() {
 func DownloadFunc(cmd *cobra.Command, args []string) error {
 	problemName := app.ConvertToSlug(args[0])
 
-	language, err := validateLanguage()
-	if err != nil {
+	if err := validateLanguage(); err != nil {
+		ui.PrintError("language %q not supported", language)
 		return nil
 	}
 

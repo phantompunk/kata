@@ -28,7 +28,7 @@ func Test{{ pascalCase .FunctionName }}(t *testing.T) {
 
 {{define "pytest"}}import unittest
 
-from {{ .TitleSlug }} import {{ .FunctionName }}
+from {{ .Slug }} import {{ .FunctionName }}
 
 
 class Test{{ pascalCase .FunctionName }}(unittest.TestCase):

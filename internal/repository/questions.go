@@ -92,6 +92,7 @@ func (q *Question) ToDProblem(workspace, language string) *domain.Problem {
 	}
 
 	return &domain.Problem{
+		ID:            fmt.Sprintf("%d", q.QuestionID),
 		Title:         q.Title,
 		Slug:          slug,
 		Content:       q.Content,

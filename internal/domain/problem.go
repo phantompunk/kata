@@ -9,6 +9,7 @@ import (
 )
 
 type Problem struct {
+	ID            string
 	Title         string
 	Slug          string
 	Content       string
@@ -23,6 +24,7 @@ type Problem struct {
 }
 
 func (p *Problem) SolutionPath() string { return p.FileSet[0].Path.String() }
+func (p *Problem) SolutionExists() bool { return p.FileSet[0].Path.Exists() }
 
 type Language struct {
 	slug          string //ts
