@@ -327,3 +327,13 @@ func normalizeLanguage(lang string) string {
 func GetSupportedLanguages() map[string]string {
 	return supportedLanguages
 }
+
+func NormalizeLanguage(language string) (string, error) {
+	normalized := strings.ToLower(strings.TrimSpace(language))
+
+	canonical, ok := supportedLanguages[normalized]
+	if !ok {
+		return "", fmt.Errorf("language %q is not supported: %w", language, ErrUnsupportedLanguage)
+	}
+	return canonical, nil
+}

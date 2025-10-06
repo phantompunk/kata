@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/phantompunk/kata/internal/app"
+	"github.com/phantompunk/kata/internal/config"
 	"github.com/phantompunk/kata/internal/leetcode"
 	"github.com/phantompunk/kata/internal/ui"
 	"github.com/spf13/cobra"
@@ -76,7 +77,7 @@ func HandleErrors(fn CommandFunc) CommandFunc {
 		if v, _ := cmd.Flags().GetBool("verbose"); v || kata.Config.Verbose {
 			return fmt.Errorf("Error %+v", err)
 		}
-		return fmt.Errorf("✘ %s", userMessage(err))
+		return fmt.Errorf("%s", userMessage(err))
 	}
 }
 
@@ -94,6 +95,8 @@ func userMessage(err error) string {
 		return "Session expired. Please sign in to https://leetcode.com then run 'kata login' again"
 	case errors.Is(err, app.ErrNoQuestions):
 		return "No questions found in the database. Please run `kata get` to fetch questions"
+	case errors.Is(err, config.ErrUnsupportedLanguage):
+		return "Supported languages: cpp, golang, java, python3, javascript"
 	default:
 		return "An unexpected error occurred. Please try again"
 	}

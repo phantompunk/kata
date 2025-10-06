@@ -2,6 +2,7 @@ package render
 
 import (
 	"context"
+	"embed"
 	"fmt"
 	"io"
 	"os"
@@ -11,9 +12,11 @@ import (
 
 	htmltomarkdown "github.com/JohannesKaufmann/html-to-markdown/v2"
 	"github.com/phantompunk/kata/internal/domain"
-	"github.com/phantompunk/kata/internal/render/templates"
 	"github.com/spf13/afero"
 )
+
+//go:embed templates/*.gohtml templates/config_template.yml
+var Files embed.FS
 
 type Renderer interface {
 	RenderProblem(ctx context.Context, problem *domain.Problem, force bool) (*RenderResult, error)
@@ -29,7 +32,7 @@ func New() (*QuestionRenderer, error) {
 		"pascalCase": pascalCase,
 	}
 
-	templ, err := template.New("new").Funcs(funcMap).ParseFS(templates.Files, "*")
+	templ, err := template.New("new").Funcs(funcMap).ParseFS(Files, "templates/*")
 	if err != nil {
 		return nil, err
 	}

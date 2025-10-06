@@ -36,9 +36,9 @@ type Language struct {
 	fileExtension string //.ts
 }
 
-func NewProgrammingLanguage(slug string) Language {
-	solution, test := resolveTemplateNames(slug)
-	displayName, extension := resolveLanguageMetadata(slug)
+func NewProgrammingLanguage(name string) Language {
+	solution, test := resolveTemplateNames(name)
+	displayName, slug, extension := resolveLanguageMetadata(name)
 	return Language{
 		slug:          slug,
 		displayName:   displayName,
@@ -137,36 +137,41 @@ const (
 	ReadmeFile   FileType = "readme"
 )
 
+type CodeSnippet struct {
+	Code     string `json:"code"`
+	LangSlug string `json:"langSlug"`
+}
+
 func resolveTemplateNames(slug string) (string, string) {
 	switch slug {
 	case "go", "golang":
 		return "golang", "gotest"
 	case "python", "python3":
-		return "python", "pytest"
-	// case "js", "javascript":
-	// 	return "javascript", "jest"
-	// case "ts", "typescript":
-	// 	return "typescript", "tsjest"
+		return "python3", "pytest"
+	case "js", "javascript":
+		return "javascript", "test"
+	case "ts", "typescript":
+		return "typescript", "test"
 	default:
 		return "solution", "test"
 	}
 }
 
-func resolveLanguageMetadata(slug string) (string, string) {
+func resolveLanguageMetadata(slug string) (string, string, string) {
 	switch slug {
 	case "go", "golang":
-		return "Go", ".go"
+		return "Go", "go", ".go"
 	case "python", "python3":
-		return "Python", ".py"
+		return "Python", "python", ".py"
 	case "js", "javascript":
-		return "JavaScript", ".js"
+		return "JavaScript", "javascript", ".js"
 	case "ts", "typescript":
-		return "TypeScript", ".ts"
+		return "TypeScript", "typescript", ".ts"
 	case "rust":
-		return "Rust", ".rs"
+		return "Rust", "rust", ".rs"
 	case "cpp", "c++":
-		return "C++", ".cpp"
+		return "C++", "cpp", ".cpp"
 	default:
-		return slug, slug
+		return slug, slug, slug
 	}
 }

@@ -13,7 +13,10 @@ type Question struct {
 	CodeSnippets []CodeSnippet `json:"codeSnippets"`
 	TestCaseList []string      `json:"exampleTestcaseList"`
 	Metadata     QuestionMeta  `json:"metadata"`
+	LangStatus   map[string]bool
+	CreatedAt    string
 }
+
 
 // InternalQuestion is used for unmarshaling the raw metadata field
 type InternalQuestion struct {

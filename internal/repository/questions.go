@@ -10,10 +10,9 @@ import (
 
 	"github.com/phantompunk/kata/internal/domain"
 	"github.com/phantompunk/kata/internal/leetcode"
-	"github.com/phantompunk/kata/internal/models"
 )
 
-func (q *Queries) GetAllWithStatus(ctx context.Context, languages []string) ([]models.QuestionStat, error) {
+func (q *Queries) GetAllWithStatus(ctx context.Context, languages []string) ([]domain.QuestionStat, error) {
 	listAllWithStatuses := buildSelectClause(languages) + buildFromClause(languages)
 	rows, err := q.db.QueryContext(ctx, listAllWithStatuses)
 	if err != nil {
@@ -21,9 +20,9 @@ func (q *Queries) GetAllWithStatus(ctx context.Context, languages []string) ([]m
 	}
 	defer rows.Close()
 
-	var items []models.QuestionStat
+	var items []domain.QuestionStat
 	for rows.Next() {
-		var i models.QuestionStat
+		var i domain.QuestionStat
 		i.LangStatus = make(map[string]bool)
 		solvedValues := make([]int, len(languages))
 		scanArgs := []any{&i.ID, &i.Title, &i.Difficulty}
@@ -53,23 +52,23 @@ func (q *Queries) GetAllWithStatus(ctx context.Context, languages []string) ([]m
 	return items, nil
 }
 
-func (q *Question) ToModelQuestion() (*models.Question, error) {
-	var modelQuestion models.Question
-	modelQuestion.ID = fmt.Sprintf("%d", q.QuestionID)
-	modelQuestion.Title = q.Title
-	modelQuestion.TitleSlug = q.TitleSlug
-	modelQuestion.Difficulty = q.Difficulty
-	modelQuestion.FunctionName = q.FunctionName
-	modelQuestion.Content = q.Content
-
-	if err := json.Unmarshal([]byte(q.CodeSnippets), &modelQuestion.CodeSnippets); err != nil {
-		return nil, err
-	}
-	if err := json.Unmarshal([]byte(q.TestCases), &modelQuestion.TestCaseList); err != nil {
-		return nil, err
-	}
-	return &modelQuestion, nil
-}
+// func (q *Question) ToModelQuestion() (*models.Question, error) {
+// 	var modelQuestion models.Question
+// 	modelQuestion.ID = fmt.Sprintf("%d", q.QuestionID)
+// 	modelQuestion.Title = q.Title
+// 	modelQuestion.TitleSlug = q.TitleSlug
+// 	modelQuestion.Difficulty = q.Difficulty
+// 	modelQuestion.FunctionName = q.FunctionName
+// 	modelQuestion.Content = q.Content
+//
+// 	if err := json.Unmarshal([]byte(q.CodeSnippets), &modelQuestion.CodeSnippets); err != nil {
+// 		return nil, err
+// 	}
+// 	if err := json.Unmarshal([]byte(q.TestCases), &modelQuestion.TestCaseList); err != nil {
+// 		return nil, err
+// 	}
+// 	return &modelQuestion, nil
+// }
 
 func (q *Question) ToDProblem(workspace, language string) *domain.Problem {
 	dir := formatTitleSlug(q.TitleSlug)
@@ -78,7 +77,7 @@ func (q *Question) ToDProblem(workspace, language string) *domain.Problem {
 	fileSet := domain.NewProblemFileSet(dir, lang, directory)
 
 	var code string
-	var codeSnippets []models.CodeSnippet
+	var codeSnippets []domain.CodeSnippet
 	if err := json.Unmarshal([]byte(q.CodeSnippets), &codeSnippets); err != nil {
 		fmt.Println("Failed to unmarshal code snippets:", err)
 		return nil
@@ -104,32 +103,6 @@ func (q *Question) ToDProblem(workspace, language string) *domain.Problem {
 		Language:      lang,
 		FileSet:       fileSet,
 	}
-}
-
-func (q *Question) ToProblem(workspace, language string) *models.Problem {
-	var problem models.Problem
-	problem.QuestionID = fmt.Sprintf("%d", q.QuestionID)
-	problem.Content = q.Content
-	problem.FunctionName = q.FunctionName
-	problem.TitleSlug = q.TitleSlug
-	problem.Slug = formatTitleSlug(q.TitleSlug)
-	problem.TestCases = q.TestCases
-
-	var codeSnippets []models.CodeSnippet
-	if err := json.Unmarshal([]byte(q.CodeSnippets), &codeSnippets); err != nil {
-		fmt.Println("Failed to unmarshal code snippets:", err)
-		return nil
-	}
-
-	for _, snippet := range codeSnippets {
-		if snippet.LangSlug == models.LangName[language] {
-			problem.Code = snippet.Code
-			break
-		}
-	}
-	problem.LangSlug = models.LangName[language]
-	problem.SetPaths(workspace)
-	return &problem
 }
 
 func buildSelectClause(languages []string) string {
@@ -195,15 +168,6 @@ func (q *GetRandomRow) ToProblem(workspace, language string) *domain.Problem {
 		Language:      lang,
 		FileSet:       fileSet,
 	}
-}
-
-func (q *GetRandomRow) GetSolutionPath(workspace, language string) string {
-	var problem models.Problem
-	problem.TitleSlug = q.TitleSlug
-	problem.Slug = formatTitleSlug(q.TitleSlug)
-	problem.LangSlug = models.LangName[language]
-	problem.SetPaths(workspace)
-	return problem.SolutionPath
 }
 
 func ToRepoCreateParams(question *leetcode.Question) CreateParams {

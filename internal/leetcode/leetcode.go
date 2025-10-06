@@ -10,12 +10,10 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
-	"strings"
 	"time"
 
 	_ "github.com/browserutils/kooky/browser/all"
 	"github.com/phantompunk/kata/internal/config"
-	"github.com/phantompunk/kata/internal/models"
 )
 
 const (
@@ -218,139 +216,4 @@ func (lc *Service) GetUsername() (string, error) {
 	}
 
 	return response.Data.UserStatus.Username, nil
-}
-
-func (lc *Service) Fetch(name string) (*models.Question, error) {
-	variables := map[string]any{"titleSlug": name}
-	data, err := json.Marshal(Request{Query: queryQuestionDetails, Variables: variables})
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request data: %w", err)
-	}
-
-	body, err := lc.doRequest(context.Background(), "POST", lc.baseUrl, bytes.NewReader(data), nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to do request: %w", err)
-	}
-
-	var response Response
-	err = json.Unmarshal(body, &response)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
-	}
-
-	if response.Data.Question == nil {
-		return nil, ErrQuestionNotFound
-	}
-
-	return response.Data.Question, nil
-}
-
-func (lc *Service) Test(problem *models.Problem, language, snippet string) (string, error) {
-	url := fmt.Sprintf(testURL, problem.TitleSlug)
-	contents := strings.ReplaceAll(snippet, "\t", "    ") // Consistent 4 spaces
-
-	variables := map[string]any{
-		"lang":        models.LangName[language],
-		"question_id": problem.QuestionID,
-		"typed_code":  contents,
-		"data_input":  problem.TestCases,
-	}
-
-	data, err := json.Marshal(variables)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal test request: %w", err)
-	}
-	fmt.Println("Payload", string(data))
-	fmt.Println("Url", url)
-
-	headers := map[string]string{
-		"referer": fmt.Sprintf(problemURL, problem.TitleSlug),
-	}
-
-	fmt.Println("Testing on server")
-	body, err := lc.doRequest(context.Background(), http.MethodPost, url, bytes.NewReader(data), headers)
-	if err != nil {
-		return "", fmt.Errorf("test submission failed: %w", err)
-	}
-
-	var response SubmissionResponse
-	if err := json.Unmarshal(body, &response); err != nil {
-		return "", fmt.Errorf("failed to unmarshal test response: %w", err)
-	}
-
-	if response.InterpretID == "" {
-		return "", errors.New("interpret_id not found in test response")
-	}
-
-	return fmt.Sprintf(checkURL, response.InterpretID), nil
-}
-
-func (lc *Service) Submit(problem *models.Problem, language, snippet string) (string, error) {
-	url := fmt.Sprintf(submitURL, problem.TitleSlug)
-	contents := strings.ReplaceAll(snippet, "\t", "    ") // Consistent 4 spaces
-
-	variables := map[string]any{
-		"lang":        models.LangName[language],
-		"question_id": problem.QuestionID,
-		"typed_code":  contents,
-	}
-
-	data, err := json.Marshal(variables)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal test request: %w", err)
-	}
-
-	headers := map[string]string{
-		"referer": fmt.Sprintf(problemURL, problem.TitleSlug),
-	}
-
-	fmt.Printf("✓ Submitting solution to Leetcode")
-	body, err := lc.doRequest(context.Background(), http.MethodPost, url, bytes.NewReader(data), headers)
-	if err != nil {
-		return "", fmt.Errorf("test submission failed: %w", err)
-	}
-
-	var response SubmissionResponse
-	if err := json.Unmarshal(body, &response); err != nil {
-		return "", fmt.Errorf("failed to unmarshal test response: %w", err)
-	}
-
-	if response.SubmissionID == "" {
-		return "", errors.New("submission_id not found in test response")
-	}
-
-	return fmt.Sprintf(checkURL, response.SubmissionID), nil
-}
-
-func (lc *Service) CheckTestStatus(callbackUrl string) (*SubmissionResponse, error) {
-	body, err := lc.doRequest(context.Background(), "GET", callbackUrl, nil, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check test status: %w", err)
-	}
-
-	var response SubmissionResponse
-	err = json.Unmarshal(body, &response)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal test status response: %w", err)
-	}
-
-	return &response, nil
-}
-
-func (lc *Service) PollTestStatus(testStatusUrl string) (*SubmissionResponse, error) {
-	for i := range MaxTestAttempts {
-		res, err := lc.CheckTestStatus(testStatusUrl)
-		if err != nil {
-			return nil, fmt.Errorf("checking test status attempt %d failed: %w", i+1, err)
-		}
-
-		if res.State == "SUCCESS" || res.State == "FAILED" {
-			return res, nil
-		}
-
-		fmt.Print(".")
-		time.Sleep(TestPollInterval)
-	}
-
-	return nil, fmt.Errorf("test status check timed out after %d attempts", MaxTestAttempts)
 }

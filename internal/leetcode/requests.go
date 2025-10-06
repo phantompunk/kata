@@ -95,18 +95,18 @@ type StreakCounter struct {
 }
 
 type Data struct {
-	Question *models.Question `json:"question"`
-	Auth     *AuthResponse    `json:"userStatus"`
+	Question *Question     `json:"question"`
+	Auth     *AuthResponse `json:"userStatus"`
 }
 
-func (r *Response) GetQuestion(language string) (*models.Question, error) {
+func (r *Response) GetQuestion(language string) (*Question, error) {
 	if r != nil && r.Data.Question != nil {
-		var selected models.CodeSnippet
+		var selected CodeSnippet
 
 		for _, snippet := range r.Data.Question.CodeSnippets {
 			if snippet.LangSlug == models.LangName[language] {
 				selected = snippet
-				r.Data.Question.CodeSnippets = []models.CodeSnippet{selected}
+				r.Data.Question.CodeSnippets = []CodeSnippet{selected}
 				return r.Data.Question, nil
 			}
 		}

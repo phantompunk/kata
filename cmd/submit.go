@@ -27,7 +27,7 @@ func SubmitFunc(cmd *cobra.Command, args []string) error {
 
 	if err := validateLanguage(); err != nil {
 		ui.PrintError("language %q not supported", language)
-		return nil
+		return err
 	}
 
 	opts := app.AppOptions{

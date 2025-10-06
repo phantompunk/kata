@@ -7,7 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/phantompunk/kata/internal/models"
+	"github.com/phantompunk/kata/internal/domain"
 )
 
 // Constants for default values
@@ -96,12 +96,12 @@ func (m model) View() string {
 
 // Render creates and displays an interactive table with the given questions and languages
 // Uses default configuration
-func Render(questions []models.QuestionStat, languages []string) error {
+func Render(questions []domain.QuestionStat, languages []string) error {
 	return RenderWithConfig(questions, languages, DefaultConfig())
 }
 
 // RenderWithConfig creates and displays an interactive table with custom configuration
-func RenderWithConfig(questions []models.QuestionStat, languages []string, config *TableConfig) error {
+func RenderWithConfig(questions []domain.QuestionStat, languages []string, config *TableConfig) error {
 	tableModel, err := NewTable(questions, languages, config)
 	if err != nil {
 		return fmt.Errorf("creating table: %w", err)
@@ -111,7 +111,7 @@ func RenderWithConfig(questions []models.QuestionStat, languages []string, confi
 }
 
 // NewTable creates a new table model without running the interactive program
-func NewTable(questions []models.QuestionStat, languages []string, config *TableConfig) (table.Model, error) {
+func NewTable(questions []domain.QuestionStat, languages []string, config *TableConfig) (table.Model, error) {
 	if err := validateInputs(questions, languages, config); err != nil {
 		return table.Model{}, err
 	}
@@ -134,7 +134,7 @@ func RunInteractiveTable(tableModel table.Model) error {
 }
 
 // validateInputs checks if the provided inputs are valid
-func validateInputs(questions []models.QuestionStat, languages []string, config *TableConfig) error {
+func validateInputs(questions []domain.QuestionStat, languages []string, config *TableConfig) error {
 	if config == nil {
 		return errors.New("config cannot be nil")
 	}
@@ -188,7 +188,7 @@ func calculateTableHeight(rowCount, maxHeight int) int {
 	return height
 }
 
-func createRows(questions []models.QuestionStat, tracks []string, config *TableConfig) []table.Row {
+func createRows(questions []domain.QuestionStat, tracks []string, config *TableConfig) []table.Row {
 	var rows []table.Row
 	for _, question := range questions {
 		row := []string{
