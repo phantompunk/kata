@@ -3,8 +3,10 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/phantompunk/kata/internal/app"
+	"github.com/phantompunk/kata/internal/leetcode"
 	"github.com/phantompunk/kata/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -49,7 +51,52 @@ func SubmitFunc(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	kata.Download.SubmitQuestion(cmd.Context(), problem, opts)
+	submissionId, err := kata.Download.SubmitQuestion(cmd.Context(), problem, opts)
+	if err != nil {
+		return err
+	}
+	ui.PrintSuccess("Submitting solution to leetcode")
 
-	return kata.Submit(opts)
+	// Display wait time til result
+	// Print ... while waiting
+	// startTime := time.Now()
+	// maxWait := time.Duration(10) * time.Second
+	// displayWaitForResults(startTime, maxWait)
+	//
+	// // wait til result
+	ui.PrintInfo("Waiting for " + submissionId)
+	// result, err := kata.Download.WaitForResult(cmd.Context(), submissionId, maxWait)
+	// if err != nil {
+	// 	if errors.Is(err, app.ErrSolutionFailed) {
+	// 		ui.PrintError("Solution failed")
+	// 	}
+	// 	return err
+	// }
+	// // print result summary
+	// displaySubmissionResults(result)
+
+	return nil
+}
+
+func displaySubmissionResults(result *leetcode.SubmissionResult) {
+	ui.PrintSuccess("Submission accepted!\n")
+
+	ui.PrintInfo(fmt.Sprintf("Result:  %s", result.Result))
+	ui.PrintInfo(fmt.Sprintf("Runtime:  %s (beats %s of Go submissions)", result.Runtime, result.RuntimeMsg))
+	ui.PrintInfo(fmt.Sprintf("Memory:   %s MB (beats %s)", result.Memory, result.MemoryMsg))
+
+	ui.PrintInfo("🎉 Great job! Your solution was accepted.")
+}
+
+func displayWaitForResults(start time.Time, wait time.Duration) {
+	go func() {
+		for {
+			elapsed := time.Since(start)
+			if elapsed >= wait {
+				break
+			}
+			fmt.Print("Waiting for response")
+			time.Sleep(1 * time.Second)
+		}
+	}()
 }

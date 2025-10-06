@@ -48,9 +48,14 @@ func (q *Question) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	if tmp.RawMetadata == "" {
+	if tmp.ID == "" {
 		*q = Question{}
 		return ErrQuestionNotFound
+	}
+
+	if tmp.RawMetadata == "" {
+		*q = Question{}
+		return ErrMetadataMissing
 	}
 
 	q.ID = tmp.ID

@@ -7,7 +7,6 @@ toolchain go1.24.6
 require (
 	github.com/JohannesKaufmann/html-to-markdown/v2 v2.3.0
 	github.com/adrg/xdg v0.5.3
-	github.com/approvals/go-approval-tests v1.2.0
 	github.com/browserutils/kooky v0.2.4
 	github.com/charmbracelet/bubbles v0.21.0
 	github.com/charmbracelet/bubbletea v1.3.9
@@ -53,9 +52,9 @@ require (
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	github.com/zalando/go-keyring v0.2.6 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
-	golang.org/x/crypto v0.40.0 // indirect
+	golang.org/x/crypto v0.41.0 // indirect
 	golang.org/x/exp v0.0.0-20231006140011-7918f672742d // indirect
-	golang.org/x/net v0.42.0 // indirect
+	golang.org/x/net v0.43.0 // indirect
 	golang.org/x/sys v0.36.0 // indirect
 	golang.org/x/text v0.29.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect

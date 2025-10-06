@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/cookiejar"
+	"net/url"
 	"strings"
 	"time"
 
@@ -16,9 +18,11 @@ import (
 )
 
 const (
-	baseUrl         = "https://leetcode.com"
-	graphQLEndpoint = baseUrl + "/graphql"
-	submitEndpoint  = baseURL + "/problems/%s/submit"
+	baseUrl            = "https://leetcode.com"
+	graphQLEndpoint    = baseUrl + "/graphql"
+	testEndpoint       = baseUrl + "/problems/%s/interpret_solution"
+	submitEndpoint     = baseUrl + "/problems/%s/submit"
+	submissionEndpoint = baseUrl + "/submissions/detail/%s/check"
 )
 
 var (
@@ -30,10 +34,8 @@ type Client interface {
 	FetchQuestion(ctx context.Context, slug string) (*Question, error)
 
 	SubmitTest(ctx context.Context, problem *domain.Problem, snippet string) (string, error)
-	//
-	// SubmitSolution(ctx context.Context, problem Problem) (string, error)
-	//
-	// CheckSubmissionStatus(ctx context.Context, url string) (TestResult, error)
+	SubmitSolution(ctx context.Context, problem *domain.Problem, snippet string) (string, error)
+	CheckSubmissionResult(ctx context.Context, url string) (*SubmissionResult, error)
 	//
 	// WaitForSubmissionResult(ctx context.Context, url string) (TestResult, error)
 	//
@@ -42,6 +44,15 @@ type Client interface {
 	// GetUserStats(ctx context.Context) (UserStats, error)
 	//
 	// GetUserName() string
+}
+
+type SubmissionResult struct {
+	State      string
+	Result     string
+	Runtime    string
+	RuntimeMsg string
+	Memory     string
+	MemoryMsg  string
 }
 
 type LeetCodeClient struct {
@@ -82,9 +93,11 @@ func NewClient(httpClient *http.Client) *LeetCodeClient {
 }
 
 func NewLC(opts ...Options) *LeetCodeClient {
+	jar, _ := cookiejar.New(nil)
 	lc := &LeetCodeClient{
 		client: &http.Client{
 			Timeout: 10 * time.Second,
+			Jar:     jar,
 		},
 	}
 
@@ -92,7 +105,22 @@ func NewLC(opts ...Options) *LeetCodeClient {
 		opt(lc)
 	}
 
+	lc.initialize()
 	return lc
+}
+
+func (lc *LeetCodeClient) initialize() {
+	if lc.sessionID == "" || lc.csrfToken == "" {
+		return
+	}
+
+	cookies := []*http.Cookie{
+		{Name: "csrftoken", Value: lc.csrfToken, Path: "/"},
+		{Name: "LEETCODE_SESSION", Value: lc.sessionID, Path: "/"},
+	}
+
+	u, _ := url.Parse(baseUrl)
+	lc.client.Jar.SetCookies(u, cookies)
 }
 
 func (lc *LeetCodeClient) FetchQuestion(ctx context.Context, slug string) (*Question, error) {
@@ -118,7 +146,7 @@ func (lc *LeetCodeClient) FetchQuestion(ctx context.Context, slug string) (*Ques
 	`
 
 	variables := map[string]any{"titleSlug": slug}
-	res, err := lc.graphQLRequest(ctx, query, variables)
+	res, err := lc.graphQLRequest(ctx, query, variables, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -136,21 +164,74 @@ func (lc *LeetCodeClient) FetchQuestion(ctx context.Context, slug string) (*Ques
 }
 
 func (lc *LeetCodeClient) SubmitTest(ctx context.Context, problem *domain.Problem, snippet string) (string, error) {
-	reqBody := map[string]any{
+	payload := map[string]any{
+		"lang":        problem.Language.TemplateName(),
+		"question_id": problem.ID,
+		"typed_code":  strings.ReplaceAll(snippet, "\t", "    "), // Consistent 4 spaces
+		"data_input":  problem.Testcases,
+	}
+
+	url := fmt.Sprintf(testEndpoint, problem.Slug)
+	res, err := lc.Submit(ctx, url, problem, payload)
+	if err != nil {
+		return "", err
+	}
+
+	return res.InterpretID, nil
+}
+
+func (lc *LeetCodeClient) SubmitSolution(ctx context.Context, problem *domain.Problem, snippet string) (string, error) {
+	payload := map[string]any{
 		"lang":        problem.Language.TemplateName(),
 		"question_id": problem.ID,
 		"typed_code":  strings.ReplaceAll(snippet, "\t", "    "), // Consistent 4 spaces
 	}
 
-	data, err := json.Marshal(reqBody)
+	url := fmt.Sprintf(submitEndpoint, problem.Slug)
+	res, err := lc.Submit(ctx, url, problem, payload)
 	if err != nil {
 		return "", err
 	}
 
-	url := fmt.Sprintf(submitEndpoint, problem.Slug)
-	resp, err := lc.makeRequest(ctx, http.MethodPost, url, bytes.NewBuffer(data))
+	return res.GetSubmissionID(), nil
+
+	// data, err := json.Marshal(reqBody)
+	// if err != nil {
+	// 	return "", err
+	// }
+	//
+	// url := fmt.Sprintf(submitEndpoint, problem.Slug)
+	// resp, err := lc.makeRequest(ctx, http.MethodPost, url, bytes.NewBuffer(data))
+	// if err != nil {
+	// 	return "", err
+	// }
+	// defer resp.Body.Close()
+	//
+	// if resp.StatusCode != http.StatusOK {
+	// }
+	//
+	// body, err := io.ReadAll(resp.Body)
+	// if err != nil {
+	// 	return "", err
+	// }
+	//
+	// var response SubmissionResponse
+	// if err := json.Unmarshal(body, &response); err != nil {
+	// 	return "", fmt.Errorf("failed to unmarshal test response: %w", err)
+	// }
+	//
+	// if response.InterpretID == "" {
+	// 	return "", errors.New("submission id not found in response")
+	// }
+	//
+	// return fmt.Sprintf("%s", response.InterpretID), nil
+}
+
+func (lc *LeetCodeClient) CheckSubmissionResult(ctx context.Context, submissionId string) (*SubmissionResult, error) {
+	url := fmt.Sprintf(submissionEndpoint, submissionId)
+	resp, err := lc.makeRequest(ctx, "GET", url, nil, nil)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
@@ -159,22 +240,64 @@ func (lc *LeetCodeClient) SubmitTest(ctx context.Context, problem *domain.Proble
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	var response TestResponse
+	var response SubmissionResponse
 	if err := json.Unmarshal(body, &response); err != nil {
-		return "", fmt.Errorf("failed to unmarshal test response: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal submission response: %w", err)
 	}
 
-	if response.SubmissionID == "" {
-		return "", errors.New("submission_id not found in test response")
-	}
-
-	return fmt.Sprintf(checkURL, response.SubmissionID), nil
+	return response.ToResult(), nil
 }
 
-func (lc *LeetCodeClient) graphQLRequest(ctx context.Context, query string, variables map[string]any) ([]byte, error) {
+func (lc *LeetCodeClient) Submit(ctx context.Context, url string, problem *domain.Problem, payload map[string]any) (*SubmitResponse, error) {
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	headers := map[string]string{
+		"referer": fmt.Sprintf(problemURL, problem.Slug),
+	}
+
+	fmt.Println("Payload", string(data))
+	fmt.Println("Url", url)
+	resp, err := lc.makeRequest(ctx, "POST", url, bytes.NewBuffer(data), headers)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		fmt.Printf("Failed with status: %d: %s\n", resp.StatusCode, body)
+		fmt.Println("Raw Response", resp)
+		return nil, fmt.Errorf("request failed with status %d", resp.StatusCode)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		fmt.Println("Failed code", resp.StatusCode)
+		fmt.Println("Method", resp)
+		return nil, ErrRequestFailed
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println("Response", string(body))
+		return nil, err
+	}
+	fmt.Println("Contents", string(body))
+
+	var response SubmitResponse
+	if err := json.Unmarshal(body, &response); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal test response: %w", err)
+	}
+
+	return &response, nil
+}
+
+func (lc *LeetCodeClient) graphQLRequest(ctx context.Context, query string, variables map[string]any, headers Map) ([]byte, error) {
 	reqBody := map[string]any{
 		"query":     query,
 		"variables": variables,
@@ -185,7 +308,7 @@ func (lc *LeetCodeClient) graphQLRequest(ctx context.Context, query string, vari
 		return nil, err
 	}
 
-	resp, err := lc.makeRequest(ctx, "POST", graphQLEndpoint, bytes.NewBuffer(data))
+	resp, err := lc.makeRequest(ctx, "POST", graphQLEndpoint, bytes.NewBuffer(data), headers)
 	if err != nil {
 		return nil, err
 	}
@@ -198,34 +321,20 @@ func (lc *LeetCodeClient) graphQLRequest(ctx context.Context, query string, vari
 	return io.ReadAll(resp.Body)
 }
 
-func (lc *LeetCodeClient) makeRequest(ctx context.Context, method, url string, body io.Reader) (*http.Response, error) {
+func (lc *LeetCodeClient) makeRequest(ctx context.Context, method, url string, body io.Reader, headers Map) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
 		return nil, err
 	}
 
-	req.Header.Set("origin", "https://leetcode.com")
-	req.Header.Set("content-type", "application/json")
+	// req.Header.Set("User-Agent", "LeetCode-CLI/1.0")
 	req.Header.Set("user-agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36") // Updated User-Agent
-	req.Header.Set("x-csrftoken", lc.csrfToken)
+	req.Header.Set("Origin", "https://leetcode.com")
+	req.Header.Set("X-Csrftoken", lc.csrfToken)
+	req.Header.Set("content-type", "application/json")
 
-	if lc.sessionID != "" {
-		req.AddCookie(&http.Cookie{
-			Name:  "LEETCODE_SESSION",
-			Value: lc.sessionID,
-		})
-	}
-
-	if lc.csrfToken != "" {
-		req.AddCookie(&http.Cookie{
-			Name:  "csrftoken",
-			Value: lc.csrfToken,
-		})
-		req.Header.Set("X-CSRFToken", lc.csrfToken)
-	}
-
-	if method == "POST" {
-		req.Header.Set("Content-Type", "application/json")
+	for key, value := range headers {
+		req.Header.Set(key, value)
 	}
 
 	return lc.client.Do(req)

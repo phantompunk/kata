@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/phantompunk/kata/internal/domain"
 	"github.com/phantompunk/kata/internal/leetcode"
@@ -74,9 +75,41 @@ func (s *DownloadService) GetRandomQuestion(ctx context.Context, opts AppOptions
 	return question.ToProblem(opts.Workspace, opts.Language), nil
 }
 
-func (s *DownloadService) SubmitQuestion(ctx context.Context, problem *domain.Problem, opts AppOptions) {
+func (s *DownloadService) SubmitTest(ctx context.Context, problem *domain.Problem, opts AppOptions) (string, error) {
 	snippet := s.extractor.ExtractSnippet(problem.SolutionPath())
-	s.client.SubmitTest(ctx, problem, snippet)
+	submissionId, err := s.client.SubmitTest(ctx, problem, snippet)
+	if err != nil {
+		return "", err
+	}
+	return submissionId, err
+}
+
+func (s *DownloadService) SubmitQuestion(ctx context.Context, problem *domain.Problem, opts AppOptions) (string, error) {
+	snippet := s.extractor.ExtractSnippet(problem.SolutionPath())
+	submissionId, err := s.client.SubmitSolution(ctx, problem, snippet)
+	if err != nil {
+		return "", err
+	}
+	return submissionId, err
+}
+
+func (s *DownloadService) WaitForResult(ctx context.Context, submissionId string, maxWaitTime time.Duration) (*leetcode.SubmissionResult, error) {
+	startTime := time.Now()
+	pollInterval := 1 * time.Second
+
+	for time.Since(startTime) < maxWaitTime {
+		result, err := s.client.CheckSubmissionResult(ctx, submissionId)
+		if err != nil {
+			return nil, err
+		}
+
+		if result.State == "SUCCESS" || result.State == "FAILED" {
+			return result, nil
+		}
+
+		time.Sleep(pollInterval)
+	}
+	return nil, fmt.Errorf("submission timed out after %v", maxWaitTime)
 }
 
 func (s *DownloadService) GetBySlug(ctx context.Context, opts AppOptions) (*domain.Problem, error) {

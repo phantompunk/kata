@@ -1,12 +1,14 @@
 package app
 
 import (
+	"bufio"
 	"context"
 	"database/sql"
 	"errors"
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/phantompunk/kata/internal/browser"
 	"github.com/phantompunk/kata/internal/config"
@@ -170,7 +172,7 @@ func (app *App) TestSolution(name, language string) error {
 	}
 
 	problem := repoQuestion.ToProblem(app.Config.WorkspacePath(), language)
-	snippet := "" //app.extractSnippet(problem.SolutionPath)
+	snippet := app.extractSnippet(problem.SolutionPath)
 
 	testStatusUrl, err := app.lcs.Test(problem, language, snippet)
 	if err != nil {
@@ -301,4 +303,38 @@ func (app *App) GetRandomQuestion(ctx context.Context) (*repository.GetRandomRow
 
 func (app *App) OpenQuestionInEditor(problem *domain.Problem) error {
 	return editor.Open(problem.SolutionPath())
+}
+
+func (app *App) extractSnippet(path string) string {
+	file, _ := os.Open(path)
+	defer file.Close()
+
+	startMarker := fmt.Sprint("// ::KATA START::")
+	endMarker := fmt.Sprint("// ::KATA END::")
+
+	var builder strings.Builder
+	scanner := bufio.NewScanner(file)
+
+	inSnippet := false
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		if strings.TrimSpace(line) == startMarker {
+			inSnippet = true
+			continue
+		}
+
+		if strings.TrimSpace(line) == endMarker {
+			break
+		}
+
+		if inSnippet {
+			builder.WriteString(line + "\n")
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		// todo return error
+		return ""
+	}
+	return strings.TrimSpace(builder.String())
 }

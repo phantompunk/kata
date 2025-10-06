@@ -17,7 +17,17 @@ type Response struct {
 	Data Data `json:"data"`
 }
 
-type TestResponse struct {
+type SubmitResponse struct {
+	InterpretID  string `json:"interpret_id"`
+	SubmissionID int64  `json:"submission_id"`
+	Testcase     string `json:"test_case"`
+}
+
+func (r SubmitResponse) GetSubmissionID() string {
+	return fmt.Sprintf("%d", r.SubmissionID)
+}
+
+type SubmissionResponse struct {
 	InterpretID       string       `json:"interpret_id"`
 	SubmissionID      SubmissionID `json:"submission_id"`
 	QuestionID        string       `json:"question_id"`
@@ -30,6 +40,17 @@ type TestResponse struct {
 	StatusMemory      string       `json:"status_memory"`
 	TotalCorrect      int          `json:"total_correct"`
 	TotalTestcases    int          `json:"total_testcases"`
+}
+
+func (s SubmissionResponse) ToResult() *SubmissionResult {
+	return &SubmissionResult{
+		State:      s.State,
+		Result:     s.StatusMsg,
+		Runtime:    s.StatusRuntime,
+		RuntimeMsg: "Great",
+		Memory:     s.StatusMemory,
+		MemoryMsg:  "Good",
+	}
 }
 
 type AuthResponse struct {
@@ -60,6 +81,7 @@ func (s *SubmissionID) UnmarshalJSON(data []byte) error {
 	// Otherwise, try integer
 	var num int64
 	if err := json.Unmarshal(data, &num); err != nil {
+		fmt.Println("failed here")
 		return err
 	}
 	*s = SubmissionID(strconv.FormatInt(num, 10))

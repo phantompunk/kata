@@ -72,10 +72,10 @@ func (q *Question) ToModelQuestion() (*models.Question, error) {
 }
 
 func (q *Question) ToDProblem(workspace, language string) *domain.Problem {
-	slug := formatTitleSlug(q.TitleSlug)
+	dir := formatTitleSlug(q.TitleSlug)
 	lang := domain.NewProgrammingLanguage(language)
-	directory := domain.Path(filepath.Join(workspace, lang.Slug(), slug))
-	fileSet := domain.NewProblemFileSet(slug, lang, directory)
+	directory := domain.Path(filepath.Join(workspace, lang.Slug(), dir))
+	fileSet := domain.NewProblemFileSet(dir, lang, directory)
 
 	var code string
 	var codeSnippets []models.CodeSnippet
@@ -94,11 +94,12 @@ func (q *Question) ToDProblem(workspace, language string) *domain.Problem {
 	return &domain.Problem{
 		ID:            fmt.Sprintf("%d", q.QuestionID),
 		Title:         q.Title,
-		Slug:          slug,
+		Slug:          q.TitleSlug,
 		Content:       q.Content,
 		Code:          code,
 		Difficulty:    q.Difficulty,
 		FunctionName:  q.FunctionName,
+		Testcases:     q.TestCases,
 		DirectoryPath: directory,
 		Language:      lang,
 		FileSet:       fileSet,
@@ -178,14 +179,15 @@ func hasNumber(name string) bool {
 }
 
 func (q *GetRandomRow) ToProblem(workspace, language string) *domain.Problem {
-	slug := formatTitleSlug(q.TitleSlug)
+	dirName := formatTitleSlug(q.TitleSlug)
 	lang := domain.NewProgrammingLanguage(language)
-	directory := domain.Path(filepath.Join(workspace, lang.Slug(), slug))
-	fileSet := domain.NewProblemFileSet(slug, lang, directory)
+	directory := domain.Path(filepath.Join(workspace, lang.Slug(), dirName))
+	fileSet := domain.NewProblemFileSet(dirName, lang, directory)
 
 	return &domain.Problem{
 		Title:         q.Title,
-		Slug:          slug,
+		Slug:          q.TitleSlug,
+		DirName:       dirName,
 		Difficulty:    q.Difficulty,
 		Status:        q.Status,
 		LastAttempted: q.LastAttempted,

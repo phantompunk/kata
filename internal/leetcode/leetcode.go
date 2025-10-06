@@ -34,6 +34,7 @@ const (
 
 var (
 	ErrQuestionNotFound = errors.New("no matching question found")
+	ErrMetadataMissing  = errors.New("question metadata missing")
 	ErrNotAuthenticated = errors.New("not authenticated")
 	ErrBuildingRequest  = errors.New("not able to build request")
 )
@@ -165,6 +166,7 @@ func (lc *Service) doRequest(ctx context.Context, method, url string, body io.Re
 	}
 	defer res.Body.Close()
 
+	fmt.Println("Method", res)
 	if res.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("request failed with status code: %d", res.StatusCode)
 	}
@@ -258,6 +260,7 @@ func (lc *Service) Test(problem *models.Problem, language, snippet string) (stri
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal test request: %w", err)
 	}
+	fmt.Println("Payload", string(data))
 
 	headers := map[string]string{
 		"referer": fmt.Sprintf(problemURL, problem.TitleSlug),
@@ -269,7 +272,7 @@ func (lc *Service) Test(problem *models.Problem, language, snippet string) (stri
 		return "", fmt.Errorf("test submission failed: %w", err)
 	}
 
-	var response TestResponse
+	var response SubmissionResponse
 	if err := json.Unmarshal(body, &response); err != nil {
 		return "", fmt.Errorf("failed to unmarshal test response: %w", err)
 	}
@@ -306,7 +309,7 @@ func (lc *Service) Submit(problem *models.Problem, language, snippet string) (st
 		return "", fmt.Errorf("test submission failed: %w", err)
 	}
 
-	var response TestResponse
+	var response SubmissionResponse
 	if err := json.Unmarshal(body, &response); err != nil {
 		return "", fmt.Errorf("failed to unmarshal test response: %w", err)
 	}
@@ -318,13 +321,13 @@ func (lc *Service) Submit(problem *models.Problem, language, snippet string) (st
 	return fmt.Sprintf(checkURL, response.SubmissionID), nil
 }
 
-func (lc *Service) CheckTestStatus(callbackUrl string) (*TestResponse, error) {
+func (lc *Service) CheckTestStatus(callbackUrl string) (*SubmissionResponse, error) {
 	body, err := lc.doRequest(context.Background(), "GET", callbackUrl, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check test status: %w", err)
 	}
 
-	var response TestResponse
+	var response SubmissionResponse
 	err = json.Unmarshal(body, &response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal test status response: %w", err)
@@ -333,7 +336,7 @@ func (lc *Service) CheckTestStatus(callbackUrl string) (*TestResponse, error) {
 	return &response, nil
 }
 
-func (lc *Service) PollTestStatus(testStatusUrl string) (*TestResponse, error) {
+func (lc *Service) PollTestStatus(testStatusUrl string) (*SubmissionResponse, error) {
 	for i := range MaxTestAttempts {
 		res, err := lc.CheckTestStatus(testStatusUrl)
 		if err != nil {

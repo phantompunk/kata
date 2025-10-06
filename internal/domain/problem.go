@@ -12,10 +12,12 @@ type Problem struct {
 	ID            string
 	Title         string
 	Slug          string
+	DirName       string
 	Content       string
 	Code          string
 	Difficulty    string
 	FunctionName  string
+	Testcases     string
 	Status        string
 	LastAttempted string
 	Language      Language
@@ -58,16 +60,16 @@ type ProblemFile struct {
 	Language Language // Typescript
 }
 
-func NewProblemFileSet(slug string, lang Language, directory Path) []ProblemFile {
+func NewProblemFileSet(baseName string, lang Language, directory Path) []ProblemFile {
 	return []ProblemFile{
 		{
 			Type:     SolutionFile,
-			Path:     directory.Join(fmt.Sprintf("%s%s", slug, lang.Extension())),
+			Path:     directory.Join(fmt.Sprintf("%s%s", baseName, lang.Extension())),
 			Language: lang,
 		},
 		{
 			Type:     TestFile,
-			Path:     directory.Join(fmt.Sprintf("%s_test%s", slug, lang.Extension())),
+			Path:     directory.Join(fmt.Sprintf("%s_test%s", baseName, lang.Extension())),
 			Language: lang,
 		},
 		{

@@ -3,10 +3,8 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/phantompunk/kata/internal/app"
-	"github.com/phantompunk/kata/internal/models"
 	"github.com/phantompunk/kata/internal/render"
 	"github.com/phantompunk/kata/internal/ui"
 	"github.com/spf13/cobra"
@@ -105,23 +103,4 @@ func displayRenderResults(result *render.RenderResult, slug string, force bool) 
 	}
 
 	ui.PrintNextSteps(slug)
-}
-
-func isQuestionStubbed(problem *models.Problem) bool {
-	exists, _ := PathExists(problem.DirPath)
-	return exists
-}
-
-func PathExists(path string) (bool, error) {
-	_, err := os.Stat(path)
-
-	if err == nil {
-		return true, nil
-	}
-
-	if errors.Is(err, os.ErrNotExist) {
-		return false, nil
-	}
-
-	return false, err
 }
