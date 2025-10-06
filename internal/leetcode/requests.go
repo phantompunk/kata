@@ -44,6 +44,7 @@ type SubmissionResponse struct {
 
 func (s SubmissionResponse) ToResult() *SubmissionResult {
 	return &SubmissionResult{
+		Answer:     s.Correct,
 		State:      s.State,
 		Result:     s.StatusMsg,
 		Runtime:    s.StatusRuntime,

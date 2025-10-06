@@ -166,7 +166,7 @@ func (lc *Service) doRequest(ctx context.Context, method, url string, body io.Re
 	}
 	defer res.Body.Close()
 
-	fmt.Println("Method", res)
+	fmt.Println("DoRequest Method", res)
 	if res.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("request failed with status code: %d", res.StatusCode)
 	}
@@ -261,12 +261,13 @@ func (lc *Service) Test(problem *models.Problem, language, snippet string) (stri
 		return "", fmt.Errorf("failed to marshal test request: %w", err)
 	}
 	fmt.Println("Payload", string(data))
+	fmt.Println("Url", url)
 
 	headers := map[string]string{
 		"referer": fmt.Sprintf(problemURL, problem.TitleSlug),
 	}
 
-	fmt.Printf("Testing on server")
+	fmt.Println("Testing on server")
 	body, err := lc.doRequest(context.Background(), http.MethodPost, url, bytes.NewReader(data), headers)
 	if err != nil {
 		return "", fmt.Errorf("test submission failed: %w", err)

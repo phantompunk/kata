@@ -51,7 +51,7 @@ func SubmitFunc(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	submissionId, err := kata.Download.SubmitQuestion(cmd.Context(), problem, opts)
+	submissionId, err := kata.Download.SubmitTest(cmd.Context(), problem, opts)
 	if err != nil {
 		return err
 	}
@@ -59,9 +59,9 @@ func SubmitFunc(cmd *cobra.Command, args []string) error {
 
 	// Display wait time til result
 	// Print ... while waiting
-	// startTime := time.Now()
-	// maxWait := time.Duration(10) * time.Second
-	// displayWaitForResults(startTime, maxWait)
+	startTime := time.Now()
+	maxWait := time.Duration(10) * time.Second
+	displayWaitForResults(startTime, maxWait)
 	//
 	// // wait til result
 	ui.PrintInfo("Waiting for " + submissionId)
@@ -95,7 +95,7 @@ func displayWaitForResults(start time.Time, wait time.Duration) {
 			if elapsed >= wait {
 				break
 			}
-			fmt.Print("Waiting for response")
+			fmt.Print(".")
 			time.Sleep(1 * time.Second)
 		}
 	}()

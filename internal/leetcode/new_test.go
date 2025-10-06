@@ -47,7 +47,7 @@ func TestSubmitQuestion(t *testing.T) {
 	snippet := "func twoSum(){}"
 
 	t.Run("Submit solution", func(t *testing.T) {
-		resp.SetResponse(200, `{"interpret_id": "12345","test_case": null}`)
+		resp.SetResponse(200, `{"submission_id": 12345,"test_case": null}`)
 		id, err := client.SubmitSolution(context.Background(), problem, snippet)
 
 		assert.NilError(t, err)

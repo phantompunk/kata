@@ -183,25 +183,26 @@ func (app *App) TestSolution(name, language string) error {
 		return fmt.Errorf("empty testStatusUrl received from server")
 	}
 
-	res, err := app.lcs.PollTestStatus(testStatusUrl)
-	if err != nil {
-		return fmt.Errorf("failed to poll test status: %w", err)
-	}
-
-	if res.Correct {
-		fmt.Println()
-		fmt.Println("✓ All test cases passed")
-		if err := app.Renderer.RenderOutput(os.Stdout, templates.CliTest, problem); err != nil {
-			return fmt.Errorf("failed to render quiz: %w", err)
-		}
-		return nil
-	}
-
-	fmt.Println()
-	fmt.Println("✗ Some test cases failed")
-	if err := app.Renderer.RenderOutput(os.Stdout, templates.CliTest, problem); err != nil {
-		return fmt.Errorf("failed to render quiz: %w", err)
-	}
+	fmt.Println("Submit test at", testStatusUrl)
+	// res, err := app.lcs.PollTestStatus(testStatusUrl)
+	// if err != nil {
+	// 	return fmt.Errorf("failed to poll test status: %w", err)
+	// }
+	//
+	// if res.Correct {
+	// 	fmt.Println()
+	// 	fmt.Println("✓ All test cases passed")
+	// 	if err := app.Renderer.RenderOutput(os.Stdout, templates.CliTest, problem); err != nil {
+	// 		return fmt.Errorf("failed to render quiz: %w", err)
+	// 	}
+	// 	return nil
+	// }
+	//
+	// fmt.Println()
+	// fmt.Println("✗ Some test cases failed")
+	// if err := app.Renderer.RenderOutput(os.Stdout, templates.CliTest, problem); err != nil {
+	// 	return fmt.Errorf("failed to render quiz: %w", err)
+	// }
 	return nil
 }
 
