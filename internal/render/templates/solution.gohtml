@@ -18,9 +18,15 @@
 {{define "javascript"}}// ::KATA START::
 {{.Code}}
 // ::KATA END::
+module.exports = { {{ .FunctionName }} }
 {{end}}
 
 {{define "typescript"}}// ::KATA START::
+{{.Code}}
+// ::KATA END::
+{{end}}
+
+{{define "rust"}}// ::KATA START::
 {{.Code}}
 // ::KATA END::
 {{end}}

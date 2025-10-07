@@ -30,6 +30,7 @@ type QuestionRenderer struct {
 func New() (*QuestionRenderer, error) {
 	funcMap := template.FuncMap{
 		"pascalCase": pascalCase,
+		"snakeCase":  snakeCase,
 	}
 
 	templ, err := template.New("new").Funcs(funcMap).ParseFS(Files, "templates/*")
@@ -88,7 +89,6 @@ func (r *QuestionRenderer) renderProblemFile(ctx context.Context, problem *domai
 	} else {
 		result.RecordFileCreated(problemFile.Path)
 	}
-
 	return nil
 }
 
@@ -138,4 +138,8 @@ func pascalCase(s string) string {
 	}
 
 	return result.String()
+}
+
+func snakeCase(s string) string {
+	return strings.ReplaceAll(string(s), "-", "_")
 }

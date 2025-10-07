@@ -34,25 +34,28 @@ type Language struct {
 	templateName  string //typescript
 	testTemplate  string //tsjest
 	fileExtension string //.ts
+	testExtension string //.test.ts
 }
 
 func NewProgrammingLanguage(name string) Language {
 	solution, test := resolveTemplateNames(name)
-	displayName, slug, extension := resolveLanguageMetadata(name)
+	displayName, slug, extension, testext := resolveLanguageMetadata(name)
 	return Language{
 		slug:          slug,
 		displayName:   displayName,
 		templateName:  solution,
 		testTemplate:  test,
 		fileExtension: extension,
+		testExtension: testext,
 	}
 }
 
-func (l Language) Slug() string         { return l.slug }
-func (l Language) Extension() string    { return l.fileExtension }
-func (l Language) DisplayName() string  { return l.displayName }
-func (l Language) TemplateName() string { return l.templateName }
-func (l Language) TestTemplate() string { return l.testTemplate }
+func (l Language) Slug() string          { return l.slug }
+func (l Language) Extension() string     { return l.fileExtension }
+func (l Language) DisplayName() string   { return l.displayName }
+func (l Language) TemplateName() string  { return l.templateName }
+func (l Language) TestTemplate() string  { return l.testTemplate }
+func (l Language) TestExtension() string { return l.testExtension }
 
 type ProblemFile struct {
 	Type     FileType //solution
@@ -69,7 +72,7 @@ func NewProblemFileSet(baseName string, lang Language, directory Path) []Problem
 		},
 		{
 			Type:     TestFile,
-			Path:     directory.Join(fmt.Sprintf("%s_test%s", baseName, lang.Extension())),
+			Path:     directory.Join(fmt.Sprintf("%s%s", baseName, lang.TestExtension())),
 			Language: lang,
 		},
 		{
@@ -149,29 +152,31 @@ func resolveTemplateNames(slug string) (string, string) {
 	case "python", "python3":
 		return "python3", "pytest"
 	case "js", "javascript":
-		return "javascript", "test"
+		return "javascript", "jest"
 	case "ts", "typescript":
-		return "typescript", "test"
+		return "typescript", "jest-ts"
+	case "rs", "rust":
+		return "rust", "rust-test"
 	default:
 		return "solution", "test"
 	}
 }
 
-func resolveLanguageMetadata(slug string) (string, string, string) {
+func resolveLanguageMetadata(slug string) (string, string, string, string) {
 	switch slug {
 	case "go", "golang":
-		return "Go", "go", ".go"
+		return "Go", "go", ".go", "_test.go"
 	case "python", "python3":
-		return "Python", "python", ".py"
+		return "Python", "python", ".py", "_test.py"
 	case "js", "javascript":
-		return "JavaScript", "javascript", ".js"
+		return "JavaScript", "javascript", ".js", ".test.js"
 	case "ts", "typescript":
-		return "TypeScript", "typescript", ".ts"
+		return "TypeScript", "typescript", ".ts", ".test.ts"
 	case "rust":
-		return "Rust", "rust", ".rs"
+		return "Rust", "rust", ".rs", ".rs"
 	case "cpp", "c++":
-		return "C++", "cpp", ".cpp"
+		return "C++", "cpp", ".cpp", ".cpp"
 	default:
-		return slug, slug, slug
+		return slug, slug, slug, slug
 	}
 }

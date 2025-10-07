@@ -46,3 +46,51 @@ class Test{{ pascalCase .FunctionName }}(unittest.TestCase):
 if __name__ == "__main__":
     unittest.main()
 {{end}}
+
+{{define "jest"}}const { {{ .FunctionName }} } = require('./{{ snakeCase .Slug }}');
+
+describe('{{ .FunctionName }}', () => {
+    it('should pass example test cases', () => {
+        // Add your test cases here
+        expect({{ .FunctionName }}()).toBeDefined();
+    });
+
+    it('should handle edge cases', () => {
+        // Add edge case tests here
+    });
+});
+{{end}}
+
+
+{{define "jest-ts"}}import { {{ .FunctionName }} } from './{{ snakeCase .Slug }}';
+
+describe('{{ .FunctionName }}', () => {
+    it('should pass example test cases', () => {
+        // Add your test cases here
+        expect({{ .FunctionName }}()).toBeDefined();
+    });
+
+    it('should handle edge cases', () => {
+        // Add edge case tests here
+    });
+});
+{{end}}
+
+{{define "rust-test"}}#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_{{ snakeCase .FunctionName }}() {
+        let test_cases = vec![
+            // Add your test cases here
+            // (input, expected),
+        ];
+
+        for (input, expected) in test_cases {
+            let result = {{ snakeCase .FunctionName }}(input);
+            assert_eq!(result, expected);
+        }
+    }
+}
+{{end}}
