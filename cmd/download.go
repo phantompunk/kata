@@ -39,7 +39,7 @@ func DownloadFunc(cmd *cobra.Command, args []string) error {
 		Force:     force,
 	}
 
-	problem, err := kata.Download.GetQuestion(cmd.Context(), opts)
+	problem, err := kata.Question.GetQuestion(cmd.Context(), opts)
 	if err != nil {
 		if errors.Is(err, app.ErrQuestionNotFound) {
 			ui.PrintError("Problem %q not found", problemName)
@@ -56,7 +56,7 @@ func DownloadFunc(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	result, err := kata.Download.Stub(cmd.Context(), problem, opts)
+	result, err := kata.Question.Stub(cmd.Context(), problem, opts)
 	if err != nil {
 		return fmt.Errorf("stubbing question %q: %w", opts.Problem, err)
 	}

@@ -16,15 +16,15 @@ import (
 	"github.com/spf13/afero"
 )
 
-type DownloadService struct {
+type QuestionService struct {
 	repo      *repository.Queries
 	client    leetcode.Client
 	renderer  render.Renderer
 	extractor *Extractor
 }
 
-func NewDownloadService(repo *repository.Queries, client leetcode.Client, renderer render.Renderer) *DownloadService {
-	return &DownloadService{
+func NewQuestionService(repo *repository.Queries, client leetcode.Client, renderer render.Renderer) *QuestionService {
+	return &QuestionService{
 		repo:      repo,
 		client:    client,
 		renderer:  renderer,
@@ -32,7 +32,7 @@ func NewDownloadService(repo *repository.Queries, client leetcode.Client, render
 	}
 }
 
-func (s *DownloadService) GetQuestion(ctx context.Context, opts AppOptions) (*domain.Problem, error) {
+func (s *QuestionService) GetQuestion(ctx context.Context, opts AppOptions) (*domain.Problem, error) {
 	question, err := s.repo.GetBySlug(ctx, opts.Problem)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("failed to get question from repository: %w", err)
@@ -59,11 +59,11 @@ func (s *DownloadService) GetQuestion(ctx context.Context, opts AppOptions) (*do
 	return toProblem(createdQuestion, opts), nil
 }
 
-func (s *DownloadService) Stub(ctx context.Context, problem *domain.Problem, opts AppOptions) (*render.RenderResult, error) {
+func (s *QuestionService) Stub(ctx context.Context, problem *domain.Problem, opts AppOptions) (*render.RenderResult, error) {
 	return s.renderer.RenderProblem(ctx, problem, opts.Force)
 }
 
-func (s *DownloadService) GetRandomQuestion(ctx context.Context, opts AppOptions) (*domain.Problem, error) {
+func (s *QuestionService) GetRandomQuestion(ctx context.Context, opts AppOptions) (*domain.Problem, error) {
 	question, err := s.repo.GetRandom(ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -75,7 +75,7 @@ func (s *DownloadService) GetRandomQuestion(ctx context.Context, opts AppOptions
 	return question.ToProblem(opts.Workspace, opts.Language), nil
 }
 
-func (s *DownloadService) SubmitTest(ctx context.Context, problem *domain.Problem, opts AppOptions) (string, error) {
+func (s *QuestionService) SubmitTest(ctx context.Context, problem *domain.Problem, opts AppOptions) (string, error) {
 	snippet := s.extractor.ExtractSnippet(problem.SolutionPath())
 	submissionId, err := s.client.SubmitTest(ctx, problem, snippet)
 	if err != nil {
@@ -84,7 +84,7 @@ func (s *DownloadService) SubmitTest(ctx context.Context, problem *domain.Proble
 	return submissionId, err
 }
 
-func (s *DownloadService) SubmitQuestion(ctx context.Context, problem *domain.Problem, opts AppOptions) (string, error) {
+func (s *QuestionService) SubmitQuestion(ctx context.Context, problem *domain.Problem, opts AppOptions) (string, error) {
 	snippet := s.extractor.ExtractSnippet(problem.SolutionPath())
 	submissionId, err := s.client.SubmitSolution(ctx, problem, snippet)
 	if err != nil {
@@ -93,7 +93,7 @@ func (s *DownloadService) SubmitQuestion(ctx context.Context, problem *domain.Pr
 	return submissionId, err
 }
 
-func (s *DownloadService) WaitForResult(ctx context.Context, submissionId string, maxWaitTime time.Duration) (*leetcode.SubmissionResult, error) {
+func (s *QuestionService) WaitForResult(ctx context.Context, submissionId string, maxWaitTime time.Duration) (*leetcode.SubmissionResult, error) {
 	startTime := time.Now()
 	pollInterval := 1 * time.Second
 
@@ -112,7 +112,7 @@ func (s *DownloadService) WaitForResult(ctx context.Context, submissionId string
 	return nil, fmt.Errorf("submission timed out after %v", maxWaitTime)
 }
 
-func (s *DownloadService) GetBySlug(ctx context.Context, opts AppOptions) (*domain.Problem, error) {
+func (s *QuestionService) GetBySlug(ctx context.Context, opts AppOptions) (*domain.Problem, error) {
 	question, err := s.repo.GetBySlug(ctx, opts.Problem)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -122,6 +122,27 @@ func (s *DownloadService) GetBySlug(ctx context.Context, opts AppOptions) (*doma
 	}
 
 	return question.ToDProblem(opts.Workspace, opts.Language), nil
+}
+
+func (s *QuestionService) GetAllQuestionsWithStatus(ctx context.Context, opts AppOptions) ([]domain.QuestionStat, error) {
+	stats, err := s.repo.GetAllWithStatus(ctx, opts.Tracks)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(stats) == 0 {
+		return nil, ErrNoQuestions
+	}
+
+	return stats, nil
+}
+
+func (s *QuestionService) GetStats(ctx context.Context) (repository.GetStatsRow, error) {
+	stats, err := s.repo.GetStats(ctx)
+	if err != nil {
+		return repository.GetStatsRow{}, fmt.Errorf("failed to get stats: %w", err)
+	}
+	return stats, nil
 }
 
 func toProblem(question repository.Question, opts AppOptions) *domain.Problem {

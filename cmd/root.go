@@ -32,7 +32,7 @@ var rootCmd = &cobra.Command{
 	SilenceErrors: true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		kata, kataErr = app.New()
-		displayWarnings(kata.Settings.GetWarnings())
+		displayWarnings(kata.Setting.GetWarnings())
 		return kataErr
 	},
 }

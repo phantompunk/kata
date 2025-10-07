@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/phantompunk/kata/internal/app"
@@ -22,22 +21,33 @@ func init() {
 }
 
 func LoginFunc(cmd *cobra.Command, args []string) error {
-	if !kata.Config.HasValidSession() {
-		if err := kata.RefreshCookies(); err != nil {
-			return fmt.Errorf("%w: %w", app.ErrCookiesNotFound, err)
+	if !force {
+		if err := kata.Session.CheckSession(cmd.Context()); err == nil {
+			ui.PrintInfo("You are already logged in as " + kata.Config.Username)
+			res, err := kata.Question.GetStats(cmd.Context())
+			if err != nil {
+				return err
+			}
+			fmt.Print(ui.RenderLoginResult(kata.Config.Username, res))
+			return nil
 		}
 	}
 
-	if err := kata.ValidateSession(); err != nil {
+	if err := kata.Session.RefreshFromBrowser(); err != nil {
+		return fmt.Errorf("%w: %w", app.ErrCookiesNotFound, err)
+	}
+
+	username, err := kata.Session.ValidateSession(cmd.Context())
+	if err != nil {
 		return fmt.Errorf("failed to validate session: %w", err)
 	}
-
 	ui.PrintSuccess("Authentication successful")
-	res, err := kata.Repo.GetStats(context.Background())
+
+	res, err := kata.Question.GetStats(cmd.Context())
 	if err != nil {
-		return fmt.Errorf("failed to get stats: %w", err)
+		return err
 	}
 
-	fmt.Print(ui.RenderLoginResult(kata.Config.Username, res))
+	fmt.Print(ui.RenderLoginResult(username, res))
 	return nil
 }

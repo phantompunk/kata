@@ -12,6 +12,6 @@ var settingsCmd = &cobra.Command{
 }
 
 func ConfigFunc(cmd *cobra.Command, args []string) error {
-	ui.PrintSuccess("Opening config file: %s", kata.Settings.GetPath())
-	return kata.Settings.EditConfig()
+	ui.PrintSuccess("Opening config file: %s", kata.Setting.GetPath())
+	return kata.Setting.EditConfig()
 }

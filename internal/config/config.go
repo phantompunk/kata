@@ -11,7 +11,7 @@ import (
 
 	"github.com/adrg/xdg"
 	"github.com/go-yaml/yaml"
-	"github.com/phantompunk/kata/internal/editor"
+	"github.com/phantompunk/kata/pkg/editor"
 )
 
 var (
@@ -89,13 +89,13 @@ func (s *ConfigService) EditConfig() error {
 	return nil
 }
 
-func (s *ConfigService) UpdateSession(sessionToken, csrfToken string) error {
+func (s *ConfigService) UpdateSession(session Session) error {
 	cgf, err := s.repository.Load()
 	if err != nil {
 		return err
 	}
 
-	cgf.Session = NewSession(sessionToken, csrfToken)
+	cgf.Session = session
 	return s.repository.Save(cgf)
 }
 

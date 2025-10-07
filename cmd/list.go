@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/phantompunk/kata/internal/app"
 	"github.com/phantompunk/kata/internal/table"
 	"github.com/spf13/cobra"
 )
@@ -14,7 +15,11 @@ var listCmd = &cobra.Command{
 }
 
 func ListFunc(cmd *cobra.Command, args []string) error {
-	questions, err := kata.GetAllQuestionsWithStatus(cmd.Context())
+	opts := app.AppOptions{
+		Tracks: kata.Config.Tracks,
+	}
+
+	questions, err := kata.Question.GetAllQuestionsWithStatus(cmd.Context(), opts)
 	if err != nil {
 		return fmt.Errorf("listing questions: %w", err)
 	}

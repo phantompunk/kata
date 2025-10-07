@@ -20,13 +20,17 @@ import (
 const (
 	baseUrl            = "https://leetcode.com"
 	graphQLEndpoint    = baseUrl + "/graphql/"
-	testEndpoint       = baseUrl + "/problems/%s/interpret_solution/"
+	problemEndpoint    = baseUrl + "/problems/%s/"
 	submitEndpoint     = baseUrl + "/problems/%s/submit/"
 	submissionEndpoint = baseUrl + "/submissions/detail/%s/check/"
+	testEndpoint       = baseUrl + "/problems/%s/interpret_solution/"
 )
 
 var (
-	ErrRequestFailed = errors.New("request failed")
+	ErrRequestFailed    = errors.New("request failed")
+	ErrQuestionNotFound = errors.New("no matching question found")
+	ErrMetadataMissing  = errors.New("question metadata missing")
+	ErrNotAuthenticated = errors.New("not authenticated")
 )
 
 type Client interface {
@@ -37,19 +41,9 @@ type Client interface {
 	SubmitSolution(ctx context.Context, problem *domain.Problem, snippet string) (string, error)
 	CheckSubmissionResult(ctx context.Context, url string) (*SubmissionResult, error)
 
-	// GetUserProfile(ctx context.Context) (UserProfile, error)
-	// GetUserStats(ctx context.Context) (UserStats, error)
-	// GetUserName() string
-}
-
-type SubmissionResult struct {
-	State      string
-	Answer     bool
-	Result     string
-	Runtime    string
-	RuntimeMsg string
-	Memory     string
-	MemoryMsg  string
+	GetUsername(ctx context.Context) (string, error)
+	IsAuthenticated(ctx context.Context) (bool, error)
+	SetSession(session config.Session)
 }
 
 type LeetCodeClient struct {
@@ -67,14 +61,6 @@ func WithHTTPClient(httpClient *http.Client) Options {
 	}
 }
 
-// WithCookies sets the session ID and CSRF token for authentication.
-func WithCookies(sessionID, csrfToken string) Options {
-	return func(lc *LeetCodeClient) {
-		lc.sessionID = sessionID
-		lc.csrfToken = csrfToken
-	}
-}
-
 func WithSession(session config.Session) Options {
 	return func(lc *LeetCodeClient) {
 		lc.sessionID = session.SessionToken
@@ -82,14 +68,7 @@ func WithSession(session config.Session) Options {
 	}
 }
 
-// NewClient creates a new LeetCode client with the provided options.
-func NewClient(httpClient *http.Client) *LeetCodeClient {
-	return &LeetCodeClient{
-		client: httpClient,
-	}
-}
-
-func NewLC(opts ...Options) *LeetCodeClient {
+func NewClient(opts ...Options) *LeetCodeClient {
 	jar, _ := cookiejar.New(nil)
 	lc := &LeetCodeClient{
 		client: &http.Client{
@@ -118,6 +97,12 @@ func (lc *LeetCodeClient) initialize() {
 
 	u, _ := url.Parse(baseUrl)
 	lc.client.Jar.SetCookies(u, cookies)
+}
+
+func (lc *LeetCodeClient) SetSession(session config.Session) {
+	lc.sessionID = session.SessionToken
+	lc.csrfToken = session.CsrfToken
+	lc.initialize()
 }
 
 func (lc *LeetCodeClient) FetchQuestion(ctx context.Context, slug string) (*Question, error) {
@@ -225,7 +210,7 @@ func (lc *LeetCodeClient) Submit(ctx context.Context, url string, problem *domai
 	}
 
 	headers := map[string]string{
-		"referer": fmt.Sprintf(problemURL, problem.Slug),
+		"referer": fmt.Sprintf(problemEndpoint, problem.Slug),
 	}
 
 	resp, err := lc.makeRequest(ctx, "POST", url, bytes.NewBuffer(data), headers)
@@ -254,6 +239,48 @@ func (lc *LeetCodeClient) Submit(ctx context.Context, url string, problem *domai
 
 	return &response, nil
 }
+
+func (lc *LeetCodeClient) IsAuthenticated(ctx context.Context) (bool, error) {
+	query := `query globalData {
+		userStatus {
+			isSignedIn
+		}
+	}`
+
+	res, err := lc.graphQLRequest(ctx, query, nil, nil)
+	if err != nil {
+		return false, err
+	}
+
+	var response AuthResponse
+	if err := json.Unmarshal(res, &response); err != nil {
+		return false, err
+	}
+
+	return response.Data.UserStatus.IsSignedIn, nil
+}
+
+func (lc *LeetCodeClient) GetUsername(ctx context.Context) (string, error) {
+	query := `query globalData {
+		userStatus {
+			username
+		}
+	}`
+
+	res, err := lc.graphQLRequest(ctx, query, nil, nil)
+	if err != nil {
+		return "", err
+	}
+
+	var response AuthResponse
+	if err := json.Unmarshal(res, &response); err != nil {
+		return "", err
+	}
+
+	return response.Data.UserStatus.Username, nil
+}
+
+type Map map[string]string
 
 func (lc *LeetCodeClient) graphQLRequest(ctx context.Context, query string, variables map[string]any, headers Map) ([]byte, error) {
 	reqBody := map[string]any{

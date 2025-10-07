@@ -38,7 +38,7 @@ func TestFunc(cmd *cobra.Command, args []string) error {
 		Workspace: kata.Config.WorkspacePath(),
 	}
 
-	problem, err := kata.Download.GetBySlug(cmd.Context(), opts)
+	problem, err := kata.Question.GetBySlug(cmd.Context(), opts)
 	if err != nil {
 		if errors.Is(err, app.ErrQuestionNotFound) {
 			ui.PrintError("Problem %s not found", problemName)
@@ -53,7 +53,7 @@ func TestFunc(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	submissionId, err := kata.Download.SubmitTest(cmd.Context(), problem, opts)
+	submissionId, err := kata.Question.SubmitTest(cmd.Context(), problem, opts)
 	if err != nil {
 		return err
 	}
@@ -63,7 +63,7 @@ func TestFunc(cmd *cobra.Command, args []string) error {
 	maxWait := time.Duration(10) * time.Second
 	displayWaitForResults(startTime, maxWait)
 
-	result, err := kata.Download.WaitForResult(cmd.Context(), submissionId, maxWait)
+	result, err := kata.Question.WaitForResult(cmd.Context(), submissionId, maxWait)
 	if err != nil {
 		if errors.Is(err, app.ErrSolutionFailed) {
 			ui.PrintError("Solution failed")

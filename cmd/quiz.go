@@ -6,6 +6,7 @@ import (
 
 	"github.com/phantompunk/kata/internal/app"
 	"github.com/phantompunk/kata/internal/ui"
+	"github.com/phantompunk/kata/pkg/editor"
 	"github.com/spf13/cobra"
 )
 
@@ -32,7 +33,7 @@ func QuizFunc(cmd *cobra.Command, args []string) error {
 		Open:      open,
 	}
 
-	problem, err := kata.Download.GetRandomQuestion(cmd.Context(), opts)
+	problem, err := kata.Question.GetRandomQuestion(cmd.Context(), opts)
 	if err != nil {
 		if errors.Is(err, app.ErrNoQuestions) {
 			ui.PrintError("No eligible problems to quiz on")
@@ -49,7 +50,7 @@ func QuizFunc(cmd *cobra.Command, args []string) error {
 	}
 
 	if opts.Open || kata.Config.OpenInEditor {
-		if err := kata.OpenQuestionInEditor(problem); err != nil {
+		if err := editor.Open(problem.SolutionPath()); err != nil {
 			return fmt.Errorf("failed to open solution file in editor: %w", err)
 		}
 	}

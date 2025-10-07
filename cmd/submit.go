@@ -36,7 +36,7 @@ func SubmitFunc(cmd *cobra.Command, args []string) error {
 		Workspace: kata.Config.WorkspacePath(),
 	}
 
-	problem, err := kata.Download.GetBySlug(cmd.Context(), opts)
+	problem, err := kata.Question.GetBySlug(cmd.Context(), opts)
 	if err != nil {
 		if errors.Is(err, app.ErrQuestionNotFound) {
 			ui.PrintError("Problem %s not found", problemName)
@@ -51,7 +51,7 @@ func SubmitFunc(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	submissionId, err := kata.Download.SubmitTest(cmd.Context(), problem, opts)
+	submissionId, err := kata.Question.SubmitTest(cmd.Context(), problem, opts)
 	if err != nil {
 		return err
 	}
