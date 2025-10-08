@@ -76,7 +76,10 @@ func (s *QuestionService) GetRandomQuestion(ctx context.Context, opts AppOptions
 }
 
 func (s *QuestionService) SubmitTest(ctx context.Context, problem *domain.Problem, opts AppOptions) (string, error) {
-	snippet := s.extractor.ExtractSnippet(problem.SolutionPath())
+	snippet, err := s.extractor.ExtractSnippet(problem.SolutionPath())
+	if err != nil {
+		return "", err
+	}
 	submissionId, err := s.client.SubmitTest(ctx, problem, snippet)
 	if err != nil {
 		return "", err
@@ -85,7 +88,11 @@ func (s *QuestionService) SubmitTest(ctx context.Context, problem *domain.Proble
 }
 
 func (s *QuestionService) SubmitQuestion(ctx context.Context, problem *domain.Problem, opts AppOptions) (string, error) {
-	snippet := s.extractor.ExtractSnippet(problem.SolutionPath())
+	snippet, err := s.extractor.ExtractSnippet(problem.SolutionPath())
+	if err != nil {
+		return "", err
+	}
+
 	submissionId, err := s.client.SubmitSolution(ctx, problem, snippet)
 	if err != nil {
 		return "", err
@@ -121,7 +128,7 @@ func (s *QuestionService) GetBySlug(ctx context.Context, opts AppOptions) (*doma
 		return nil, fmt.Errorf("failed to get question: %w", err)
 	}
 
-	return question.ToDProblem(opts.Workspace, opts.Language), nil
+	return question.ToProblem(opts.Workspace, opts.Language), nil
 }
 
 func (s *QuestionService) GetAllQuestionsWithStatus(ctx context.Context, opts AppOptions) ([]domain.QuestionStat, error) {
@@ -146,7 +153,7 @@ func (s *QuestionService) GetStats(ctx context.Context) (repository.GetStatsRow,
 }
 
 func toProblem(question repository.Question, opts AppOptions) *domain.Problem {
-	return question.ToDProblem(opts.Workspace, opts.Language)
+	return question.ToProblem(opts.Workspace, opts.Language)
 }
 
 type Extractor struct {
@@ -157,8 +164,11 @@ func NewExtractor() *Extractor {
 	return &Extractor{fs: afero.NewOsFs()}
 }
 
-func (e Extractor) ExtractSnippet(path string) string {
-	file, _ := e.fs.Open(path)
+func (e Extractor) ExtractSnippet(path string) (string, error) {
+	file, err := e.fs.Open(path)
+	if err != nil {
+		return "", err
+	}
 	defer file.Close()
 
 	startMarker := fmt.Sprint("// ::KATA START::")
@@ -185,8 +195,7 @@ func (e Extractor) ExtractSnippet(path string) string {
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		// todo return error
-		return ""
+		return "", err
 	}
-	return strings.TrimSpace(builder.String())
+	return strings.TrimSpace(builder.String()), nil
 }

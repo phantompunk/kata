@@ -1,11 +1,14 @@
 package leetcode
 
 import (
+	"bytes"
 	"context"
+	"io"
+	"net/http"
 	"testing"
 
-	"github.com/phantompunk/kata/internal/assert"
 	"github.com/phantompunk/kata/internal/domain"
+	"github.com/phantompunk/kata/pkg/assert"
 )
 
 func TestFetchQuestion(t *testing.T) {
@@ -75,4 +78,50 @@ func TestCheckResult(t *testing.T) {
 		assert.NilError(t, err)
 		assert.Equal(t, result.Runtime, "0 ms")
 	})
+}
+
+func TestUserStatus(t *testing.T) {
+	resp := &Responder{}
+	client := newTestClient(resp)
+
+	t.Run("User logged out", func(t *testing.T) {
+		resp.SetResponse(200, `{"data":{"userStatus":{"isSignedIn":false}}}`)
+		authenticated, err := client.IsAuthenticated(context.Background())
+
+		assert.NilError(t, err)
+		assert.Equal(t, authenticated, false)
+	})
+
+	t.Run("User signed in", func(t *testing.T) {
+		resp.SetResponse(200, `{"data":{"userStatus":{"isSignedIn":true,"username":"tester"}}}`)
+		username, err := client.GetUsername(context.Background())
+
+		assert.NilError(t, err)
+		assert.Equal(t, username, "tester")
+	})
+}
+
+type Responder struct {
+	Status int
+	Body   string
+}
+
+func (r *Responder) SetResponse(status int, body string) {
+	r.Status = status
+	r.Body = body
+}
+
+func (r *Responder) RoundTrip(req *http.Request) (*http.Response, error) {
+	return &http.Response{
+		StatusCode: r.Status,
+		Body:       io.NopCloser(bytes.NewReader([]byte(r.Body))),
+		Header:     make(http.Header),
+		Request:    req,
+	}, nil
+}
+
+func newTestClient(responder *Responder) *LeetCodeClient {
+	client := &http.Client{}
+	client.Transport = responder
+	return WithClient(client)
 }

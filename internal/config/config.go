@@ -90,13 +90,13 @@ func (s *ConfigService) EditConfig() error {
 }
 
 func (s *ConfigService) UpdateSession(session Session) error {
-	cgf, err := s.repository.Load()
+	cfg, err := s.repository.Load()
 	if err != nil {
 		return err
 	}
 
-	cgf.Session = session
-	return s.repository.Save(cgf)
+	cfg.Session = session
+	return s.repository.Save(cfg)
 }
 
 func (s *ConfigService) SaveUsername(username string) error {
@@ -243,7 +243,6 @@ func NewConfigValidator() *ConfigValidator {
 
 func (v *ConfigValidator) Validate(c *Config) error {
 	if c.workspace == "" {
-		fmt.Printf("Workspace: %s", c.workspace)
 		return errors.New("workspace is not set")
 	}
 

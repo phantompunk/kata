@@ -27,10 +27,15 @@ const (
 )
 
 var (
-	ErrRequestFailed    = errors.New("request failed")
-	ErrQuestionNotFound = errors.New("no matching question found")
-	ErrMetadataMissing  = errors.New("question metadata missing")
-	ErrNotAuthenticated = errors.New("not authenticated")
+	ErrRequestFailed      = errors.New("request failed")
+	ErrQuestionNotFound   = errors.New("no matching question found")
+	ErrMetadataMissing    = errors.New("question metadata missing")
+	ErrNotAuthenticated   = errors.New("not authenticated")
+	ErrSubmissionNotFound = errors.New("submission not found")
+	ErrUnauthorized       = errors.New("unauthorized: session invalid or expired")
+	ErrRateLimited        = errors.New("rate limited: too many requests")
+	ErrServerError        = errors.New("leetcode server error")
+	ErrInvalidResponse    = errors.New("invalid response format")
 )
 
 type Client interface {
@@ -65,6 +70,12 @@ func WithSession(session config.Session) Options {
 	return func(lc *LeetCodeClient) {
 		lc.sessionID = session.SessionToken
 		lc.csrfToken = session.CsrfToken
+	}
+}
+
+func WithClient(httpClient *http.Client) *LeetCodeClient {
+	return &LeetCodeClient{
+		client: httpClient,
 	}
 }
 
@@ -188,6 +199,7 @@ func (lc *LeetCodeClient) CheckSubmissionResult(ctx context.Context, submissionI
 
 	// TODO: handle errors
 	if resp.StatusCode != http.StatusOK {
+		return nil, handleHttpError(resp)
 	}
 
 	body, err := io.ReadAll(resp.Body)
@@ -220,11 +232,7 @@ func (lc *LeetCodeClient) Submit(ctx context.Context, url string, problem *domai
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("request failed with status %d", resp.StatusCode)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, ErrRequestFailed
+		return nil, handleHttpError(resp)
 	}
 
 	body, err := io.ReadAll(resp.Body)
@@ -280,9 +288,9 @@ func (lc *LeetCodeClient) GetUsername(ctx context.Context) (string, error) {
 	return response.Data.UserStatus.Username, nil
 }
 
-type Map map[string]string
+type Headers map[string]string
 
-func (lc *LeetCodeClient) graphQLRequest(ctx context.Context, query string, variables map[string]any, headers Map) ([]byte, error) {
+func (lc *LeetCodeClient) graphQLRequest(ctx context.Context, query string, variables map[string]any, headers Headers) ([]byte, error) {
 	reqBody := map[string]any{
 		"query":     query,
 		"variables": variables,
@@ -300,14 +308,14 @@ func (lc *LeetCodeClient) graphQLRequest(ctx context.Context, query string, vari
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, ErrRequestFailed
+		return nil, handleHttpError(resp)
 	}
 
 	return io.ReadAll(resp.Body)
 }
 
-func (lc *LeetCodeClient) makeRequest(ctx context.Context, method, Surl string, body io.Reader, headers Map) (*http.Response, error) {
-	req, err := http.NewRequestWithContext(ctx, method, Surl, body)
+func (lc *LeetCodeClient) makeRequest(ctx context.Context, method, url string, body io.Reader, headers Headers) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, method, url, body)
 	if err != nil {
 		return nil, err
 	}
@@ -322,4 +330,21 @@ func (lc *LeetCodeClient) makeRequest(ctx context.Context, method, Surl string, 
 	}
 
 	return lc.client.Do(req)
+}
+
+func handleHttpError(resp *http.Response) error {
+	switch resp.StatusCode {
+	case http.StatusOK:
+		return nil
+	case http.StatusNotFound:
+		return ErrSubmissionNotFound
+	case http.StatusUnauthorized, http.StatusForbidden:
+		return ErrUnauthorized
+	case http.StatusTooManyRequests:
+		return ErrRateLimited
+	case http.StatusInternalServerError, http.StatusBadGateway, http.StatusServiceUnavailable:
+		return ErrServerError
+	default:
+		return fmt.Errorf("unexpected status code %d", resp.StatusCode)
+	}
 }

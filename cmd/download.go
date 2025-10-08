@@ -87,7 +87,7 @@ func displayRenderResults(result *render.RenderResult, slug string, force bool) 
 	if len(result.FilesSkipped) == 1 && result.FilesSkipped[0] == "All files" {
 		ui.PrintInfo(fmt.Sprintf("Problem %s already exists\n", slug))
 		if !force {
-			fmt.Printf("To refresh files, run:\n  kata get %s --force\n", slug)
+			ui.Print(fmt.Sprintf("To refresh files, run:\n  kata get %s --force\n", slug))
 		}
 		return
 	}

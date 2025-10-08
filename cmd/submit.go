@@ -57,24 +57,22 @@ func SubmitFunc(cmd *cobra.Command, args []string) error {
 	}
 	ui.PrintSuccess("Submitting solution to leetcode")
 
-	// Display wait time til result
-	// Print ... while waiting
 	startTime := time.Now()
 	maxWait := time.Duration(10) * time.Second
-	displayWaitForResults(startTime, maxWait)
-	//
-	// // wait til result
-	ui.PrintInfo("Waiting for " + submissionId)
-	// result, err := kata.Download.WaitForResult(cmd.Context(), submissionId, maxWait)
-	// if err != nil {
-	// 	if errors.Is(err, app.ErrSolutionFailed) {
-	// 		ui.PrintError("Solution failed")
-	// 	}
-	// 	return err
-	// }
-	// // print result summary
-	// displaySubmissionResults(result)
 
+	done := make(chan struct{})
+	go displayWaitForResults(startTime, maxWait, done)
+
+	ui.PrintInfo("Waiting for " + submissionId)
+	result, err := kata.Question.WaitForResult(cmd.Context(), submissionId, maxWait)
+	if err != nil {
+		if errors.Is(err, app.ErrSolutionFailed) {
+			ui.PrintError("Solution failed")
+		}
+		return err
+	}
+
+	displaySubmissionResults(result)
 	return nil
 }
 
@@ -88,15 +86,19 @@ func displaySubmissionResults(result *leetcode.SubmissionResult) {
 	ui.PrintInfo("🎉 Great job! Your solution was accepted.")
 }
 
-func displayWaitForResults(start time.Time, wait time.Duration) {
-	go func() {
-		for {
-			elapsed := time.Since(start)
-			if elapsed >= wait {
-				break
+func displayWaitForResults(start time.Time, wait time.Duration, done <-chan struct{}) {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-done:
+			return
+		case <-ticker.C:
+			if time.Since(start) <= wait {
+				return
 			}
 			fmt.Print(".")
-			time.Sleep(1 * time.Second)
 		}
-	}()
+	}
 }

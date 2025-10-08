@@ -28,7 +28,7 @@ func LoginFunc(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			fmt.Print(ui.RenderLoginResult(kata.Config.Username, res))
+			ui.Print(ui.RenderLoginResult(kata.Config.Username, res))
 			return nil
 		}
 	}
@@ -48,6 +48,6 @@ func LoginFunc(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Print(ui.RenderLoginResult(username, res))
+	ui.Print(ui.RenderLoginResult(username, res))
 	return nil
 }

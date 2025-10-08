@@ -52,25 +52,7 @@ func (q *Queries) GetAllWithStatus(ctx context.Context, languages []string) ([]d
 	return items, nil
 }
 
-// func (q *Question) ToModelQuestion() (*models.Question, error) {
-// 	var modelQuestion models.Question
-// 	modelQuestion.ID = fmt.Sprintf("%d", q.QuestionID)
-// 	modelQuestion.Title = q.Title
-// 	modelQuestion.TitleSlug = q.TitleSlug
-// 	modelQuestion.Difficulty = q.Difficulty
-// 	modelQuestion.FunctionName = q.FunctionName
-// 	modelQuestion.Content = q.Content
-//
-// 	if err := json.Unmarshal([]byte(q.CodeSnippets), &modelQuestion.CodeSnippets); err != nil {
-// 		return nil, err
-// 	}
-// 	if err := json.Unmarshal([]byte(q.TestCases), &modelQuestion.TestCaseList); err != nil {
-// 		return nil, err
-// 	}
-// 	return &modelQuestion, nil
-// }
-
-func (q *Question) ToDProblem(workspace, language string) *domain.Problem {
+func (q *Question) ToProblem(workspace, language string) *domain.Problem {
 	dir := formatTitleSlug(q.TitleSlug)
 	lang := domain.NewProgrammingLanguage(language)
 	directory := domain.Path(filepath.Join(workspace, lang.Slug(), dir))

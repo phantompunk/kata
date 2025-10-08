@@ -30,8 +30,6 @@ func TestFunc(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Println(language)
-
 	opts := app.AppOptions{
 		Language:  language,
 		Problem:   problemName,
@@ -57,11 +55,13 @@ func TestFunc(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Print("✔ Running tests")
+	ui.PrintSuccess("Running tests")
 
 	startTime := time.Now()
 	maxWait := time.Duration(10) * time.Second
-	displayWaitForResults(startTime, maxWait)
+
+	done := make(chan struct{})
+	go displayWaitForResults(startTime, maxWait, done)
 
 	result, err := kata.Question.WaitForResult(cmd.Context(), submissionId, maxWait)
 	if err != nil {

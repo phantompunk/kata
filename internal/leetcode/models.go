@@ -94,7 +94,6 @@ func (s *SubmissionID) UnmarshalJSON(data []byte) error {
 	// Otherwise, try integer
 	var num int64
 	if err := json.Unmarshal(data, &num); err != nil {
-		fmt.Println("failed here")
 		return err
 	}
 	*s = SubmissionID(strconv.FormatInt(num, 10))
