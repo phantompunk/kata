@@ -36,7 +36,7 @@ func (p *Problem) GetID() int {
 
 type Language struct {
 	slug          string //ts
-	displayName   string //typescript
+	displayName   string //Typescript
 	templateName  string //typescript
 	testTemplate  string //tsjest
 	fileExtension string //.ts
@@ -161,10 +161,30 @@ func resolveTemplateNames(slug string) (string, string) {
 		return "javascript", "jest"
 	case "ts", "typescript":
 		return "typescript", "jest-ts"
-	case "rs", "rust":
-		return "rust", "rust-test"
+	case "java":
+		return "java", ""
+	case "csharp", "c#":
+		return "csharp", ""
+	case "cpp", "c++":
+		return "cpp", ""
+	case "c":
+		return "c", ""
+	case "rust":
+		return "rust", ""
+	case "ruby":
+		return "ruby", ""
+	case "swift":
+		return "swift", ""
+	case "kotlin":
+		return "kotlin", ""
+	case "scala":
+		return "scala", ""
+	case "php":
+		return "php", ""
 	default:
-		return "solution", "test"
+		// For languages without specific templates, use generic fallbacks
+		// Solution template will work, but test template may not exist
+		return "solution", ""
 	}
 }
 
@@ -179,9 +199,25 @@ func resolveLanguageMetadata(slug string) (string, string, string, string) {
 	case "ts", "typescript":
 		return "TypeScript", "typescript", ".ts", ".test.ts"
 	case "rust":
-		return "Rust", "rust", ".rs", ".rs"
+		return "Rust", "rust", ".rs", ""
+	case "c":
+		return "C", "c", ".c", ""
+	case "csharp", "c#":
+		return "C#", "csharp", ".cs", ""
 	case "cpp", "c++":
-		return "C++", "cpp", ".cpp", ".cpp"
+		return "C++", "cpp", ".cpp", ""
+	case "java":
+		return "Java", "java", ".java", ""
+	case "ruby":
+		return "Ruby", "ruby", ".rb", ""
+	case "swift":
+		return "Swift", "swift", ".swift", ""
+	case "kotlin":
+		return "Kotlin", "kotlin", ".kt", ""
+	case "scala":
+		return "Scala", "scala", ".scala", ""
+	case "php":
+		return "PHP", "php", ".php", ""
 	default:
 		return slug, slug, slug, slug
 	}

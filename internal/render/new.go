@@ -67,6 +67,12 @@ func (r *QuestionRenderer) RenderProblem(ctx context.Context, problem *domain.Pr
 }
 
 func (r *QuestionRenderer) renderProblemFile(ctx context.Context, problem *domain.Problem, problemFile domain.ProblemFile, force bool, result *RenderResult) error {
+	// Skip test files if no template is defined
+	if problemFile.Type == domain.TestFile && problem.Language.TestTemplate() == "" {
+		result.RecordTestUnsupported()
+		return nil
+	}
+
 	fileExists := problemFile.Path.Exists()
 
 	if fileExists && !force {
@@ -95,9 +101,16 @@ func (r *QuestionRenderer) renderProblemFile(ctx context.Context, problem *domai
 func (r *QuestionRenderer) renderFileContent(w io.Writer, problem *domain.Problem, fileInfo domain.ProblemFile) error {
 	switch fileInfo.Type {
 	case domain.SolutionFile:
-		return r.templ.ExecuteTemplate(w, problem.Language.TemplateName(), problem)
+		if t := r.templ.Lookup(problem.Language.TemplateName()); t != nil {
+			return r.templ.ExecuteTemplate(w, problem.Language.TemplateName(), problem)
+		}
+		return r.templ.ExecuteTemplate(w, "solution", problem)
 
 	case domain.TestFile:
+		// Skip test file if no template is defined (empty string)
+		if problem.Language.TestTemplate() == "" {
+			return nil
+		}
 		return r.templ.ExecuteTemplate(w, problem.Language.TestTemplate(), problem)
 
 	case domain.ReadmeFile:

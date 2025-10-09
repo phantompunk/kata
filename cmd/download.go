@@ -93,6 +93,10 @@ func displayRenderResults(result *render.RenderResult, slug string, force bool) 
 		return
 	}
 
+	if !result.TestSupported {
+		ui.PrintWarning("Note: Test file generation is not supported for this language")
+	}
+
 	if len(result.FilesSkipped) > 0 {
 		ui.PrintWarning("Skipped files:")
 		for _, file := range result.FilesSkipped {
