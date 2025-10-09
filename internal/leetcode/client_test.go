@@ -49,7 +49,7 @@ func TestSubmitQuestion(t *testing.T) {
 	submissionId := "12345"
 	snippet := "func twoSum(){}"
 
-	t.Run("Submit solution", func(t *testing.T) {
+	t.Run("valid solution submission", func(t *testing.T) {
 		resp.SetResponse(200, `{"submission_id": 12345,"test_case": null}`)
 		id, err := client.SubmitSolution(context.Background(), problem, snippet)
 
@@ -57,7 +57,7 @@ func TestSubmitQuestion(t *testing.T) {
 		assert.Equal(t, id, submissionId)
 	})
 
-	t.Run("Submit test", func(t *testing.T) {
+	t.Run("Valid test submission", func(t *testing.T) {
 		resp.SetResponse(200, `{"interpret_id": "12345","test_case": "[2,7]\n9"}`)
 		id, err := client.SubmitTest(context.Background(), problem, snippet)
 
@@ -70,6 +70,24 @@ func TestCheckResult(t *testing.T) {
 	resp := &Responder{}
 	client := newTestClient(resp)
 	submissionId := "12345"
+
+	t.Run("Result is pending", func(t *testing.T) {
+		resp.SetResponse(200, `{"state": "PENDING"}`)
+		result, err := client.CheckSubmissionResult(context.Background(), submissionId)
+
+		assert.NilError(t, err)
+		assert.Equal(t, result.State, "PENDING")
+	})
+
+	t.Run("Resulted in runtime error", func(t *testing.T) {
+		resp.SetResponse(200, `{"state": "SUCCESS", "status_msg": "Runtime Error","run_success": false,"runtime_error": "SyntaxError: Invalid or unexpected token"}`)
+		result, err := client.CheckSubmissionResult(context.Background(), submissionId)
+
+		assert.NilError(t, err)
+		assert.Equal(t, result.State, "SUCCESS")
+		assert.Equal(t, result.Result, "Runtime Error")
+		assert.Equal(t, result.Answer, false)
+	})
 
 	t.Run("Submit solution", func(t *testing.T) {
 		resp.SetResponse(200, `{"status_runtime":"0 ms","status_memory":"3.9 MB","status_msg":"Accepted"}`)

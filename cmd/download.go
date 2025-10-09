@@ -53,6 +53,7 @@ func DownloadFunc(cmd *cobra.Command, args []string) error {
 
 	if problem.DirectoryPath.Exists() && !force {
 		ui.PrintError("Problem %s already exists at:\n  %s", problem.Title, problem.DirectoryPath.DisplayPath())
+		ui.Print("\nTo refresh files, run:\n  kata get two-sum --force")
 		return nil
 	}
 
@@ -78,7 +79,7 @@ func displayRenderResults(result *render.RenderResult, slug string, force bool) 
 	}
 
 	if len(result.FilesUpdated) > 0 {
-		ui.PrintWarning("Updated files:")
+		ui.PrintInfo("Updated files:")
 		for _, file := range result.FilesUpdated {
 			ui.Print(fmt.Sprintf("  • %s", file))
 		}

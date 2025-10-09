@@ -37,7 +37,7 @@ func QuizFunc(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		if errors.Is(err, app.ErrNoQuestions) {
 			ui.PrintError("No eligible problems to quiz on")
-			ui.PrintInfo("ℹ You need at least one attempted solution\n\tTo get started, run: 'kata get two-sum'")
+			ui.PrintInfo("You need at least one attempted solution\n    To get started, run: 'kata get two-sum'")
 			return nil
 		}
 

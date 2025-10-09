@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -17,7 +18,7 @@ type Problem struct {
 	Code          string
 	Difficulty    string
 	FunctionName  string
-	Testcases     string
+	Testcases     []string
 	Status        string
 	LastAttempted string
 	Language      Language
@@ -27,6 +28,11 @@ type Problem struct {
 
 func (p *Problem) SolutionPath() string { return p.FileSet[0].Path.String() }
 func (p *Problem) SolutionExists() bool { return p.FileSet[0].Path.Exists() }
+
+func (p *Problem) GetID() int {
+	id, _ := strconv.Atoi(p.ID)
+	return id
+}
 
 type Language struct {
 	slug          string //ts

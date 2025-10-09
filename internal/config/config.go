@@ -276,6 +276,7 @@ func (v *ConfigValidator) ValidateWithFallback(c *Config) error {
 	if !v.IsSupportedLanguage(c.LanguageName()) {
 		result := NewLanguageWithFallback(c.LanguageName())
 		v.warnings = append(v.warnings, result.Warning)
+		c.language = result.Language
 	}
 
 	session := c.Session
@@ -316,7 +317,7 @@ var supportedLanguages = map[string]string{
 }
 
 func normalizeLanguage(lang string) string {
-	normalized, ok := supportedLanguages[strings.ToLower(lang)]
+	normalized, ok := supportedLanguages[strings.ToLower(strings.TrimSpace(lang))]
 	if !ok {
 		return ""
 	}

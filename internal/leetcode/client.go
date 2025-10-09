@@ -161,7 +161,7 @@ func (lc *LeetCodeClient) SubmitTest(ctx context.Context, problem *domain.Proble
 		"lang":        problem.Language.TemplateName(),
 		"question_id": problem.ID,
 		"typed_code":  strings.ReplaceAll(snippet, "\t", "    "), // Consistent 4 spaces
-		"data_input":  problem.Testcases,
+		"data_input":  strings.Join(problem.Testcases, "\n"),
 	}
 
 	url := fmt.Sprintf(testEndpoint, problem.Slug)
@@ -197,7 +197,6 @@ func (lc *LeetCodeClient) CheckSubmissionResult(ctx context.Context, submissionI
 	}
 	defer resp.Body.Close()
 
-	// TODO: handle errors
 	if resp.StatusCode != http.StatusOK {
 		return nil, handleHttpError(resp)
 	}

@@ -27,9 +27,8 @@ func PrintWarning(message string) {
 func PrintNextSteps(slug string) {
 	tmpl := `
 Next steps:
-  • Start solving: kata solve %s
-  • View details: kata show %s
-  • Submit later: kata submit %s
+  • Test solution:    kata test %s 
+  • Submit solution:  kata submit %s
 `
-	fmt.Printf(tmpl, slug, slug, slug)
+	fmt.Printf(tmpl, slug, slug)
 }

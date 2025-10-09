@@ -51,11 +51,11 @@ func SubmitFunc(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	submissionId, err := kata.Question.SubmitTest(cmd.Context(), problem, opts)
+	submissionId, err := kata.Question.SubmitSolution(cmd.Context(), problem, opts)
 	if err != nil {
 		return err
 	}
-	ui.PrintSuccess("Submitting solution to leetcode")
+	fmt.Print("✔ Submitting solution to leetcode")
 
 	startTime := time.Now()
 	maxWait := time.Duration(10) * time.Second
@@ -63,8 +63,7 @@ func SubmitFunc(cmd *cobra.Command, args []string) error {
 	done := make(chan struct{})
 	go displayWaitForResults(startTime, maxWait, done)
 
-	ui.PrintInfo("Waiting for " + submissionId)
-	result, err := kata.Question.WaitForResult(cmd.Context(), submissionId, maxWait)
+	result, err := kata.Question.WaitForResult(cmd.Context(), problem, submissionId, maxWait)
 	if err != nil {
 		if errors.Is(err, app.ErrSolutionFailed) {
 			ui.PrintError("Solution failed")
@@ -77,13 +76,14 @@ func SubmitFunc(cmd *cobra.Command, args []string) error {
 }
 
 func displaySubmissionResults(result *leetcode.SubmissionResult) {
+	ui.Print("")
 	ui.PrintSuccess("Submission accepted!\n")
 
-	ui.PrintInfo(fmt.Sprintf("Result:  %s", result.Result))
-	ui.PrintInfo(fmt.Sprintf("Runtime:  %s (beats %s of Go submissions)", result.Runtime, result.RuntimeMsg))
-	ui.PrintInfo(fmt.Sprintf("Memory:   %s MB (beats %s)", result.Memory, result.MemoryMsg))
+	ui.Print(fmt.Sprintf("Result:  %s", result.Result))
+	ui.Print(fmt.Sprintf("Runtime:  %s (beats %s of Go submissions)", result.Runtime, result.RuntimePercentile))
+	ui.Print(fmt.Sprintf("Memory:   %s MB (beats %s)", result.Memory, result.MemoryPercentile))
 
-	ui.PrintInfo("🎉 Great job! Your solution was accepted.")
+	ui.Print("\n🎉 Great job! Your solution was accepted.")
 }
 
 func displayWaitForResults(start time.Time, wait time.Duration, done <-chan struct{}) {
@@ -95,7 +95,7 @@ func displayWaitForResults(start time.Time, wait time.Duration, done <-chan stru
 		case <-done:
 			return
 		case <-ticker.C:
-			if time.Since(start) <= wait {
+			if time.Since(start) >= wait {
 				return
 			}
 			fmt.Print(".")

@@ -58,6 +58,12 @@ func (q *Question) ToProblem(workspace, language string) *domain.Problem {
 	directory := domain.Path(filepath.Join(workspace, lang.Slug(), dir))
 	fileSet := domain.NewProblemFileSet(dir, lang, directory)
 
+	var testcases []string
+	if err := json.Unmarshal([]byte(q.TestCases), &testcases); err != nil {
+		fmt.Println("Failed testcases")
+		return nil
+	}
+
 	var code string
 	var codeSnippets []domain.CodeSnippet
 	if err := json.Unmarshal([]byte(q.CodeSnippets), &codeSnippets); err != nil {
@@ -80,7 +86,7 @@ func (q *Question) ToProblem(workspace, language string) *domain.Problem {
 		Code:          code,
 		Difficulty:    q.Difficulty,
 		FunctionName:  q.FunctionName,
-		Testcases:     q.TestCases,
+		Testcases:     testcases,
 		DirectoryPath: directory,
 		Language:      lang,
 		FileSet:       fileSet,
@@ -168,8 +174,13 @@ func ToRepoCreateParams(question *leetcode.Question) CreateParams {
 	}
 	params.CodeSnippets = string(codeSnippets)
 
-	testCases := strings.Join(question.TestCaseList, "\n")
-	params.TestCases = string(testCases)
+	testcases, err := json.Marshal(question.TestCaseList)
+	if err != nil {
+		return params
+	}
+	params.TestCases = string(testcases)
+	// testCases := strings.Join(question.TestCaseList, "\n")
+	// params.TestCases = string(testCases)
 
 	return params
 }

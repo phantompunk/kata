@@ -3,9 +3,11 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/phantompunk/kata/internal/app"
+	"github.com/phantompunk/kata/internal/domain"
 	"github.com/phantompunk/kata/internal/leetcode"
 	"github.com/phantompunk/kata/internal/ui"
 	"github.com/spf13/cobra"
@@ -55,7 +57,7 @@ func TestFunc(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	ui.PrintSuccess("Running tests")
+	fmt.Print("✔ Running tests")
 
 	startTime := time.Now()
 	maxWait := time.Duration(10) * time.Second
@@ -63,21 +65,39 @@ func TestFunc(cmd *cobra.Command, args []string) error {
 	done := make(chan struct{})
 	go displayWaitForResults(startTime, maxWait, done)
 
-	result, err := kata.Question.WaitForResult(cmd.Context(), submissionId, maxWait)
+	result, err := kata.Question.WaitForResult(cmd.Context(), problem, submissionId, maxWait)
 	if err != nil {
 		if errors.Is(err, app.ErrSolutionFailed) {
 			ui.PrintError("Solution failed")
 		}
 		return err
 	}
-	ui.Print("")
-	ui.PrintSuccess("All test cases passed")
 
-	displayTestResults(result)
+	displayTestResults(result, problem)
 	return nil
 }
 
-func displayTestResults(results *leetcode.SubmissionResult) {
+func displayTestResults(result *leetcode.SubmissionResult, problem *domain.Problem) {
+	if result.HasError() {
+		ui.Print("")
+		ui.PrintError("Test failed:\n    Error: %q", result.ErrorMsg)
+		ui.Print("\nFix your code then try again")
+		return
+	}
+
+	if !result.IsCorrect() {
+		ui.PrintError("\nFailed on test case #%d", result.TestCase)
+
+		ui.Print(fmt.Sprintf("\nInput:    %s", strings.ReplaceAll(problem.Testcases[result.TestCase], "\n", ", ")))
+		ui.Print(fmt.Sprintf("Output:   %s", result.TestOutput))
+		ui.Print(fmt.Sprintf("Expected: %s", result.TestExpected))
+		ui.Print("\nFix your code then try again")
+		return
+	}
+
+	ui.Print("")
+	ui.PrintSuccess("All test cases passed")
+
 	ui.Print("")
 	ui.PrintInfo("You are ready to submit")
 }

@@ -37,9 +37,9 @@ Problems:	{{.Attempted}} attempted, {{.Completed}} completed
 You're all set! 🎉
 
 Next steps:
-• Try a random quiz: kata quiz
-• Browse problems: kata list
-• Open dashboard: kata dashboard
+  • Stub problem:     kata get two-sum
+  • Test solution:    kata test two-sum
+  • Submit solution:  kata submit two-sum
 `
 
 func RenderLoginResult(username string, stats repository.GetStatsRow) string {

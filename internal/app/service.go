@@ -87,7 +87,7 @@ func (s *QuestionService) SubmitTest(ctx context.Context, problem *domain.Proble
 	return submissionId, err
 }
 
-func (s *QuestionService) SubmitQuestion(ctx context.Context, problem *domain.Problem, opts AppOptions) (string, error) {
+func (s *QuestionService) SubmitSolution(ctx context.Context, problem *domain.Problem, opts AppOptions) (string, error) {
 	snippet, err := s.extractor.ExtractSnippet(problem.SolutionPath())
 	if err != nil {
 		return "", err
@@ -100,7 +100,7 @@ func (s *QuestionService) SubmitQuestion(ctx context.Context, problem *domain.Pr
 	return submissionId, err
 }
 
-func (s *QuestionService) WaitForResult(ctx context.Context, submissionId string, maxWaitTime time.Duration) (*leetcode.SubmissionResult, error) {
+func (s *QuestionService) WaitForResult(ctx context.Context, problem *domain.Problem, submissionId string, maxWaitTime time.Duration) (*leetcode.SubmissionResult, error) {
 	startTime := time.Now()
 	pollInterval := 1 * time.Second
 
@@ -110,12 +110,19 @@ func (s *QuestionService) WaitForResult(ctx context.Context, submissionId string
 			return nil, err
 		}
 
-		if result.State == "SUCCESS" || result.State == "FAILED" {
+		switch result.State {
+		case "SUCCESS":
+			s.repo.Submit(ctx, repository.SubmitParams{QuestionID: int64(problem.GetID()), LangSlug: problem.Language.Slug(), Solved: 1})
 			return result, nil
+		case "PENDING", "STARTED", "EVALUATION":
+			time.Sleep(pollInterval)
+		case "FAILED":
+			return result, ErrSolutionFailed
+		default:
+			return nil, fmt.Errorf("unexpected submission state: %s", result.State)
 		}
-
-		time.Sleep(pollInterval)
 	}
+
 	return nil, fmt.Errorf("submission timed out after %v", maxWaitTime)
 }
 
