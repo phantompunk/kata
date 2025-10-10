@@ -41,6 +41,10 @@ func New() (*QuestionRenderer, error) {
 }
 
 func (r *QuestionRenderer) RenderProblem(ctx context.Context, problem *domain.Problem, force bool) (*RenderResult, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
 	result := NewRenderResult()
 
 	directoryCreated, err := r.ensureDirectory(problem.DirectoryPath)
@@ -67,6 +71,10 @@ func (r *QuestionRenderer) RenderProblem(ctx context.Context, problem *domain.Pr
 }
 
 func (r *QuestionRenderer) renderProblemFile(ctx context.Context, problem *domain.Problem, problemFile domain.ProblemFile, force bool, result *RenderResult) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	// Skip test files if no template is defined
 	if problemFile.Type == domain.TestFile && problem.Language.TestTemplate() == "" {
 		result.RecordTestUnsupported()
