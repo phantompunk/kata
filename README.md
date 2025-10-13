@@ -2,7 +2,7 @@
 
 **Kata** a command-line companion for [LeetCode](https://leetcode.com/problemset/) that helps you practice coding problems using TTD.
 
-![kata](/Users/rigo/Workspace/kata/kata.webp)
+![kata](./kata.webp)
 
 ## Why Kata?
 
