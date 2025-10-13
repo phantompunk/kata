@@ -145,7 +145,7 @@ See [contributing](https://github.com/phantompunk/kata/contribute).
 
 ## License
 
-MIT License - see [LICENSE](https://github.com/phantompunk/kata/LICENSE) file for details.
+MIT License - see [LICENSE](./LICENSE) file for details.
 
 ------
 
