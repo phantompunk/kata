@@ -1,58 +1,153 @@
-# Kata CLI: tdd tool for LeetCode
+# Kata 🥋
 
-Kata is a command-line client for LeetCode with the goal using TDD to solve problems.  
+**Kata** a command-line companion for [LeetCode](https://leetcode.com/problemset/) that helps you practice coding problems using TTD.
 
-```bash
-❯ kata download --problem 3sum
-❯ kata test --problem 3sum
-❯ kata list
-╔═════╦══════════════════════════════╦════════════╦════╦════════╗
-║ ID  ║ Name                         ║ Difficulty ║ Go ║ Python ║
-╠═════╬══════════════════════════════╬════════════╬════╬════════╣
-║ 15  ║ 3Sum                         ║ Medium     ║ ✅ ║ ❌     ║
-║ 18  ║ 4Sum                         ║ Medium     ║ ✅ ║ ❌     ║
-║ 128 ║ Longest Consecutive Sequence ║ Medium     ║ ✅ ║ ❌     ║
-╚═════╩══════════════════════════════╩════════════╩════╩════════╝
-```
+![kata](/Users/rigo/Workspace/kata/kata.webp)
 
-## ✨ Features 
-- Solve problems your way with your local environment
-- Stubs solutions, test files, and readmes locally 
-- Saves problems locally for offline practice
-- TODO - Submit solutions directly to LeetCode
-- TODO - Authenticate automattically using browswer cookies
-- TODO - Generate tests with edge cases
-- TODO - Check the complexity of your solution
-- Built for Go and Python practice - Other languages supported soon
+## Why Kata?
 
+It brings LeetCode practice to your terminal supporting a TDD-first approach. Use your environment, write your tests, submit your solutions, train on the same problems to build muscle memory.
 
+## Installation
 
-
-## ⚡️ Quick start
-
-
-Download and install Go. Version 1.23.0 (or higher) is required.
-
-Then, use the go install command:
+### Go
 
 `go install github.com/phantompunk/kata@latest`
 
-### Examples
-```bash
-kata download --problem 15									 # stub problem using question id
-kata download --problem 3sum                 # stub problem using question slug
+### Build (requires Go 1.24+)
 
-kata download -p 3sum --language go          # stub problem, specifying Go language
-kata download -p 3sum -l go --open           # stub problem, open using $EDITOR
-
-kata test --problem 3sum --language go       # test solution against leetcode servers
-
-kata list                                    # list completed problems
-kata list --markdown                         # list completed problems as Markdown
-kata quiz                                    # select a random question to practice
-
-kata settings                                # open config settings using $EDITOR
-kata login                                   # use session and token from browser cookies
-kata settings token=${LEETCODE_TOKEN}        # set LeetCode token to enable submissions
-kata settings session=${LEETCODE_SESSION}    # set LeetCode session to enable submissions
+```sh
+git clone https://github.com/phantompunk/kata.git
+cd kata
+go build
 ```
+
+## Quick Start
+
+```bash
+# Download and stub a problem
+kata get two-sum
+
+# Add your solution
+vim ~/katas/two_sum/two_sum.go
+
+# Test your solution
+kata test two-sum
+
+# See your progress
+kata list
+```
+
+
+
+## Usage
+
+### Download Problems
+
+```bash
+# Stub problem using id
+kata get 15
+
+# Stub problem using slug
+kata get 3sum     
+
+# Specify language
+kata get 3sum --language python
+
+# Open immediately in editor
+kata get 3sum -l python --open
+
+# Refresh problem stubs
+kata get 3sum --force
+```
+
+### Test Solutions
+
+Test your solutions against LeetCode's servers:
+
+```bash
+# Test using default language
+kata test 3sum
+
+# Test using specific language
+kata test 3sum --language
+```
+
+!Note: Testing against LeetCode requires authentication
+
+### Submit Solutions
+
+Submit your solutions to LeetCode's servers:
+
+```bash
+# Submit using default language
+kata submit 3sum
+
+# Submit using specific language
+kata submit 3sum --language
+```
+
+!Note: Testing against LeetCode requires authentication
+
+### Track Progress
+
+View your completed problems:
+
+```bash
+kata list
+```
+
+### Authentication
+
+Need to authenticate to test or submit against LeetCode servers.
+
+```bash
+# Login using browser cookies (automatically extracts session data)
+kata login
+```
+
+### Quiz Mode
+
+Get a random problem to solve:
+
+```bash
+kata quiz
+```
+
+### Configuration
+
+Open settings in your editor:
+
+```bash
+kata settings
+```
+
+#### Config File
+
+```yaml
+# default language
+language: go
+# open file
+openInEditor: false
+# track progress for langauges
+tracks:
+- Go
+- Python
+# useful for debugging
+verbose: false
+# workspace for kata files
+workspace: ~/Workspace/katas
+```
+
+## Contributing
+
+See [contributing](https://github.com/phantompunk/kata/contribute).
+
+## License
+
+MIT License - see [LICENSE](https://github.com/phantompunk/kata/LICENSE) file for details.
+
+------
+
+**Happy coding! Practice makes permanent.** 🥋
+
