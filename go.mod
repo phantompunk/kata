@@ -18,7 +18,7 @@ require (
 	github.com/spf13/cobra v1.9.1
 )
 
-replace github.com/browserutils/kooky => ../kooky/
+replace github.com/browserutils/kooky => github.com/phantompunk/kooky v0.2.5
 
 require (
 	github.com/JohannesKaufmann/dom v0.2.0 // indirect
