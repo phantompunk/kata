@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -e
+
 BINARY_NAME="kata"
 INSTALL_PATH="${INSTALL_PATH:-$HOME/.local/bin}"
 
@@ -27,16 +29,16 @@ warn() {
 
 detect_os() {
     case $(uname -s) in    
-        linux*) echo "linux" ;;
-        darwin*) echo "darwin" ;;
+        Linux*) echo "linux" ;;
+        Darwin*) echo "darwin" ;;
         *) error "Unsupported OS: $(uname -s)"; exit 1 ;;
     esac
 }
 
 detect_arch() {
     case $(uname -m) in    
-        amd64|x86_64) arch=amd64 ;;
-        arm64|aarch64) arch=arm64 ;;
+        amd64|x86_64) echo "amd64" ;;
+        arm64|aarch64) echo "arm64" ;;
         *) error "Unsupported architecture: $(uname -m)"; exit 1 ;;
     esac
 }
@@ -60,7 +62,7 @@ fetch() {
 }
 
 get_latest_version() {
-    local url="https://github.com/phantompunk/kata/releases/latest"
+    local url="https://api.github.com/repos/phantompunk/kata/releases/latest"
     local version
 
     if command_exists curl; then
@@ -70,7 +72,7 @@ get_latest_version() {
     fi
 
     if [ -z "$version" ]; then
-        error "Could not determine latest version from ${REPO}"
+        error "Could not determine latest version from ${url}"
         exit 1
     fi
 
@@ -96,7 +98,7 @@ trap 'rm -rf "$temp_dir"' EXIT INT TERM
 cd "$temp_dir"
 
 if ! fetch kata.tar.gz "$DOWNLOAD_URL"; then
-    error "Could not download tarball"
+    error "Could not download tarball from ${DOWNLOAD_URL}"
     exit 1
 fi
 
@@ -119,7 +121,7 @@ if ! mv "$BINARY_NAME" "${INSTALL_PATH}/${BINARY_NAME}"; then
 fi
 
 chmod +x "${INSTALL_PATH}/${BINARY_NAME}"
-sucess "Installed ${BINARY_NAME} to ${INSTALL_PATH}/${BINARY_NAME}"
+success "Installed ${BINARY_NAME} to ${INSTALL_PATH}/${BINARY_NAME}"
 
 case ":$PATH:" in 
     *":${INSTALL_PATH}:"*)
@@ -134,5 +136,3 @@ case ":$PATH:" in
         echo "    source ~/.bashrc"
         ;;
 esac
-
-
