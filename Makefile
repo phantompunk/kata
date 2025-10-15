@@ -1,6 +1,8 @@
-.PHONY: help build clean test install
+.PHONY: help build clean test install dev install-dev uninstall-dev
 
-binary = kata
+BINARY = kata
+AIR_BINARY = ./tmp/kata
+INSTALL_PATH=$(HOME)/.local/bin
 
 # Set the default goal
 .DEFAULT_GOAL := help
@@ -14,11 +16,25 @@ help:
 
 ## build: Build the kata binary
 build:
-	go build -o=$(GOPATH)/bin/$(binary)
+	go build -o=$(GOPATH)/bin/$(BINARY)
 
 ## install: Install the kata binary
 install:
 	go install ./cmd . 
+
+dev: install-dev
+	@air
+
+## install-dev: Install the kata development binary
+install-dev:
+	@mkdir -p $(INSTALL_PATH)
+	@ln -sf $(PWD)/$(AIR_BINARY) $(INSTALL_PATH)/$(BINARY)
+	@echo "Symlinked $(INSTALL_PATH)/$(BINARY) -> $(PWD)/$(AIR_BINARY)"
+
+## uninstall-dev: Remove the kata development binary
+uninstall-dev:
+	@rm -f $(INSTALL_PATH)/$(BINARY)
+	@echo "Removed $(INSTALL_PATH)/$(BINARY)"
 
 ## test: Run tests
 test:
@@ -31,5 +47,5 @@ test/cover:
 
 ## clean: Remove the binary and coverage files
 clean:
-	rm -rf $(GOPATH)/bin/$(binary) c.out coverage.html
+	rm -rf $(GOPATH)/bin/$(BINARY) c.out coverage.html
 

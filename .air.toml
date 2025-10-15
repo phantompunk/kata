@@ -4,9 +4,9 @@ tmp_dir = "tmp"
 
 [build]
   # The command to build your binary
-  cmd = "go build -o ./tmp/main ."
+  cmd = "go build -o ./tmp/kata ."
   # The binary that will be run after build
-  bin = "./tmp/done.sh"
+  bin = "./scripts/post-build.sh"
   # Delay in ms before rebuild after file change
   delay = 100
   # Exclude these folders from watching

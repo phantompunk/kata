@@ -1,2 +1,8 @@
 # *.received.*
 # .approval_tests_temp
+
+# Air temporary build binary
+tmp
+
+# Added by goreleaser init:
+dist/
