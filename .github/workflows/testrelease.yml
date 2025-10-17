@@ -16,10 +16,11 @@ jobs:
     runs-on: ubuntu-latest
     strategy: 
       matrix:
-        - arch: amd64
-          cc: gcc
-        - arch: arm64
-          cc: aarch64-linux-gnu-gcc
+        include:
+          - arch: amd64
+            cc: gcc
+          - arch: arm64
+            cc: aarch64-linux-gnu-gcc
     steps:
       - name: Checkout
         uses: actions/checkout@v4
