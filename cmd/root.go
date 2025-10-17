@@ -21,6 +21,8 @@ var kataErr error
 var (
 	open     bool
 	language string
+	version  = "dev"
+	commit   = "none"
 )
 
 type CommandFunc func(cmd *cobra.Command, args []string) error
@@ -54,7 +56,16 @@ func Execute() error {
 	return rootCmd.ExecuteContext(ctx)
 }
 
+func buildVersion() {
+	if len(commit) >= 7 {
+		vt := rootCmd.VersionTemplate()
+		rootCmd.SetVersionTemplate(vt[:len(vt)-1] + " (" + commit[0:7] + ")\n")
+	}
+	rootCmd.Version = version
+}
+
 func init() {
+	buildVersion()
 	// Define flags
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Enable verbose output")
 
