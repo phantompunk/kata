@@ -83,9 +83,50 @@ jobs:
           path: dist/kata_*.tar.gz
           retention-days: 1
 
+  build-windows:
+    runs-on: ubuntu-latest
+    strategy: 
+      matrix:
+        include:
+          - arch: amd64
+            cc: x86_64-w64-mingw32
+          - arch: arm64
+            cc: aarch64-w64-mingw32
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          go-version-file: go.mod
+
+      - name: Install cross-compilation tools
+        run: sudo apt-get update && sudo apt-get install -y mingw-w64
+
+      - name: Build Windows executable
+        run: make dist
+        env:
+          GOOS: "windows"
+          GOARCH: ${{ matrix.arch }}
+          CC: ${{ matrix.cc }}-gcc     # Tells Go which C compiler to use
+          CXX: ${{ matrix.cc }}-g++
+          VERSION: ${{ github.ref_name }}
+          COMMIT: ${{ github.sha }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kata-windows-${{ matrix.arch }}
+          path: dist/kata_*.zip
+          retention-days: 1
+
   release:
     name: Create Release
-    needs: [build-linux, build-darwin]
+    needs: [build-linux, build-darwin, build-windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -102,5 +143,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: artifacts/*.tar.gz
           generate_release_notes: true
+          files: |
+            artifacts/*.tar.gz
+            artifacts/*.zip

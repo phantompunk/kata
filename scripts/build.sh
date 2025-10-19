@@ -15,9 +15,15 @@ LDFLAGS="-s -w -X github.com/phantompunk/kata/cmd.version=${VERSION} -X github.c
 
 OUTPUT_DIR="dist"
 OUTPUT="${OUTPUT_DIR}/${BINARY_NAME}_${VERSION}_${GOOS}_${GOARCH}"
+
 BINARY="${OUTPUT}/${BINARY_NAME}"
+if [[ "$GOOS" = "windows" ]]; then
+    BINARY="${OUTPUT}/${BINARY_NAME}.exe"
+fi
 
 [ -n "$GOARCH" ] && export GOARCH
+[ -n "${GOOS:-}" ] && export GOOS
+[ -n "${CXX:-}" ] && export CXX
 [ -n "${CC:-}" ] && export CC
 export CGO_ENABLED=1
 
@@ -26,6 +32,12 @@ echo "Building ${BINARY_NAME} ${VERSION} (${COMMIT}) for ${GOOS}/${GOARCH}"
 go build -ldflags "$LDFLAGS" -o "${BINARY}" .
 echo "Built $BINARY"
 
-tar -czf ${OUTPUT}.tar.gz -C ${OUTPUT} ${BINARY_NAME} 
-echo "Compressed as ${OUTPUT}.tar.gz"
+if [[ "$GOOS" = "windows" ]]; then
+    echo zip -q ${OUTPUT}.zip ${BINARY}
+    zip -q ${OUTPUT}.zip ${BINARY}
+    echo "Compressed as ${OUTPUT}.zip"
+else 
+    tar -czf ${OUTPUT}.tar.gz -C ${OUTPUT} ${BINARY_NAME} 
+    echo "Compressed as ${OUTPUT}.tar.gz"
+fi
 
