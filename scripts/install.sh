@@ -24,7 +24,7 @@ error() {
 }
 
 warn() {
-    printf "${YELLOW}!RESET} %s\n" "$1"
+    printf "${YELLOW}!${RESET} %s\n" "$1"
 }
 
 detect_os() {

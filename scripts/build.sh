@@ -34,7 +34,7 @@ echo "Built $BINARY"
 
 if [[ "$GOOS" = "windows" ]]; then
     echo zip -q ${OUTPUT}.zip ${BINARY}
-    zip -q ${OUTPUT}.zip ${BINARY}
+    zip -jq ${OUTPUT}.zip ${BINARY}
     echo "Compressed as ${OUTPUT}.zip"
 else 
     tar -czf ${OUTPUT}.tar.gz -C ${OUTPUT} ${BINARY_NAME} 

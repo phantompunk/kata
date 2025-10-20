@@ -10,6 +10,18 @@ It brings LeetCode practice to your terminal supporting a TDD-first approach. Us
 
 ## Installation
 
+### via cURL (macOS/Linux)
+```shell
+curl -LsSf https://raw.githubusercontent.com/phantompunk/kata/main/scripts/install.sh | sh
+```
+Review script: [install.sh](https://raw.githubusercontent.com/phantompunk/kata/main/scripts/install.sh) before running.
+
+### via Powershell (Windows)
+```shell
+irm https://raw.githubusercontent.com/phantompunk/kata/main/scripts/install.ps1 | iex
+```
+Review script: [install.sh](https://raw.githubusercontent.com/phantompunk/kata/main/scripts/install.ps1) before running.
+
 ### Go
 
 `go install github.com/phantompunk/kata@latest`
