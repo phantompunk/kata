@@ -20,7 +20,7 @@ Review script: [install.sh](https://raw.githubusercontent.com/phantompunk/kata/m
 ```shell
 irm https://raw.githubusercontent.com/phantompunk/kata/main/scripts/install.ps1 | iex
 ```
-Review script: [install.sh](https://raw.githubusercontent.com/phantompunk/kata/main/scripts/install.ps1) before running.
+Review script: [install.ps1](https://raw.githubusercontent.com/phantompunk/kata/main/scripts/install.ps1) before running.
 
 ### Go
 

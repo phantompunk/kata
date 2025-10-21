@@ -77,7 +77,7 @@ func (r *QuestionRenderer) renderProblemFile(ctx context.Context, problem *domai
 
 	// Skip test files if no template is defined
 	if problemFile.Type == domain.TestFile && problem.Language.TestTemplate() == "" {
-		result.RecordTestUnsupported()
+		result.RecordTestSkipped()
 		return nil
 	}
 

@@ -152,7 +152,7 @@ func (s *ConfigService) createDefault() *Config {
 		Verbose:      false,
 		Session:      Session{},
 		Username:     "",
-		Tracks:       []string{},
+		Tracks:       []string{language.String()},
 	}
 }
 
@@ -277,6 +277,12 @@ func (v *ConfigValidator) ValidateWithFallback(c *Config) error {
 		result := NewLanguageWithFallback(c.LanguageName())
 		v.warnings = append(v.warnings, result.Warning)
 		c.language = result.Language
+	}
+
+	if len(c.Tracks) == 0 {
+		warning := fmt.Sprintf("tracks are empty, using default: %s", DefaultLanguage)
+		v.warnings = append(v.warnings, warning)
+		c.Tracks = append(c.Tracks, DefaultLanguage)
 	}
 
 	session := c.Session

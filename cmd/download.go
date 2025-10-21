@@ -93,7 +93,7 @@ func displayRenderResults(result *render.RenderResult, slug string, force bool) 
 		return
 	}
 
-	if !result.TestSupported {
+	if result.TestSkipped {
 		ui.PrintWarning("Note: Test file generation is not supported for this language")
 	}
 

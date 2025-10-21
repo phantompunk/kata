@@ -18,7 +18,7 @@ type RenderResult struct {
 	FilesCreated     []string
 	FilesUpdated     []string
 	FilesSkipped     []string
-	TestSupported    bool
+	TestSkipped      bool
 }
 
 func NewRenderResult() *RenderResult {
@@ -49,8 +49,8 @@ func (r *RenderResult) RecordAllSkipped() {
 	r.FilesSkipped = append(r.FilesSkipped, "All Files")
 }
 
-func (r *RenderResult) RecordTestUnsupported() {
-	r.TestSupported = false
+func (r *RenderResult) RecordTestSkipped() {
+	r.TestSkipped = true
 }
 
 type DirectoryPath string
