@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/phantompunk/kata/internal/domain"
 	"github.com/phantompunk/kata/internal/leetcode"
@@ -57,6 +58,7 @@ func (q *Question) ToProblem(workspace, language string) *domain.Problem {
 	lang := domain.NewProgrammingLanguage(language)
 	directory := domain.Path(filepath.Join(workspace, lang.Slug(), dir))
 	fileSet := domain.NewProblemFileSet(dir, lang, directory)
+	now, _ := time.Parse(time.RFC3339, q.CreatedAt)
 
 	var testcases []string
 	if err := json.Unmarshal([]byte(q.TestCases), &testcases); err != nil {
@@ -86,6 +88,7 @@ func (q *Question) ToProblem(workspace, language string) *domain.Problem {
 		Code:          code,
 		Difficulty:    q.Difficulty,
 		FunctionName:  q.FunctionName,
+		LastAttempted: now,
 		Testcases:     testcases,
 		DirectoryPath: directory,
 		Language:      lang,
@@ -144,6 +147,7 @@ func (q *GetRandomRow) ToProblem(workspace, language string) *domain.Problem {
 	lang := domain.NewProgrammingLanguage(language)
 	directory := domain.Path(filepath.Join(workspace, lang.Slug(), dirName))
 	fileSet := domain.NewProblemFileSet(dirName, lang, directory)
+	then, _ := time.Parse(time.RFC3339, q.LastAttempted)
 
 	return &domain.Problem{
 		Title:         q.Title,
@@ -151,7 +155,7 @@ func (q *GetRandomRow) ToProblem(workspace, language string) *domain.Problem {
 		DirName:       dirName,
 		Difficulty:    q.Difficulty,
 		Status:        q.Status,
-		LastAttempted: q.LastAttempted,
+		LastAttempted: then,
 		DirectoryPath: directory,
 		Language:      lang,
 		FileSet:       fileSet,
@@ -168,6 +172,9 @@ func ToRepoCreateParams(question *leetcode.Question) CreateParams {
 	params.FunctionName = question.Metadata.Name
 	params.Content = question.Content
 
+	now := time.Now().Format(time.RFC3339)
+	params.CreatedAt = now
+
 	codeSnippets, err := json.Marshal(question.CodeSnippets)
 	if err != nil {
 		return params
@@ -179,8 +186,6 @@ func ToRepoCreateParams(question *leetcode.Question) CreateParams {
 		return params
 	}
 	params.TestCases = string(testcases)
-	// testCases := strings.Join(question.TestCaseList, "\n")
-	// params.TestCases = string(testCases)
 
 	return params
 }

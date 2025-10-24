@@ -6,6 +6,8 @@ import (
 	"os"
 	"text/template"
 
+	"github.com/andanhm/go-prettytime"
+	"github.com/dustin/go-humanize"
 	"github.com/phantompunk/kata/internal/domain"
 	"github.com/phantompunk/kata/internal/repository"
 )
@@ -13,7 +15,7 @@ import (
 var quizTmpl = `
 Problem: {{.Title}}
 Difficulty: {{.Difficulty}}
-Last attempted: {{.LastAttempted}}
+Last attempted: {{ prettytime .LastAttempted}}
 Status: {{.Status}}
 
 Next steps:
@@ -23,7 +25,7 @@ Next steps:
 `
 
 func RenderQuizResult(problem *domain.Problem) error {
-	t := template.Must(template.New("Quiz").Parse(quizTmpl))
+	t := template.Must(template.New("Quiz").Funcs(initFuncMap()).Parse(quizTmpl))
 	if err := t.Execute(os.Stdout, problem); err != nil {
 		return err
 	}
@@ -55,4 +57,11 @@ func RenderLoginResult(username string, stats repository.GetStatsRow) string {
 	}
 
 	return buf.String()
+}
+
+func initFuncMap() template.FuncMap {
+	return template.FuncMap{
+		"humanize":   humanize.Time,
+		"prettytime": prettytime.Format,
+	}
 }

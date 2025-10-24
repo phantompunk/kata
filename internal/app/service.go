@@ -112,7 +112,8 @@ func (s *QuestionService) WaitForResult(ctx context.Context, problem *domain.Pro
 
 		switch result.State {
 		case "SUCCESS":
-			s.repo.Submit(ctx, repository.SubmitParams{QuestionID: int64(problem.GetID()), LangSlug: problem.Language.Slug(), Solved: 1})
+			now := time.Now().Format(time.RFC3339)
+			s.repo.Submit(ctx, repository.SubmitParams{QuestionID: int64(problem.GetID()), LangSlug: problem.Language.Slug(), Solved: 1, LastAttempted: now})
 			return result, nil
 		case "PENDING", "STARTED", "EVALUATION":
 			time.Sleep(pollInterval)

@@ -13,7 +13,7 @@ const create = `-- name: Create :one
 INSERT INTO questions (
   question_id, title, title_slug, difficulty, function_name, content, code_snippets, test_cases, created_at
 ) VALUES (
-  ?, ?, ?, ?, ?, ?, ?, ?, DATE('now')
+  ?, ?, ?, ?, ?, ?, ?, ?, ? 
 ) ON CONFLICT(question_id) DO UPDATE SET
     title       = excluded.title,
     title_slug  = excluded.title_slug,
@@ -31,6 +31,7 @@ type CreateParams struct {
 	Content      string
 	CodeSnippets string
 	TestCases    string
+	CreatedAt    string
 }
 
 func (q *Queries) Create(ctx context.Context, arg CreateParams) (Question, error) {
@@ -43,6 +44,7 @@ func (q *Queries) Create(ctx context.Context, arg CreateParams) (Question, error
 		arg.Content,
 		arg.CodeSnippets,
 		arg.TestCases,
+		arg.CreatedAt,
 	)
 	var i Question
 	err := row.Scan(

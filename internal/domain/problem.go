@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type Problem struct {
@@ -20,7 +21,7 @@ type Problem struct {
 	FunctionName  string
 	Testcases     []string
 	Status        string
-	LastAttempted string
+	LastAttempted time.Time
 	Language      Language
 	DirectoryPath Path
 	FileSet       []ProblemFile // Solution, Test, Readme
