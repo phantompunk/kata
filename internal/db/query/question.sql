@@ -45,9 +45,9 @@ SELECT EXISTS (
 
 -- name: Submit :one
 INSERT INTO submissions (
-  id, question_id, lang_slug, solved, last_attempted
+  question_id, lang_slug, solved, last_attempted
 ) VALUES (
-  ?, ?, ?, ?, ?
+  ?, ?, ?, ? 
 ) RETURNING *;
 
 -- name: GetStats :one

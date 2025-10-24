@@ -216,14 +216,13 @@ func (q *Queries) ListAll(ctx context.Context) ([]Question, error) {
 
 const submit = `-- name: Submit :one
 INSERT INTO submissions (
-  id, question_id, lang_slug, solved, last_attempted
+  question_id, lang_slug, solved, last_attempted
 ) VALUES (
-  ?, ?, ?, ?, ?
+  ?, ?, ?, ? 
 ) RETURNING id, question_id, lang_slug, solved, last_attempted
 `
 
 type SubmitParams struct {
-	ID            int64
 	QuestionID    int64
 	LangSlug      string
 	Solved        int64
@@ -232,7 +231,6 @@ type SubmitParams struct {
 
 func (q *Queries) Submit(ctx context.Context, arg SubmitParams) (Submission, error) {
 	row := q.db.QueryRowContext(ctx, submit,
-		arg.ID,
 		arg.QuestionID,
 		arg.LangSlug,
 		arg.Solved,
