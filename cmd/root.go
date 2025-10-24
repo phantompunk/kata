@@ -57,9 +57,13 @@ func Execute() error {
 	return rootCmd.ExecuteContext(ctx)
 }
 
-func setVersion() {
-	shaLen := min(7, len(commit))
+func buildVersion() {
 	version, commit = vcs.Version()
+	setVersion()
+}
+
+func setVersion() {
+	shaLen := min(len(commit), 7)
 	vt := rootCmd.VersionTemplate()
 
 	rootCmd.SetVersionTemplate(vt[:len(vt)-1] + " (" + commit[:shaLen] + ")\n")
@@ -67,7 +71,7 @@ func setVersion() {
 }
 
 func init() {
-	setVersion()
+	buildVersion()
 	// Define flags
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Enable verbose output")
 
@@ -98,6 +102,8 @@ func userMessage(err error) string {
 	switch {
 	case errors.Is(err, leetcode.ErrQuestionNotFound):
 		return "No matching question found. Please check the problem slug"
+	case errors.Is(err, leetcode.ErrUnauthorized):
+		return "Session is invalid or expired. Sign in to https://leetcode.com then run 'kata login'"
 	case errors.Is(err, leetcode.ErrNotAuthenticated):
 		return "Not auth"
 	case errors.Is(err, app.ErrDuplicateProblem):
