@@ -12,6 +12,7 @@ import (
 	"github.com/phantompunk/kata/internal/config"
 	"github.com/phantompunk/kata/internal/leetcode"
 	"github.com/phantompunk/kata/internal/ui"
+	"github.com/phantompunk/kata/internal/vcs"
 	"github.com/spf13/cobra"
 )
 
@@ -21,8 +22,8 @@ var kataErr error
 var (
 	open     bool
 	language string
-	version  = "dev"
-	commit   = "none"
+	version  string
+	commit   string
 )
 
 type CommandFunc func(cmd *cobra.Command, args []string) error
@@ -56,16 +57,17 @@ func Execute() error {
 	return rootCmd.ExecuteContext(ctx)
 }
 
-func buildVersion() {
-	if len(commit) >= 7 {
-		vt := rootCmd.VersionTemplate()
-		rootCmd.SetVersionTemplate(vt[:len(vt)-1] + " (" + commit[0:7] + ")\n")
-	}
+func setVersion() {
+	shaLen := min(7, len(commit))
+	version, commit = vcs.Version()
+	vt := rootCmd.VersionTemplate()
+
+	rootCmd.SetVersionTemplate(vt[:len(vt)-1] + " (" + commit[:shaLen] + ")\n")
 	rootCmd.Version = version
 }
 
 func init() {
-	buildVersion()
+	setVersion()
 	// Define flags
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Enable verbose output")
 
