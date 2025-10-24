@@ -1,6 +1,6 @@
 #!/bin/bash
 
-## Build script for MacOS/Linux artifacts
+## Build script for MacOS/Linux/Windows artifacts
 
 set -eou pipefail
 
@@ -11,7 +11,7 @@ BINARY_NAME="kata"
 GOOS=${GOOS:-$(go env GOOS)}
 GOARCH=${GOARCH:-$(go env GOARCH)}
 
-LDFLAGS="-s -w -X github.com/phantompunk/kata/cmd.version=${VERSION} -X github.com/phantompunk/kata/cmd.commit=${COMMIT}"
+LDFLAGS="-s -w"
 
 OUTPUT_DIR="dist"
 OUTPUT="${OUTPUT_DIR}/${BINARY_NAME}_${VERSION}_${GOOS}_${GOARCH}"
@@ -21,7 +21,8 @@ if [[ "$GOOS" = "windows" ]]; then
     BINARY="${OUTPUT}/${BINARY_NAME}.exe"
 fi
 
-[ -n "$GOARCH" ] && export GOARCH
+# Export Go build variables for cross compiling 
+[ -n "$GOARCH" ] && export GOARCH 
 [ -n "${GOOS:-}" ] && export GOOS
 [ -n "${CXX:-}" ] && export CXX
 [ -n "${CC:-}" ] && export CC

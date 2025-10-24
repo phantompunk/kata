@@ -1,11 +1,8 @@
-.PHONY: help build clean test install dev install-dev uninstall-dev
+.PHONY: help build dev install clean
 
 BINARY = kata
 AIR_BINARY = ./tmp/kata
-INSTALL_PATH=$(HOME)/.local/bin
-VERSION ?= $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
-COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
-LDFLAGS="-s -w -X github.com/phantompunk/kata/cmd.version=${VERSION} -X github.com/phantompunk/kata/cmd.commit=${COMMIT}"
+INSTALL_PATH=$(HOME)/go/bin
 
 # Set the default goal
 .DEFAULT_GOAL := help
@@ -17,41 +14,24 @@ help:
 	@echo "Commands:"
 	@sed -n 's/^##//p' ${MAKEFILE_LIST} | column -t -s ':' |  sed -e 's/^/ /'
 
-## build: Build the kata binary
+## build: Build and save cli to $GOPATH/bin
 build:
-	@go build -ldflags ${LDFLAGS} -o=$(GOPATH)/bin/$(BINARY)
+	@go build -ldflags="-s" -o=$(GOPATH)/bin/$(BINARY) .
 
-## install: Install the kata binary
-install:
-	go install ./cmd . 
-
-dev: install-dev
+## dev: Live reloading for cli using air
+dev: install
 	@air
 
-## install-dev: Install the kata development binary
-install-dev:
+## install: Symlink dev cli to $GOPATH/bin
+install:
 	@mkdir -p $(INSTALL_PATH)
 	@ln -sf $(PWD)/$(AIR_BINARY) $(INSTALL_PATH)/$(BINARY)
 	@echo "Symlinked $(INSTALL_PATH)/$(BINARY) -> $(PWD)/$(AIR_BINARY)"
 
-## uninstall-dev: Remove the kata development binary
-uninstall-dev:
+## clean: Remove all development artifacts
+clean:
 	@rm -f $(INSTALL_PATH)/$(BINARY)
-	@echo "Removed $(INSTALL_PATH)/$(BINARY)"
-
-## test: Run tests
-test:
-	go test -v -race ./...
-
-## test/cover: Run tests with coverage and generate HTML report
-test/cover:
-	go test -v -race -buildvcs -cover -coverprofile c.out
-	go tool cover -html=c.out -o coverage.html
+	@echo "Removed symlink $(INSTALL_PATH)/$(BINARY)"
 
 dist:
 	@./scripts/build.sh
-
-## clean: Remove the binary and coverage files
-clean:
-	rm -rf $(GOPATH)/bin/$(BINARY) c.out coverage.html
-
