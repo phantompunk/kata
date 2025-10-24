@@ -63,10 +63,8 @@ func buildVersion() {
 }
 
 func setVersion() {
-	shaLen := min(len(commit), 7)
-	vt := rootCmd.VersionTemplate()
-
-	rootCmd.SetVersionTemplate(vt[:len(vt)-1] + " (" + commit[:shaLen] + ")\n")
+	vt := fmt.Sprintf("%s versions %s (%s)\n", "kata", version, commit)
+	rootCmd.SetVersionTemplate(vt)
 	rootCmd.Version = version
 }
 

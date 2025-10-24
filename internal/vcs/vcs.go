@@ -7,22 +7,28 @@ import (
 
 // Version returns the version and commit hash of the current build.
 func Version() (string, string) {
-	var version, commit = "dev", "none"
+	var version, commit = "dev-build", "unknown"
 
 	info, ok := debug.ReadBuildInfo()
-	if ok {
-		fullVersion := info.Main.Version
+	if !ok {
+		return version, commit
+	}
 
-		if strings.Contains(fullVersion, "-") {
-			parts := strings.Split(fullVersion, "-")
-			version = parts[0] + "+dev"
-		}
+	fullVersion := info.Main.Version
+	if fullVersion != "" && fullVersion != "(devel)" && !strings.Contains(fullVersion, "-") {
+		version = fullVersion
+	} else {
+		version = strings.SplitN(fullVersion, "-", 2)[0]
+	}
 
-		for _, s := range info.Settings {
-			if s.Key == "vcs.revision" {
-				commit = s.Value
-			}
+	for _, s := range info.Settings {
+		if s.Key == "vcs.revision" {
+			commit = s.Value
 		}
+	}
+
+	if len(commit) > 7 {
+		commit = commit[:7]
 	}
 
 	return version, commit
