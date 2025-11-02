@@ -48,7 +48,10 @@ INSERT INTO submissions (
   question_id, lang_slug, solved, last_attempted
 ) VALUES (
   ?, ?, ?, ? 
-) RETURNING *;
+) ON CONFLICT(question_id) DO UPDATE SET
+    sovled  = excluded.sovled,
+    last_attempted  = excluded.last_attempted
+RETURNING *;
 
 -- name: GetStats :one
 SELECT

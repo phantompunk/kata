@@ -221,7 +221,10 @@ INSERT INTO submissions (
   question_id, lang_slug, solved, last_attempted
 ) VALUES (
   ?, ?, ?, ? 
-) RETURNING id, question_id, lang_slug, solved, last_attempted
+) ON CONFLICT(question_id) DO UPDATE SET
+    sovled  = excluded.sovled,
+    last_attempted  = excluded.last_attempted
+RETURNING id, question_id, lang_slug, solved, last_attempted
 `
 
 type SubmitParams struct {
