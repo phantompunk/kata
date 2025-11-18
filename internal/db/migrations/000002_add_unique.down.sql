@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS idx_submissions_question_lang_unique;

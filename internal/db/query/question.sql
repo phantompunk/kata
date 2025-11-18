@@ -48,8 +48,8 @@ INSERT INTO submissions (
   question_id, lang_slug, solved, last_attempted
 ) VALUES (
   ?, ?, ?, ? 
-) ON CONFLICT(question_id) DO UPDATE SET
-    sovled  = excluded.sovled,
+) ON CONFLICT(question_id, lang_slug) DO UPDATE SET
+    solved  = excluded.solved,
     last_attempted  = excluded.last_attempted
 RETURNING *;
 
