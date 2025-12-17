@@ -60,7 +60,7 @@ func (s *QuestionService) GetQuestion(ctx context.Context, opts AppOptions) (*do
 }
 
 func (s *QuestionService) Stub(ctx context.Context, problem *domain.Problem, opts AppOptions) (*render.RenderResult, error) {
-	return s.renderer.RenderProblem(ctx, problem, opts.Force)
+	return s.renderer.RenderProblem(ctx, problem, opts.Force, opts.Retry)
 }
 
 func (s *QuestionService) GetRandomQuestion(ctx context.Context, opts AppOptions) (*domain.Problem, error) {

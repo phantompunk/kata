@@ -21,6 +21,7 @@ func init() {
 	downloadCmd.Flags().BoolVarP(&open, "open", "o", false, "Open problem with $EDITOR")
 	downloadCmd.Flags().BoolVarP(&force, "force", "f", false, "Force download even if problem already exists")
 	downloadCmd.Flags().StringVarP(&language, "language", "l", "", "Programming language to use")
+	downloadCmd.Flags().BoolVarP(&retry, "retry", "r", false, "Update only the solution file using the expected template")
 }
 
 func DownloadFunc(cmd *cobra.Command, args []string) error {
@@ -37,6 +38,7 @@ func DownloadFunc(cmd *cobra.Command, args []string) error {
 		Workspace: kata.Config.WorkspacePath(),
 		Open:      open,
 		Force:     force,
+		Retry:     retry,
 	}
 
 	problem, err := kata.Question.GetQuestion(cmd.Context(), opts)
@@ -49,11 +51,18 @@ func DownloadFunc(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("fetching question %q: %w", opts.Problem, err)
 	}
 
-	ui.PrintSuccess(fmt.Sprintf("Fetched problem: %s", problem.Title))
+	ui.PrintSuccess("Fetched problem: %s", problem.Title)
 
-	if problem.DirectoryPath.Exists() && !force {
+	if problem.DirectoryPath.Exists() && !force && !retry {
 		ui.PrintError("Problem %s already exists at:\n  %s", problem.Title, problem.DirectoryPath.DisplayPath())
-		ui.Print("\nTo refresh files, run:\n  kata get two-sum --force")
+		ui.Print("\nTo retry solution, run:\n  kata get two-sum --retry")
+		ui.Print("\nTo force refresh files, run:\n  kata get two-sum --force")
+		return nil
+	}
+
+	if retry && !problem.DirectoryPath.Exists() {
+		ui.PrintError("Problem %s does not exist at:\n  %s", problem.Title, problem.DirectoryPath.DisplayPath())
+		ui.Print("\nTo download the problem first, run:\n  kata get two-sum")
 		return nil
 	}
 
@@ -68,7 +77,7 @@ func DownloadFunc(cmd *cobra.Command, args []string) error {
 
 func displayRenderResults(result *render.RenderResult, slug string, force bool) {
 	if result.DirectoryCreated != "" {
-		ui.PrintSuccess(fmt.Sprintf("Created directory: %s", result.DirectoryCreated))
+		ui.PrintSuccess("Created directory: %s", result.DirectoryCreated)
 	}
 
 	if len(result.FilesCreated) > 0 {

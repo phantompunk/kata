@@ -19,7 +19,7 @@ import (
 var Files embed.FS
 
 type Renderer interface {
-	RenderProblem(ctx context.Context, problem *domain.Problem, force bool) (*RenderResult, error)
+	RenderProblem(ctx context.Context, problem *domain.Problem, force bool, retry bool) (*RenderResult, error)
 }
 
 type QuestionRenderer struct {
@@ -40,7 +40,7 @@ func New() (*QuestionRenderer, error) {
 	return &QuestionRenderer{fs: afero.NewOsFs(), templ: templ}, nil
 }
 
-func (r *QuestionRenderer) RenderProblem(ctx context.Context, problem *domain.Problem, force bool) (*RenderResult, error) {
+func (r *QuestionRenderer) RenderProblem(ctx context.Context, problem *domain.Problem, force bool, retry bool) (*RenderResult, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -56,13 +56,19 @@ func (r *QuestionRenderer) RenderProblem(ctx context.Context, problem *domain.Pr
 		result.RecordDirectoryCreated(problem.DirectoryPath)
 	}
 
-	if !directoryCreated && !force {
+	if !directoryCreated && !force && !retry {
 		result.RecordAllSkipped()
 		return result, nil
 	}
 
-	for _, file := range problem.FileSet {
-		if err := r.renderProblemFile(ctx, problem, file, force, result); err != nil {
+	// Filter FileSet to only solution file when retrying
+	filesToRender := problem.FileSet
+	if retry {
+		filesToRender = []domain.ProblemFile{problem.FileSet[0]} // Only solution file
+	}
+
+	for _, file := range filesToRender {
+		if err := r.renderProblemFile(ctx, problem, file, force || retry, result); err != nil {
 			return result, err
 		}
 	}

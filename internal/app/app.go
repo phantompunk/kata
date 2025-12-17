@@ -28,6 +28,7 @@ type AppOptions struct {
 	Workspace string
 	Open      bool
 	Force     bool
+	Retry     bool
 }
 
 type App struct {

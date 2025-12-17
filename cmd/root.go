@@ -24,6 +24,7 @@ var (
 	language string
 	version  string
 	commit   string
+	retry    bool
 )
 
 type CommandFunc func(cmd *cobra.Command, args []string) error
