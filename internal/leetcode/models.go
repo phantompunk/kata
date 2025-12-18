@@ -153,6 +153,10 @@ type SubmissionResponse struct {
 
 func (s SubmissionResponse) ToResult() *SubmissionResult {
 	errorMessage := s.RuntimeError
+	if errorMessage != "" {
+		errorMessage = s.CompileError
+	}
+
 	if s.CompileError != "" {
 		errorMessage = s.CompileError
 	}
