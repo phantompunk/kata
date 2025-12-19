@@ -80,7 +80,7 @@ func HandleErrors(fn CommandFunc) CommandFunc {
 		}
 
 		if v, _ := cmd.Flags().GetBool("verbose"); v || kata.Config.Verbose {
-			return fmt.Errorf("Error %+v", err)
+			return fmt.Errorf("error %+v", err)
 		}
 		return fmt.Errorf("%s", userMessage(err))
 	}
@@ -111,6 +111,6 @@ func userMessage(err error) string {
 
 func displayWarnings(warnings []string) {
 	for warning := range warnings {
-		ui.PrintError(warnings[warning])
+		ui.PrintError("%s", warnings[warning])
 	}
 }

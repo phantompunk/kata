@@ -44,7 +44,7 @@ func SubmitFunc(cmd *cobra.Command, args []string) error {
 		}
 		return err
 	}
-	ui.PrintSuccess(fmt.Sprintf("Fetched problem: %s", problem.Title))
+	ui.PrintSuccess("%s", fmt.Sprintf("Fetched problem: %s", problem.Title))
 
 	if !problem.SolutionExists() {
 		ui.PrintError("Solution to %q not found using %q", problem.Title, problem.Language.DisplayName())
