@@ -96,7 +96,7 @@ func (r *QuestionRenderer) renderProblemFile(ctx context.Context, problem *domai
 
 	file, err := r.fs.Create(problemFile.Path.String())
 	if err != nil {
-		return fmt.Errorf("failed creating file %q: %w", file.Name(), err)
+		return fmt.Errorf("failed creating file %q: %w", problemFile.Path.String(), err)
 	}
 	defer file.Close()
 

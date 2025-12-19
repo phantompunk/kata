@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -53,7 +54,7 @@ func (q *Queries) GetAllWithStatus(ctx context.Context, languages []string) ([]d
 	return items, nil
 }
 
-func (q *Question) ToProblem(workspace, language string) *domain.Problem {
+func (q *Question) ToProblem(workspace, language string) (*domain.Problem, error) {
 	dir := formatTitleSlug(q.TitleSlug)
 	lang := domain.NewProgrammingLanguage(language)
 	directory := domain.Path(filepath.Join(workspace, lang.Slug(), dir))
@@ -63,14 +64,14 @@ func (q *Question) ToProblem(workspace, language string) *domain.Problem {
 	var testcases []string
 	if err := json.Unmarshal([]byte(q.TestCases), &testcases); err != nil {
 		fmt.Println("Failed testcases")
-		return nil
+		return nil, err
 	}
 
 	var code string
 	var codeSnippets []domain.CodeSnippet
 	if err := json.Unmarshal([]byte(q.CodeSnippets), &codeSnippets); err != nil {
 		fmt.Println("Failed to unmarshal code snippets:", err)
-		return nil
+		return nil, err
 	}
 
 	for _, snippet := range codeSnippets {
@@ -93,7 +94,7 @@ func (q *Question) ToProblem(workspace, language string) *domain.Problem {
 		DirectoryPath: directory,
 		Language:      lang,
 		FileSet:       fileSet,
-	}
+	}, nil
 }
 
 func buildSelectClause(languages []string) string {
@@ -177,15 +178,17 @@ func ToRepoCreateParams(question *leetcode.Question) CreateParams {
 
 	codeSnippets, err := json.Marshal(question.CodeSnippets)
 	if err != nil {
-		return params
+		fmt.Fprintf(os.Stderr, "Failed to marshal code snippets: %v\n", err)
+	} else {
+		params.CodeSnippets = string(codeSnippets)
 	}
-	params.CodeSnippets = string(codeSnippets)
 
 	testcases, err := json.Marshal(question.TestCaseList)
 	if err != nil {
-		return params
+		fmt.Fprintf(os.Stderr, "Failed to marshal test cases: %v\n", err)
+	} else {
+		params.TestCases = string(testcases)
 	}
-	params.TestCases = string(testcases)
 
 	return params
 }

@@ -39,7 +39,7 @@ func (s *QuestionService) GetQuestion(ctx context.Context, opts AppOptions) (*do
 	}
 
 	if question.QuestionID != 0 && !opts.Force {
-		return toProblem(question, opts), nil
+		return toProblem(question, opts) 
 	}
 
 	apiQuestion, err := s.client.FetchQuestion(ctx, opts.Problem)
@@ -56,7 +56,7 @@ func (s *QuestionService) GetQuestion(ctx context.Context, opts AppOptions) (*do
 		return nil, fmt.Errorf("failed to create question in repository: %w", err)
 	}
 
-	return toProblem(createdQuestion, opts), nil
+	return toProblem(createdQuestion, opts)
 }
 
 func (s *QuestionService) Stub(ctx context.Context, problem *domain.Problem, opts AppOptions) (*render.RenderResult, error) {
@@ -136,7 +136,7 @@ func (s *QuestionService) GetBySlug(ctx context.Context, opts AppOptions) (*doma
 		return nil, fmt.Errorf("failed to get question: %w", err)
 	}
 
-	return question.ToProblem(opts.Workspace, opts.Language), nil
+	return question.ToProblem(opts.Workspace, opts.Language)
 }
 
 func (s *QuestionService) GetAllQuestionsWithStatus(ctx context.Context, opts AppOptions) ([]domain.QuestionStat, error) {
@@ -160,7 +160,7 @@ func (s *QuestionService) GetStats(ctx context.Context) (repository.GetStatsRow,
 	return stats, nil
 }
 
-func toProblem(question repository.Question, opts AppOptions) *domain.Problem {
+func toProblem(question repository.Question, opts AppOptions) (*domain.Problem, error) {
 	return question.ToProblem(opts.Workspace, opts.Language)
 }
 

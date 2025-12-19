@@ -198,7 +198,7 @@ func (r *ConfigRepository) Load() (*Config, error) {
 }
 
 func (r *ConfigRepository) Save(cfg *Config) error {
-	if err := os.MkdirAll(filepath.Dir(r.path), os.ModePerm); err != nil {
+	if err := os.MkdirAll(filepath.Dir(r.path), 0700); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 
@@ -207,7 +207,7 @@ func (r *ConfigRepository) Save(cfg *Config) error {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
 
-	if err := os.WriteFile(r.path, data, 0644); err != nil {
+	if err := os.WriteFile(r.path, data, 0600); err != nil {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
