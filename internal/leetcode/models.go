@@ -9,7 +9,8 @@ import (
 const SolutionTask = "judger.judgetask.Judge"
 
 type Question struct {
-	ID           string        `json:"questionId"`
+	ID           string        `json:"questionFrontendId"`
+	SubmitId     string        `json:"questionId"`
 	Title        string        `json:"title"`
 	TitleSlug    string        `json:"titleSlug"`
 	Difficulty   string        `json:"difficulty"`
@@ -23,7 +24,8 @@ type Question struct {
 
 // InternalQuestion is used for unmarshaling the raw metadata field
 type InternalQuestion struct {
-	ID           string        `json:"questionId"`
+	ID           string        `json:"questionFrontendId"`
+	SubmitId     string        `json:"questionId"`
 	Title        string        `json:"title"`
 	TitleSlug    string        `json:"titleSlug"`
 	Difficulty   string        `json:"difficulty"`
@@ -59,6 +61,7 @@ func (q *Question) UnmarshalJSON(data []byte) error {
 	}
 
 	q.ID = tmp.ID
+	q.SubmitId = tmp.SubmitId
 	q.Title = tmp.Title
 	q.TitleSlug = tmp.TitleSlug
 	q.Difficulty = tmp.Difficulty

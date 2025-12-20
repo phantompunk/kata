@@ -12,6 +12,7 @@ import (
 
 type Problem struct {
 	ID            string
+	SubmitID      string
 	Title         string
 	Slug          string
 	DirName       string

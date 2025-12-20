@@ -124,6 +124,7 @@ func (lc *LeetCodeClient) FetchQuestion(ctx context.Context, slug string) (*Ques
 		query questionEditorData($titleSlug: String!) {
 			question(titleSlug: $titleSlug) {
 				questionId
+				questionFrontendId
 				content
 				titleSlug
 				title
@@ -159,7 +160,7 @@ func (lc *LeetCodeClient) FetchQuestion(ctx context.Context, slug string) (*Ques
 func (lc *LeetCodeClient) SubmitTest(ctx context.Context, problem *domain.Problem, snippet string) (string, error) {
 	payload := map[string]any{
 		"lang":        problem.Language.TemplateName(),
-		"question_id": problem.ID,
+		"question_id": problem.SubmitID,
 		"typed_code":  strings.ReplaceAll(snippet, "\t", "    "), // Consistent 4 spaces
 		"data_input":  strings.Join(problem.Testcases, "\n"),
 	}
@@ -176,7 +177,7 @@ func (lc *LeetCodeClient) SubmitTest(ctx context.Context, problem *domain.Proble
 func (lc *LeetCodeClient) SubmitSolution(ctx context.Context, problem *domain.Problem, snippet string) (string, error) {
 	payload := map[string]any{
 		"lang":        problem.Language.TemplateName(),
-		"question_id": problem.ID,
+		"question_id": problem.SubmitID,
 		"typed_code":  strings.ReplaceAll(snippet, "\t", "    "), // Consistent 4 spaces
 	}
 

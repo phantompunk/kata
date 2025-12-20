@@ -25,7 +25,7 @@ func TestFetchQuestion(t *testing.T) {
 	})
 
 	t.Run("Problem found", func(t *testing.T) {
-		resp.SetResponse(200, `{"data":{"question":{"questionId":"1","content":"<p>Given an array of integers</p>","titleSlug":"two-sum","title":"Two Sum","difficulty":"Easy","metaData": "{\r\n  \"name\": \"twoSum\",\r\n  \"params\": [\r\n    {\r\n      \"name\": \"nums\",\r\n      \"type\": \"integer[]\"\r\n    },\r\n    {\r\n      \"name\": \"target\",\r\n      \"type\": \"integer\"\r\n    }\r\n  ],\r\n  \"return\": {\r\n    \"type\": \"list<list<integer>>\",\r\n    \"colsize\": 4,\r\n    \"dealloc\": true\r\n  }\r\n}"}}}`)
+		resp.SetResponse(200, `{"data":{"question":{"questionFrontendId":"1","content":"<p>Given an array of integers</p>","titleSlug":"two-sum","title":"Two Sum","difficulty":"Easy","metaData": "{\r\n  \"name\": \"twoSum\",\r\n  \"params\": [\r\n    {\r\n      \"name\": \"nums\",\r\n      \"type\": \"integer[]\"\r\n    },\r\n    {\r\n      \"name\": \"target\",\r\n      \"type\": \"integer\"\r\n    }\r\n  ],\r\n  \"return\": {\r\n    \"type\": \"list<list<integer>>\",\r\n    \"colsize\": 4,\r\n    \"dealloc\": true\r\n  }\r\n}"}}}`)
 		question, err := client.FetchQuestion(context.Background(), slug)
 
 		assert.NilError(t, err)
@@ -34,7 +34,7 @@ func TestFetchQuestion(t *testing.T) {
 	})
 
 	t.Run("Problem metadata", func(t *testing.T) {
-		resp.SetResponse(200, `{"data":{"question":{"questionId":"1","content":"<p>Given an array of integers</p>","titleSlug":"two-sum","title":"Two Sum","difficulty":"Easy","metaData": "{\r\n  \"name\": \"twoSum\",\r\n  \"params\": [\r\n    {\r\n      \"name\": \"nums\",\r\n      \"type\": \"integer[]\"\r\n    },\r\n    {\r\n      \"name\": \"target\",\r\n      \"type\": \"integer\"\r\n    }\r\n  ],\r\n  \"return\": {\r\n    \"type\": \"list<list<integer>>\",\r\n    \"colsize\": 4,\r\n    \"dealloc\": true\r\n  }\r\n}"}}}`)
+		resp.SetResponse(200, `{"data":{"question":{"questionFrontendId":"1","content":"<p>Given an array of integers</p>","titleSlug":"two-sum","title":"Two Sum","difficulty":"Easy","metaData": "{\r\n  \"name\": \"twoSum\",\r\n  \"params\": [\r\n    {\r\n      \"name\": \"nums\",\r\n      \"type\": \"integer[]\"\r\n    },\r\n    {\r\n      \"name\": \"target\",\r\n      \"type\": \"integer\"\r\n    }\r\n  ],\r\n  \"return\": {\r\n    \"type\": \"list<list<integer>>\",\r\n    \"colsize\": 4,\r\n    \"dealloc\": true\r\n  }\r\n}"}}}`)
 		question, err := client.FetchQuestion(context.Background(), slug)
 
 		assert.NilError(t, err)
@@ -45,7 +45,7 @@ func TestFetchQuestion(t *testing.T) {
 func TestSubmitQuestion(t *testing.T) {
 	resp := &Responder{}
 	client := newTestClient(resp)
-	problem := &domain.Problem{ID: "1", Slug: "two-sum", Testcases: "[2,7]\n9", Language: domain.NewProgrammingLanguage("go")}
+	problem := &domain.Problem{ID: "1", Slug: "two-sum", Testcases: []string{"[2,7]\n9"}, Language: domain.NewProgrammingLanguage("go")}
 	submissionId := "12345"
 	snippet := "func twoSum(){}"
 

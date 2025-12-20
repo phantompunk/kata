@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -83,6 +84,7 @@ func (q *Question) ToProblem(workspace, language string) (*domain.Problem, error
 
 	return &domain.Problem{
 		ID:            fmt.Sprintf("%d", q.QuestionID),
+		SubmitID:      fmt.Sprintf("%d", q.SubmitID.Int64),
 		Title:         q.Title,
 		Slug:          q.TitleSlug,
 		Content:       q.Content,
@@ -167,6 +169,8 @@ func ToRepoCreateParams(question *leetcode.Question) CreateParams {
 	var params CreateParams
 	qId, _ := strconv.ParseInt(question.ID, 10, 64)
 	params.QuestionID = qId
+	sId, _ := strconv.ParseInt(question.SubmitId, 10, 64)
+	params.SubmitID = sql.NullInt64{Int64: sId, Valid: true}
 	params.Title = question.Title
 	params.TitleSlug = question.TitleSlug
 	params.Difficulty = question.Difficulty
