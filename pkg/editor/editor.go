@@ -3,46 +3,71 @@ package editor
 import (
 	"os"
 	"os/exec"
-	"path/filepath"
+	"runtime"
 )
 
-func Open(pathToFile string) error {
-	textEditor := findTextEditor()
+func Open(path string) error {
+	editor, args := findEditor()
+	cmdArgs := append(args, path)
 
-	command := exec.Command(textEditor, pathToFile)
-	command.Stdout = os.Stdout
-	command.Stdin = os.Stdin
-	command.Stderr = os.Stderr
-	err := os.Chdir(filepath.Dir(pathToFile))
-	if err != nil {
-		return err
-	}
-	
-	err = command.Run()
-	if err != nil {
-		return err
-	}
-	return nil
+	cmd := exec.Command(editor, cmdArgs...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	return cmd.Run()
 }
 
-func findTextEditor() string {
-	if isCommandAvailable("nvim") {
-		return "nvim"
-	} else if isCommandAvailable("vim") {
-		return "vim"
-	} else if isCommandAvailable("nano") {
-		return "nano"
-	} else if isCommandAvailable("editor") {
-		return "editor"
-	} else {
-		return "vi"
+func findEditor() (string, []string) {
+	// 1. Check $VISUAL (GUI editors)
+	if editor := os.Getenv("VISUAL"); editor != "" {
+		return editor, nil
+	}
+
+	// 2. Check $EDITOR (terminal editors)
+	if editor := os.Getenv("EDITOR"); editor != "" {
+		return editor, nil
+	}
+
+	// 3. Platform-specific defaults
+	return platformDefault()
+}
+
+func platformDefault() (string, []string) {
+	switch runtime.GOOS {
+	case "darwin":
+		return darwinDefault()
+	case "windows":
+		return windowsDefault()
+	default:
+		return linuxDefault()
 	}
 }
 
-func isCommandAvailable(name string) bool {
-	cmd := exec.Command("command", "-v", name)
-	if err := cmd.Run(); err != nil {
-		return false
+func darwinDefault() (string, []string) {
+	editors := []string{"code", "subl", "nano", "vim"}
+	for _, e := range editors {
+		if _, err := exec.LookPath(e); err == nil {
+			return e, nil
+		}
 	}
-	return true
+	// Fallback: open with default text editor (TextEdit)
+	return "open", []string{"-t"}
+}
+
+func windowsDefault() (string, []string) {
+	if _, err := exec.LookPath("code"); err == nil {
+		return "code", nil
+	}
+	return "notepad", nil
+}
+
+func linuxDefault() (string, []string) {
+	editors := []string{"code", "nano", "vim", "vi"}
+	for _, e := range editors {
+		if _, err := exec.LookPath(e); err == nil {
+			return e, nil
+		}
+	}
+	return "vi", nil
 }
