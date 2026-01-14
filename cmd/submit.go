@@ -9,64 +9,70 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var submitCmd = &cobra.Command{
-	Use:     "submit",
-	Short:   "Submit solutions against leetcode servers",
-	PreRunE: validateLanguagePreRun,
-	RunE:    HandleErrors(SubmitFunc),
-	Args:    cobra.ExactArgs(1),
-}
+func newSubmitCmd(kata *app.App) *cobra.Command {
+	var language string
 
-func init() {
-	submitCmd.Flags().StringVarP(&language, "language", "l", "", "Programming language to use")
-}
-
-func SubmitFunc(cmd *cobra.Command, args []string) error {
-	problemName := app.ConvertToSlug(args[0])
-	presenter := ui.NewPresenter()
-
-	opts := app.AppOptions{
-		Problem:   problemName,
-		Language:  language,
-		Workspace: kata.Config.WorkspacePath(),
+	cmd := &cobra.Command{
+		Use:     "submit",
+		Short:   "Submit solutions against leetcode servers",
+		PreRunE: validateLanguagePreRun(kata, &language),
+		RunE:    handleErrors(kata, submitFunc(kata, &language)),
+		Args:    cobra.ExactArgs(1),
 	}
 
-	problem, err := kata.Question.GetBySlug(cmd.Context(), opts)
-	if err != nil {
-		if errors.Is(err, app.ErrQuestionNotFound) {
-			presenter.ShowProblemNotFound(problemName)
+	cmd.Flags().StringVarP(&language, "language", "l", "", "Programming language to use")
+
+	return cmd
+}
+
+func submitFunc(kata *app.App, language *string) CommandFunc {
+	return func(cmd *cobra.Command, args []string) error {
+		problemName := app.ConvertToSlug(args[0])
+		presenter := ui.NewPresenter()
+
+		opts := app.AppOptions{
+			Problem:   problemName,
+			Language:  *language,
+			Workspace: kata.Config.WorkspacePath(),
+		}
+
+		problem, err := kata.Question.GetBySlug(cmd.Context(), opts)
+		if err != nil {
+			if errors.Is(err, app.ErrQuestionNotFound) {
+				presenter.ShowProblemNotFound(problemName)
+				return nil
+			}
+			return err
+		}
+		presenter.ShowProblemFetched(problem.Title)
+
+		if !problem.SolutionExists() {
+			presenter.ShowSolutionNotFound(problem.Title, problem.Language.DisplayName())
 			return nil
 		}
-		return err
-	}
-	presenter.ShowProblemFetched(problem.Title)
 
-	if !problem.SolutionExists() {
-		presenter.ShowSolutionNotFound(problem.Title, problem.Language.DisplayName())
+		submissionId, err := kata.Question.SubmitSolution(cmd.Context(), problem, opts)
+		if err != nil {
+			return err
+		}
+		presenter.ShowSubmittingSolution()
+
+		startTime := time.Now()
+		maxWait := time.Duration(10) * time.Second
+
+		done := make(chan struct{})
+		go presenter.ShowWaitForResults(startTime, maxWait, done)
+
+		result, err := kata.Question.WaitForResult(cmd.Context(), problem, submissionId, maxWait)
+		if err != nil {
+			if errors.Is(err, app.ErrSolutionFailed) {
+				presenter.ShowSolutionFailed()
+			}
+			return err
+		}
+
+		presenter.ShowSubmissionResults(result)
 		return nil
 	}
-
-	submissionId, err := kata.Question.SubmitSolution(cmd.Context(), problem, opts)
-	if err != nil {
-		return err
-	}
-	presenter.ShowSubmittingSolution()
-
-	startTime := time.Now()
-	maxWait := time.Duration(10) * time.Second
-
-	done := make(chan struct{})
-	go presenter.ShowWaitForResults(startTime, maxWait, done)
-
-	result, err := kata.Question.WaitForResult(cmd.Context(), problem, submissionId, maxWait)
-	if err != nil {
-		if errors.Is(err, app.ErrSolutionFailed) {
-			presenter.ShowSolutionFailed()
-		}
-		return err
-	}
-
-	presenter.ShowSubmissionResults(result)
-	return nil
 }
 

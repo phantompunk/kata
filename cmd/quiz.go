@@ -10,46 +10,53 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var quizCmd = &cobra.Command{
-	Use:     "quiz",
-	Short:   "Select a random problem to complete",
-	PreRunE: validateLanguagePreRun,
-	RunE:    HandleErrors(QuizFunc),
+func newQuizCmd(kata *app.App) *cobra.Command {
+	var open bool
+	var language string
+
+	cmd := &cobra.Command{
+		Use:     "quiz",
+		Short:   "Select a random problem to complete",
+		PreRunE: validateLanguagePreRun(kata, &language),
+		RunE:    handleErrors(kata, quizFunc(kata, &open, &language)),
+	}
+
+	cmd.Flags().BoolVarP(&open, "open", "o", false, "Open problem with $EDITOR")
+	cmd.Flags().StringVarP(&language, "language", "l", "", "Programming language to use")
+
+	return cmd
 }
 
-func init() {
-	quizCmd.Flags().BoolVarP(&open, "open", "o", false, "Open problem with $EDITOR")
-	quizCmd.Flags().StringVarP(&language, "language", "l", "", "Programming language to use")
-}
-
-func QuizFunc(cmd *cobra.Command, args []string) error {
-	opts := app.AppOptions{
-		Workspace: kata.Config.WorkspacePath(),
-		Language:  language,
-		Open:      open,
-	}
-
-	presenter := ui.NewPresenter()
-
-	problem, err := kata.Question.GetRandomQuestion(cmd.Context(), opts)
-	if err != nil {
-		if errors.Is(err, app.ErrNoQuestions) {
-			presenter.ShowNoEligibleProblems()
-			return nil
+func quizFunc(kata *app.App, open *bool, language *string) CommandFunc {
+	return func(cmd *cobra.Command, args []string) error {
+		opts := app.AppOptions{
+			Workspace: kata.Config.WorkspacePath(),
+			Language:  *language,
+			Open:      *open,
 		}
 
-		return err
-	}
+		presenter := ui.NewPresenter()
 
-	if err := presenter.ShowQuizResult(problem); err != nil {
-		return err
-	}
+		problem, err := kata.Question.GetRandomQuestion(cmd.Context(), opts)
+		if err != nil {
+			if errors.Is(err, app.ErrNoQuestions) {
+				presenter.ShowNoEligibleProblems()
+				return nil
+			}
 
-	if opts.Open || kata.Config.OpenInEditor {
-		if err := editor.Open(problem.SolutionPath()); err != nil {
-			return fmt.Errorf("failed to open solution file in editor: %w", err)
+			return err
 		}
-	}
 
-	return nil
+		if err := presenter.ShowQuizResult(problem); err != nil {
+			return err
+		}
+
+		if opts.Open || kata.Config.OpenInEditor {
+			if err := editor.Open(problem.SolutionPath()); err != nil {
+				return fmt.Errorf("failed to open solution file in editor: %w", err)
+			}
+		}
+
+		return nil
+	}
 }
