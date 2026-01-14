@@ -1,0 +1,2 @@
+ALTER TABLE submissions ADD COLUMN failed_attempts INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE submissions ADD COLUMN times_solved INTEGER NOT NULL DEFAULT 0;

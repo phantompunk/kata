@@ -22,9 +22,11 @@ type Question struct {
 }
 
 type Submission struct {
-	ID            int64
-	QuestionID    int64
-	LangSlug      string
-	Solved        int64
-	LastAttempted string
+	ID             int64
+	QuestionID     int64
+	LangSlug       string
+	Solved         int64
+	LastAttempted  string
+	FailedAttempts int64
+	TimesSolved    int64
 }

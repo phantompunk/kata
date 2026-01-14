@@ -165,6 +165,26 @@ func (q *GetRandomRow) ToProblem(workspace, language string) *domain.Problem {
 	}
 }
 
+func (q *GetRandomWeightedRow) ToProblem(workspace, language string) *domain.Problem {
+	dirName := formatTitleSlug(q.TitleSlug)
+	lang := domain.NewProgrammingLanguage(language)
+	directory := domain.Path(filepath.Join(workspace, lang.Slug(), dirName))
+	fileSet := domain.NewProblemFileSet(dirName, lang, directory)
+	then, _ := time.Parse(time.RFC3339, q.LastAttempted)
+
+	return &domain.Problem{
+		Title:         q.Title,
+		Slug:          q.TitleSlug,
+		DirName:       dirName,
+		Difficulty:    q.Difficulty,
+		Status:        q.Status,
+		LastAttempted: then,
+		DirectoryPath: directory,
+		Language:      lang,
+		FileSet:       fileSet,
+	}
+}
+
 func ToRepoCreateParams(question *leetcode.Question) CreateParams {
 	var params CreateParams
 	qId, _ := strconv.ParseInt(question.ID, 10, 64)

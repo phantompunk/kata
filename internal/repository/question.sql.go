@@ -164,6 +164,47 @@ func (q *Queries) GetRandom(ctx context.Context) (GetRandomRow, error) {
 	return i, err
 }
 
+const getRandomWeighted = `-- name: GetRandomWeighted :one
+SELECT q.question_id, q.title, q.title_slug, q.difficulty,
+  CASE WHEN s.solved = 1 THEN 'Completed' ELSE 'Attempted' END AS status,
+  COALESCE(s.last_attempted, q.created_at) AS last_attempted,
+  (
+    CAST(julianday('now') - julianday(COALESCE(s.last_attempted, q.created_at)) AS REAL) * 0.4 +
+    COALESCE(s.failed_attempts, 0) * 0.3 +
+    CASE q.difficulty WHEN 'Easy' THEN 0.3 WHEN 'Medium' THEN 0.6 ELSE 1.0 END * 0.2 +
+    CASE WHEN COALESCE(s.times_solved, 0) = 1 THEN 0.1 ELSE 0.0 END
+  ) AS weight_score
+FROM questions q
+LEFT JOIN submissions s ON s.question_id = q.question_id
+ORDER BY weight_score DESC, RANDOM()
+LIMIT 1
+`
+
+type GetRandomWeightedRow struct {
+	QuestionID    int64
+	Title         string
+	TitleSlug     string
+	Difficulty    string
+	Status        string
+	LastAttempted string
+	WeightScore   interface{}
+}
+
+func (q *Queries) GetRandomWeighted(ctx context.Context) (GetRandomWeightedRow, error) {
+	row := q.db.QueryRowContext(ctx, getRandomWeighted)
+	var i GetRandomWeightedRow
+	err := row.Scan(
+		&i.QuestionID,
+		&i.Title,
+		&i.TitleSlug,
+		&i.Difficulty,
+		&i.Status,
+		&i.LastAttempted,
+		&i.WeightScore,
+	)
+	return i, err
+}
+
 const getStats = `-- name: GetStats :one
 SELECT
     COUNT(DISTINCT q.question_id) AS attempted,
@@ -182,6 +223,40 @@ func (q *Queries) GetStats(ctx context.Context) (GetStatsRow, error) {
 	var i GetStatsRow
 	err := row.Scan(&i.Attempted, &i.Completed)
 	return i, err
+}
+
+const incrementFailedAttempts = `-- name: IncrementFailedAttempts :exec
+UPDATE submissions
+SET failed_attempts = failed_attempts + 1, last_attempted = ?
+WHERE question_id = ? AND lang_slug = ?
+`
+
+type IncrementFailedAttemptsParams struct {
+	LastAttempted string
+	QuestionID    int64
+	LangSlug      string
+}
+
+func (q *Queries) IncrementFailedAttempts(ctx context.Context, arg IncrementFailedAttemptsParams) error {
+	_, err := q.db.ExecContext(ctx, incrementFailedAttempts, arg.LastAttempted, arg.QuestionID, arg.LangSlug)
+	return err
+}
+
+const incrementTimesSolved = `-- name: IncrementTimesSolved :exec
+UPDATE submissions
+SET times_solved = times_solved + 1, solved = 1, last_attempted = ?
+WHERE question_id = ? AND lang_slug = ?
+`
+
+type IncrementTimesSolvedParams struct {
+	LastAttempted string
+	QuestionID    int64
+	LangSlug      string
+}
+
+func (q *Queries) IncrementTimesSolved(ctx context.Context, arg IncrementTimesSolvedParams) error {
+	_, err := q.db.ExecContext(ctx, incrementTimesSolved, arg.LastAttempted, arg.QuestionID, arg.LangSlug)
+	return err
 }
 
 const listAll = `-- name: ListAll :many
@@ -231,7 +306,7 @@ INSERT INTO submissions (
 ) ON CONFLICT(question_id, lang_slug) DO UPDATE SET
     solved  = excluded.solved,
     last_attempted  = excluded.last_attempted
-RETURNING id, question_id, lang_slug, solved, last_attempted
+RETURNING id, question_id, lang_slug, solved, last_attempted, failed_attempts, times_solved
 `
 
 type SubmitParams struct {
@@ -255,6 +330,8 @@ func (q *Queries) Submit(ctx context.Context, arg SubmitParams) (Submission, err
 		&i.LangSlug,
 		&i.Solved,
 		&i.LastAttempted,
+		&i.FailedAttempts,
+		&i.TimesSolved,
 	)
 	return i, err
 }

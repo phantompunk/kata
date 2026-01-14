@@ -64,7 +64,7 @@ func (s *QuestionService) Stub(ctx context.Context, problem *domain.Problem, opt
 }
 
 func (s *QuestionService) GetRandomQuestion(ctx context.Context, opts AppOptions) (*domain.Problem, error) {
-	question, err := s.repo.GetRandom(ctx)
+	question, err := s.repo.GetRandomWeighted(ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrNoQuestions
@@ -110,14 +110,30 @@ func (s *QuestionService) WaitForResult(ctx context.Context, problem *domain.Pro
 			return nil, err
 		}
 
+		now := time.Now().Format(time.RFC3339)
+		questionID := int64(problem.GetID())
+		langSlug := problem.Language.Slug()
+
 		switch result.State {
 		case "SUCCESS":
-			now := time.Now().Format(time.RFC3339)
-			s.repo.Submit(ctx, repository.SubmitParams{QuestionID: int64(problem.GetID()), LangSlug: problem.Language.Slug(), Solved: 1, LastAttempted: now})
+			// Ensure submission record exists, then increment times_solved
+			s.repo.Submit(ctx, repository.SubmitParams{QuestionID: questionID, LangSlug: langSlug, Solved: 1, LastAttempted: now})
+			s.repo.IncrementTimesSolved(ctx, repository.IncrementTimesSolvedParams{
+				LastAttempted: now,
+				QuestionID:    questionID,
+				LangSlug:      langSlug,
+			})
 			return result, nil
 		case "PENDING", "STARTED", "EVALUATION":
 			time.Sleep(pollInterval)
 		case "FAILED":
+			// Ensure submission record exists, then increment failed_attempts
+			s.repo.Submit(ctx, repository.SubmitParams{QuestionID: questionID, LangSlug: langSlug, Solved: 0, LastAttempted: now})
+			s.repo.IncrementFailedAttempts(ctx, repository.IncrementFailedAttemptsParams{
+				LastAttempted: now,
+				QuestionID:    questionID,
+				LangSlug:      langSlug,
+			})
 			return result, ErrSolutionFailed
 		default:
 			return nil, fmt.Errorf("unexpected submission state: %s", result.State)
