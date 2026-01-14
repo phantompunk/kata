@@ -21,15 +21,16 @@ func init() {
 }
 
 func LoginFunc(cmd *cobra.Command, args []string) error {
+	presenter := ui.NewPresenter()
+
 	if !force {
 		if err := kata.Session.CheckSession(cmd.Context()); err == nil {
-			ui.PrintInfo("You are already logged in as " + kata.Config.Username)
+			presenter.ShowAlreadyLoggedIn(kata.Config.Username)
 			res, err := kata.Question.GetStats(cmd.Context())
 			if err != nil {
 				return err
 			}
-			ui.Print(ui.RenderLoginResult(kata.Config.Username, res))
-			return nil
+			return presenter.ShowLoginResult(kata.Config.Username, res)
 		}
 	}
 
@@ -41,13 +42,12 @@ func LoginFunc(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to validate session: %w", err)
 	}
-	ui.PrintSuccess("Authentication successful")
+	presenter.ShowAuthenticationSuccess()
 
 	res, err := kata.Question.GetStats(cmd.Context())
 	if err != nil {
 		return err
 	}
 
-	ui.Print(ui.RenderLoginResult(username, res))
-	return nil
+	return presenter.ShowLoginResult(username, res)
 }

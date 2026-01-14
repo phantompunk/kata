@@ -14,6 +14,10 @@ func Open(pathToFile string) error {
 	command.Stdin = os.Stdin
 	command.Stderr = os.Stderr
 	err := os.Chdir(filepath.Dir(pathToFile))
+	if err != nil {
+		return err
+	}
+	
 	err = command.Run()
 	if err != nil {
 		return err

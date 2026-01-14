@@ -11,9 +11,10 @@ import (
 )
 
 var quizCmd = &cobra.Command{
-	Use:   "quiz",
-	Short: "Select a random problem to complete",
-	RunE:  HandleErrors(QuizFunc),
+	Use:     "quiz",
+	Short:   "Select a random problem to complete",
+	PreRunE: validateLanguagePreRun,
+	RunE:    HandleErrors(QuizFunc),
 }
 
 func init() {
@@ -22,30 +23,25 @@ func init() {
 }
 
 func QuizFunc(cmd *cobra.Command, args []string) error {
-	if err := validateLanguage(); err != nil {
-		ui.PrintError("language %q not supported", language)
-		return err
-	}
-
 	opts := app.AppOptions{
 		Workspace: kata.Config.WorkspacePath(),
 		Language:  language,
 		Open:      open,
 	}
 
+	presenter := ui.NewPresenter()
+
 	problem, err := kata.Question.GetRandomQuestion(cmd.Context(), opts)
 	if err != nil {
 		if errors.Is(err, app.ErrNoQuestions) {
-			ui.PrintError("No eligible problems to quiz on")
-			ui.PrintInfo("You need at least one attempted solution\n    To get started, run: 'kata get two-sum'")
+			presenter.ShowNoEligibleProblems()
 			return nil
 		}
 
 		return err
 	}
 
-	ui.PrintSuccess("Selected a random problem from your history")
-	if err := ui.RenderQuizResult(problem); err != nil {
+	if err := presenter.ShowQuizResult(problem); err != nil {
 		return err
 	}
 
