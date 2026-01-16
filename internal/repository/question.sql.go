@@ -165,7 +165,7 @@ func (q *Queries) GetRandom(ctx context.Context) (GetRandomRow, error) {
 }
 
 const getRandomWeighted = `-- name: GetRandomWeighted :one
-SELECT q.question_id, q.title, q.title_slug, q.difficulty,
+SELECT q.question_id, q.title, q.title_slug, q.difficulty, q.code_snippets, q.function_name,
   CASE WHEN s.solved = 1 THEN 'Completed' ELSE 'Attempted' END AS status,
   COALESCE(s.last_attempted, q.created_at) AS last_attempted,
   (
@@ -185,6 +185,8 @@ type GetRandomWeightedRow struct {
 	Title         string
 	TitleSlug     string
 	Difficulty    string
+	CodeSnippets  string
+	FunctionName  string
 	Status        string
 	LastAttempted string
 	WeightScore   interface{}
@@ -198,6 +200,8 @@ func (q *Queries) GetRandomWeighted(ctx context.Context) (GetRandomWeightedRow, 
 		&i.Title,
 		&i.TitleSlug,
 		&i.Difficulty,
+		&i.CodeSnippets,
+		&i.FunctionName,
 		&i.Status,
 		&i.LastAttempted,
 		&i.WeightScore,

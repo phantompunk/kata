@@ -61,7 +61,7 @@ FROM questions q
 LEFT JOIN submissions s on q.question_id = s.question_id;
 
 -- name: GetRandomWeighted :one
-SELECT q.question_id, q.title, q.title_slug, q.difficulty,
+SELECT q.question_id, q.title, q.title_slug, q.difficulty, q.code_snippets, q.function_name,
   CASE WHEN s.solved = 1 THEN 'Completed' ELSE 'Attempted' END AS status,
   COALESCE(s.last_attempted, q.created_at) AS last_attempted,
   (

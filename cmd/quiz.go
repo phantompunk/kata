@@ -52,6 +52,11 @@ func quizFunc(kata *app.App, open *bool, language *string) CommandFunc {
 		}
 
 		if opts.Open || kata.Config.OpenInEditor {
+			opts.Retry = true
+			if _, err := kata.Question.Stub(cmd.Context(), problem, opts); err != nil {
+				return fmt.Errorf("failed to reset solution file: %w", err)
+			}
+
 			if err := editor.Open(problem.SolutionPath()); err != nil {
 				return fmt.Errorf("failed to open solution file in editor: %w", err)
 			}

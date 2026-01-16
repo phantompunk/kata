@@ -172,9 +172,25 @@ func (q *GetRandomWeightedRow) ToProblem(workspace, language string) *domain.Pro
 	fileSet := domain.NewProblemFileSet(dirName, lang, directory)
 	then, _ := time.Parse(time.RFC3339, q.LastAttempted)
 
+	var code string
+	var codeSnippets []domain.CodeSnippet
+	if err := json.Unmarshal([]byte(q.CodeSnippets), &codeSnippets); err != nil {
+		fmt.Println("Failed to unmarshal code snippets:", err)
+		return nil
+	}
+
+	for _, snippet := range codeSnippets {
+		if snippet.LangSlug == lang.TemplateName() {
+			code = snippet.Code
+			break
+		}
+	}
+
 	return &domain.Problem{
 		Title:         q.Title,
 		Slug:          q.TitleSlug,
+		FunctionName:  q.FunctionName,
+		Code:          code,
 		DirName:       dirName,
 		Difficulty:    q.Difficulty,
 		Status:        q.Status,
