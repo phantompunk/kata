@@ -23,6 +23,7 @@ type Problem struct {
 	Testcases     []string
 	Status        string
 	LastAttempted time.Time
+	PaidOnly      bool
 	Language      Language
 	DirectoryPath Path
 	FileSet       []ProblemFile // Solution, Test, Readme

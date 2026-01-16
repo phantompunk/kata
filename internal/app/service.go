@@ -50,6 +50,12 @@ func (s *QuestionService) GetQuestion(ctx context.Context, opts AppOptions) (*do
 		return nil, fmt.Errorf("failed to fetch question %q: %w", opts.Problem, err)
 	}
 
+	// Check if free user is trying to access paid-only problem
+	if apiQuestion.PaidOnly && !opts.IsPremium {
+		
+		return &domain.Problem{Title: apiQuestion.Title, Slug: apiQuestion.TitleSlug}, ErrPaidOnlyProblem
+	}
+
 	// TODO: consider fire and forget
 	createdQuestion, err := s.repo.Create(ctx, repository.ToRepoCreateParams(apiQuestion))
 	if err != nil {

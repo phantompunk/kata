@@ -193,6 +193,19 @@ func (p *Presenter) ShowLanguageNotSupported(language string) {
 	p.error("language %q not supported", language)
 }
 
+// ShowPaywalledProblem displays a message when a free user tries to access a premium problem
+func (p *Presenter) ShowPaywalledProblem(title, slug string) {
+	p.error("Problem %q requires LeetCode Premium", title)
+	p.print("")
+	p.info("This problem is only available to premium subscribers.")
+	p.print("To access this problem:")
+	p.print("  1. Subscribe to LeetCode Premium at https://leetcode.com/subscribe/")
+	p.print("  2. Run 'kata login --force' to refresh your session")
+	p.print("")
+	p.print("Or try a different problem:")
+	p.print("  kata get two-sum")
+}
+
 // ShowRunningTests displays a message indicating tests are running
 func (p *Presenter) ShowRunningTests() {
 	_, _ = fmt.Fprint(p.writer, "✔ Running tests")

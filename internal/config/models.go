@@ -16,6 +16,7 @@ type Config struct {
 	Verbose      bool      `yaml:"verbose"`
 	Session      Session   `yaml:"session,inline"`
 	Username     string    `yaml:"username"`
+	IsPremium    bool      `yaml:"isPremium"`
 	Tracks       []string  `yaml:"tracks"`
 }
 
@@ -32,6 +33,7 @@ func (c Config) MarshalYAML() (any, error) {
 		"sessionToken": c.Session.SessionToken,
 		"csrfToken":    c.Session.CsrfToken,
 		"username":     c.Username,
+		"isPremium":    c.IsPremium,
 		"tracks":       c.Tracks,
 	}, nil
 }
@@ -45,6 +47,7 @@ func (c *Config) UnmarshalYAML(unmarshal func(any) error) error {
 		SessionToken string   `yaml:"sessionToken"`
 		CsrfToken    string   `yaml:"csrfToken"`
 		Username     string   `yaml:"username"`
+		IsPremium    bool     `yaml:"isPremium"`
 		Tracks       []string `yaml:"tracks"`
 	}
 
@@ -64,6 +67,7 @@ func (c *Config) UnmarshalYAML(unmarshal func(any) error) error {
 	c.Verbose = raw.Verbose
 	c.Session = NewSession(raw.SessionToken, raw.CsrfToken)
 	c.Username = raw.Username
+	c.IsPremium = raw.IsPremium
 	c.Tracks = raw.Tracks
 
 	return nil
@@ -166,6 +170,7 @@ func NewConfigBackup(cfg *Config) *ConfigBackup {
 		Verbose:      cfg.Verbose,
 		Session:      cfg.Session,
 		Username:     cfg.Username,
+		IsPremium:    cfg.IsPremium,
 		Tracks:       slices.Clone(cfg.Tracks),
 	}
 	return &ConfigBackup{Config: backup}

@@ -109,6 +109,16 @@ func (s *ConfigService) SaveUsername(username string) error {
 	return s.repository.Save(cfg)
 }
 
+func (s *ConfigService) SavePremiumStatus(isPremium bool) error {
+	cfg, err := s.repository.Load()
+	if err != nil {
+		return err
+	}
+
+	cfg.IsPremium = isPremium
+	return s.repository.Save(cfg)
+}
+
 func (s *ConfigService) ClearSession() error {
 	cfg, err := s.repository.Load()
 	if err != nil {

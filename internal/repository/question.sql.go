@@ -12,15 +12,16 @@ import (
 
 const create = `-- name: Create :one
 INSERT INTO questions (
-  question_id, submit_id, title, title_slug, difficulty, function_name, content, code_snippets, test_cases, created_at
+  question_id, submit_id, title, title_slug, difficulty, function_name, content, code_snippets, test_cases, paid_only, created_at
 ) VALUES (
-  ?, ?, ?, ?, ?, ?, ?, ?, ?, ? 
+  ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
 ) ON CONFLICT(question_id) DO UPDATE SET
     title       = excluded.title,
     title_slug  = excluded.title_slug,
     difficulty  = excluded.difficulty,
+    paid_only   = excluded.paid_only,
     created_at  = excluded.created_at
-RETURNING question_id, title, title_slug, difficulty, function_name, content, code_snippets, test_cases, created_at, submit_id
+RETURNING question_id, title, title_slug, difficulty, function_name, content, code_snippets, test_cases, created_at, submit_id, paid_only
 `
 
 type CreateParams struct {
@@ -33,6 +34,7 @@ type CreateParams struct {
 	Content      string
 	CodeSnippets string
 	TestCases    string
+	PaidOnly     int64
 	CreatedAt    string
 }
 
@@ -47,6 +49,7 @@ func (q *Queries) Create(ctx context.Context, arg CreateParams) (Question, error
 		arg.Content,
 		arg.CodeSnippets,
 		arg.TestCases,
+		arg.PaidOnly,
 		arg.CreatedAt,
 	)
 	var i Question
@@ -61,6 +64,7 @@ func (q *Queries) Create(ctx context.Context, arg CreateParams) (Question, error
 		&i.TestCases,
 		&i.CreatedAt,
 		&i.SubmitID,
+		&i.PaidOnly,
 	)
 	return i, err
 }
@@ -80,7 +84,7 @@ func (q *Queries) Exists(ctx context.Context, titleSlug string) (int64, error) {
 }
 
 const getByID = `-- name: GetByID :one
-SELECT question_id, title, title_slug, difficulty, function_name, content, code_snippets, test_cases, created_at, submit_id FROM questions
+SELECT question_id, title, title_slug, difficulty, function_name, content, code_snippets, test_cases, created_at, submit_id, paid_only FROM questions
 WHERE question_id = ? LIMIT 1
 `
 
@@ -98,12 +102,13 @@ func (q *Queries) GetByID(ctx context.Context, questionID int64) (Question, erro
 		&i.TestCases,
 		&i.CreatedAt,
 		&i.SubmitID,
+		&i.PaidOnly,
 	)
 	return i, err
 }
 
 const getBySlug = `-- name: GetBySlug :one
-SELECT question_id, title, title_slug, difficulty, function_name, content, code_snippets, test_cases, created_at, submit_id FROM questions
+SELECT question_id, title, title_slug, difficulty, function_name, content, code_snippets, test_cases, created_at, submit_id, paid_only FROM questions
 WHERE title_slug = ? LIMIT 1
 `
 
@@ -121,6 +126,7 @@ func (q *Queries) GetBySlug(ctx context.Context, titleSlug string) (Question, er
 		&i.TestCases,
 		&i.CreatedAt,
 		&i.SubmitID,
+		&i.PaidOnly,
 	)
 	return i, err
 }
@@ -264,7 +270,7 @@ func (q *Queries) IncrementTimesSolved(ctx context.Context, arg IncrementTimesSo
 }
 
 const listAll = `-- name: ListAll :many
-SELECT question_id, title, title_slug, difficulty, function_name, content, code_snippets, test_cases, created_at, submit_id FROM questions
+SELECT question_id, title, title_slug, difficulty, function_name, content, code_snippets, test_cases, created_at, submit_id, paid_only FROM questions
 ORDER BY question_id ASC
 `
 
@@ -288,6 +294,7 @@ func (q *Queries) ListAll(ctx context.Context) ([]Question, error) {
 			&i.TestCases,
 			&i.CreatedAt,
 			&i.SubmitID,
+			&i.PaidOnly,
 		); err != nil {
 			return nil, err
 		}

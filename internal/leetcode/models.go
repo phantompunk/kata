@@ -15,6 +15,7 @@ type Question struct {
 	TitleSlug    string        `json:"titleSlug"`
 	Difficulty   string        `json:"difficulty"`
 	Content      string        `json:"content"`
+	PaidOnly     bool          `json:"isPaidOnly"`
 	CodeSnippets []CodeSnippet `json:"codeSnippets"`
 	TestCaseList []string      `json:"exampleTestcaseList"`
 	Metadata     QuestionMeta  `json:"metadata"`
@@ -30,6 +31,7 @@ type InternalQuestion struct {
 	TitleSlug    string        `json:"titleSlug"`
 	Difficulty   string        `json:"difficulty"`
 	Content      string        `json:"content"`
+	PaidOnly     bool          `json:"isPaidOnly"`
 	CodeSnippets []CodeSnippet `json:"codeSnippets"`
 	TestCaseList []string      `json:"exampleTestcaseList"`
 	RawMetadata  string        `json:"metadata"`
@@ -66,6 +68,7 @@ func (q *Question) UnmarshalJSON(data []byte) error {
 	q.TitleSlug = tmp.TitleSlug
 	q.Difficulty = tmp.Difficulty
 	q.Content = tmp.Content
+	q.PaidOnly = tmp.PaidOnly
 	q.CodeSnippets = tmp.CodeSnippets
 	q.TestCaseList = tmp.TestCaseList
 
@@ -201,6 +204,7 @@ type AuthResponse struct {
 type UserStatus struct {
 	IsSignedIn bool   `json:"isSignedIn"`
 	Username   string `json:"username"`
+	IsPremium  bool   `json:"isPremium"`
 }
 
 type SubmissionResult struct {

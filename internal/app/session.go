@@ -57,15 +57,18 @@ func (s *SessionService) RefreshFromBrowser() error {
 }
 
 func (s *SessionService) ValidateSession(ctx context.Context) (string, error) {
-	username, err := s.client.GetUsername(ctx)
+	userStatus, err := s.client.GetUserStatus(ctx)
 	if err != nil {
 		return "", fmt.Errorf("failed to ping leetcode service: %w", err)
 	}
 
-	if username == "" {
+	if userStatus.Username == "" {
 		return "", ErrInvalidSession
 	}
 
-	s.confService.SaveUsername(username)
-	return username, nil
+	s.confService.SaveUsername(userStatus.Username)
+	s.confService.SavePremiumStatus(userStatus.IsPremium)
+	s.config.IsPremium = userStatus.IsPremium
+
+	return userStatus.Username, nil
 }

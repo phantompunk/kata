@@ -47,6 +47,7 @@ type Client interface {
 	CheckSubmissionResult(ctx context.Context, url string) (*SubmissionResult, error)
 
 	GetUsername(ctx context.Context) (string, error)
+	GetUserStatus(ctx context.Context) (*UserStatus, error)
 	IsAuthenticated(ctx context.Context) (bool, error)
 	SetSession(session config.Session)
 }
@@ -129,6 +130,7 @@ func (lc *LeetCodeClient) FetchQuestion(ctx context.Context, slug string) (*Ques
 				titleSlug
 				title
 				difficulty
+				isPaidOnly
 				metaData
 				exampleTestcaseList
 				codeSnippets {
@@ -286,6 +288,27 @@ func (lc *LeetCodeClient) GetUsername(ctx context.Context) (string, error) {
 	}
 
 	return response.Data.UserStatus.Username, nil
+}
+
+func (lc *LeetCodeClient) GetUserStatus(ctx context.Context) (*UserStatus, error) {
+	query := `query globalData {
+		userStatus {
+			username
+			isPremium
+		}
+	}`
+
+	res, err := lc.graphQLRequest(ctx, query, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var response AuthResponse
+	if err := json.Unmarshal(res, &response); err != nil {
+		return nil, err
+	}
+
+	return &response.Data.UserStatus, nil
 }
 
 type Headers map[string]string

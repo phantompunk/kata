@@ -19,6 +19,7 @@ var (
 	ErrNoQuestions      = errors.New("no questions found in the database")
 	ErrQuestionNotFound = errors.New("question not found")
 	ErrSolutionFailed   = errors.New("solution failed")
+	ErrPaidOnlyProblem  = errors.New("problem requires premium subscription")
 )
 
 type AppOptions struct {
@@ -29,6 +30,7 @@ type AppOptions struct {
 	Open      bool
 	Force     bool
 	Retry     bool
+	IsPremium bool
 }
 
 type App struct {

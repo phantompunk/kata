@@ -19,6 +19,7 @@ type Question struct {
 	TestCases    string
 	CreatedAt    string
 	SubmitID     sql.NullInt64
+	PaidOnly     int64
 }
 
 type Submission struct {

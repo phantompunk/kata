@@ -41,6 +41,7 @@ func downloadFunc(kata *app.App, open, force, retry *bool, language *string) Com
 			Open:      *open,
 			Force:     *force,
 			Retry:     *retry,
+			IsPremium: kata.Config.IsPremium,
 		}
 
 		problem, err := kata.Question.GetQuestion(cmd.Context(), opts)
@@ -50,7 +51,12 @@ func downloadFunc(kata *app.App, open, force, retry *bool, language *string) Com
 				return nil
 			}
 
-		// TODO Is this needed? Should rely on underlying error
+			if errors.Is(err, app.ErrPaidOnlyProblem) {
+				presenter.ShowPaywalledProblem(problem.Title, problem.Slug)
+				return nil
+			}
+
+			// TODO Is this needed? Should rely on underlying error
 			return fmt.Errorf("fetching question %q: %w", opts.Problem, err)
 		}
 

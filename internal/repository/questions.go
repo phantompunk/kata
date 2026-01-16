@@ -93,6 +93,7 @@ func (q *Question) ToProblem(workspace, language string) (*domain.Problem, error
 		FunctionName:  q.FunctionName,
 		LastAttempted: now,
 		Testcases:     testcases,
+		PaidOnly:      q.PaidOnly == 1,
 		DirectoryPath: directory,
 		Language:      lang,
 		FileSet:       fileSet,
@@ -228,6 +229,10 @@ func ToRepoCreateParams(question *leetcode.Question) CreateParams {
 		fmt.Fprintf(os.Stderr, "Failed to marshal test cases: %v\n", err)
 	} else {
 		params.TestCases = string(testcases)
+	}
+
+	if question.PaidOnly {
+		params.PaidOnly = 1
 	}
 
 	return params
